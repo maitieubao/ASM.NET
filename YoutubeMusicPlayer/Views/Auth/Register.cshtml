@@ -1,0 +1,55 @@
+@model YoutubeMusicPlayer.Application.DTOs.RegisterDto
+
+@{
+    ViewData["Title"] = "Sign Up";
+}
+
+<div class="container py-5">
+    <div class="glass-panel p-5 rounded-5 mx-auto" style="max-width: 450px;">
+        <h1 class="display-6 fw-bold text-white mb-4 text-center">Create Account</h1>
+        
+        <form asp-action="Register">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            
+            <div class="mb-3">
+                <label asp-for="Username" class="form-label text-white-50">Username</label>
+                <input asp-for="Username" class="form-control bg-dark border-secondary text-white rounded-pill px-4" placeholder="Choose a username" />
+                <span asp-validation-for="Username" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label text-white-50">Email Address</label>
+                <input asp-for="Email" class="form-control bg-dark border-secondary text-white rounded-pill px-4" placeholder="you@example.com" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label text-white-50">Password</label>
+                <input asp-for="Password" type="password" class="form-control bg-dark border-secondary text-white rounded-pill px-4" placeholder="••••••••" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="ConfirmPassword" class="form-label text-white-50">Confirm Password</label>
+                <input asp-for="ConfirmPassword" type="password" class="form-control bg-dark border-secondary text-white rounded-pill px-4" placeholder="••••••••" />
+                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+            </div>
+
+            <div class="d-grid mb-3">
+                <button type="submit" class="btn btn-primary rounded-pill py-2 fw-bold" style="background: linear-gradient(45deg, #1db954, #1ed760); border: none;">Sign Up</button>
+            </div>
+            
+            <div class="text-center mb-3 text-white-50">OR</div>
+
+            <div class="d-grid mb-4">
+                <a asp-action="LoginWithGoogle" class="btn btn-outline-light rounded-pill py-2">
+                    <i class="bi bi-google text-danger me-2"></i> Sign up with Google
+                </a>
+            </div>
+
+            <p class="text-center text-white-50 mt-4 mb-0">
+                Already have an account? <a asp-action="Login" class="text-white fw-bold text-decoration-none">Log in</a>
+            </p>
+        </form>
+    </div>
+</div>

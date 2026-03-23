@@ -1,0 +1,19 @@
+@model YoutubeMusicPlayer.Application.DTOs.GenreDto
+
+@{
+    ViewData["Title"] = "Delete Genre";
+}
+
+<div class="container py-5">
+    <div class="glass-panel p-5 rounded-5 mx-auto" style="max-width: 600px;">
+        <h1 class="display-6 fw-bold text-white mb-2">Delete Genre?</h1>
+        <p class="text-white-50 mb-4">Are you sure you want to delete <strong>#@Model.GenreId: @Model.Name</strong>? This action cannot be undone.</p>
+        
+        <form asp-action="Delete" class="d-flex gap-2">
+            <input type="hidden" asp-for="GenreId" />
+            
+            <button type="submit" class="btn btn-danger rounded-pill px-5 flex-grow-1" style="background: linear-gradient(45deg, #e91e63, #ff5252); border: none;">Yes, Delete</button>
+            <a asp-action="Index" class="btn btn-outline-light rounded-pill px-4">Cancel</a>
+        </form>
+    </div>
+</div>

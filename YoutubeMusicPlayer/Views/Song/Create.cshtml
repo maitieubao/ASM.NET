@@ -1,0 +1,73 @@
+@model YoutubeMusicPlayer.Application.DTOs.SongDto
+
+@{
+    ViewData["Title"] = "Add New Song";
+    var albums = (IEnumerable<YoutubeMusicPlayer.Application.DTOs.AlbumDto>)ViewBag.Albums;
+}
+
+<div class="container py-5">
+    <div class="form-glass animate__animated animate__fadeInUp">
+        <h2 class="fw-bold mb-4 text-center">Register New Song</h2>
+        
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+            
+            <div class="row">
+                <div class="col-md-9 mb-4">
+                    <label asp-for="Title" class="form-label text-muted small fw-bold text-uppercase">Song Title</label>
+                    <input asp-for="Title" class="form-control form-control-prem" placeholder="e.g., Save Your Tears" required />
+                </div>
+                <div class="col-md-3 mb-4 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input asp-for="IsExplicit" class="form-check-input" type="checkbox">
+                        <label class="form-check-label text-danger small fw-bold" asp-for="IsExplicit">EXPLICIT</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <label asp-for="YoutubeVideoId" class="form-label text-muted small fw-bold text-uppercase">YouTube Video ID</label>
+                    <input asp-for="YoutubeVideoId" class="form-control form-control-prem" placeholder="dQw4w9WgXcQ" required />
+                </div>
+                <div class="col-md-6 mb-4">
+                    <label asp-for="Isrc" class="form-label text-muted small fw-bold text-uppercase">ISRC Code</label>
+                    <input asp-for="Isrc" class="form-control form-control-prem" placeholder="USUM71900001" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <label asp-for="AlbumId" class="form-label text-muted small fw-bold text-uppercase">Album</label>
+                    <select asp-for="AlbumId" class="form-select form-control-prem">
+                        <option value="">-- Single --</option>
+                        @if (albums != null) {
+                            @foreach (var album in albums) {
+                                <option value="@album.AlbumId">@album.Title</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Status</label>
+                    <div class="d-flex gap-3 mt-2">
+                        <div class="form-check">
+                            <input asp-for="IsPremiumOnly" class="form-check-input" type="checkbox">
+                            <label class="form-check-label small" asp-for="IsPremiumOnly">Premium Only</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-5">
+                <label asp-for="LyricsText" class="form-label text-muted small fw-bold text-uppercase">Lyrics</label>
+                <textarea asp-for="LyricsText" class="form-control form-control-prem fs-6" rows="6" placeholder="Paste lyrics here..."></textarea>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <a asp-action="Index" class="btn-outline-prem">Back to Library</a>
+                <button type="submit" class="btn btn-premium px-5">Add to Collection</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,35 @@
+@model YoutubeMusicPlayer.Application.DTOs.ArtistDto
+
+@{
+    ViewData["Title"] = "Edit Artist";
+}
+
+<div class="container py-5">
+    <div class="form-glass animate__animated animate__fadeIn">
+        <h2 class="fw-bold mb-4 text-center">Edit Artist</h2>
+        
+        <form asp-action="Edit">
+            <input type="hidden" asp-for="ArtistId" />
+            
+            <div class="mb-4">
+                <label asp-for="Name" class="form-label text-muted small fw-bold text-uppercase">Artist Name</label>
+                <input asp-for="Name" class="form-control form-control-prem" required />
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="AvatarUrl" class="form-label text-muted small fw-bold text-uppercase">Avatar URL</label>
+                <input asp-for="AvatarUrl" class="form-control form-control-prem" />
+            </div>
+
+            <div class="mb-5">
+                <label asp-for="Bio" class="form-label text-muted small fw-bold text-uppercase">Biography</label>
+                <textarea asp-for="Bio" class="form-control form-control-prem" rows="6"></textarea>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <a asp-action="Index" class="btn-outline-prem">Cancel</a>
+                <button type="submit" class="btn btn-premium px-5">Update Artist</button>
+            </div>
+        </form>
+    </div>
+</div>

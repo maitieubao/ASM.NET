@@ -1,0 +1,35 @@
+@model YoutubeMusicPlayer.Application.DTOs.GenreDto
+
+@{
+    ViewData["Title"] = "New Genre";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="glass-panel p-5 rounded-5 border border-white border-opacity-10">
+                <div class="d-flex align-items-center mb-5">
+                    <a asp-action="Index" class="btn btn-link text-white-50 p-0 me-4 fs-4"><i class="bi bi-arrow-left"></i></a>
+                    <h1 class="display-6 fw-black text-white m-0">Create Genre</h1>
+                </div>
+
+                <form asp-action="Create">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-4"></div>
+
+                    <div class="form-floating mb-5">
+                        <input asp-for="Name" class="form-control bg-dark border-secondary border-opacity-25 text-white bg-opacity-50 rounded-4 px-4 h-auto py-4 fs-5 fw-bold" placeholder="Genre Name" required />
+                        <label asp-for="Name" class="text-white-50 ms-2">Genre Name (e.g. Pop, Jazz, Electronic)</label>
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-grid pt-3">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-lg border-0 py-3 mb-4" style="background: linear-gradient(45deg, #1db954, #1ed760);">
+                            <i class="bi bi-check2-circle me-2"></i> Save Genre
+                        </button>
+                        <a asp-action="Index" class="btn btn-link text-white-50 fw-semibold text-decoration-none">Not now, take me back</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

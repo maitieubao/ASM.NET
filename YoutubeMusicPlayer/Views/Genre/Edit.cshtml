@@ -1,0 +1,27 @@
+@model YoutubeMusicPlayer.Application.DTOs.GenreDto
+
+@{
+    ViewData["Title"] = "Edit Genre";
+}
+
+<div class="container py-5">
+    <div class="glass-panel p-5 rounded-5 mx-auto" style="max-width: 600px;">
+        <h1 class="display-6 fw-bold text-white mb-4">Edit Genre</h1>
+        
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="GenreId" />
+            
+            <div class="mb-4">
+                <label asp-for="Name" class="form-label text-white-50">Genre Name</label>
+                <input asp-for="Name" class="form-control bg-dark border-secondary text-white rounded-pill px-4" placeholder="e.g. Pop, Rock, Lofi..." />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary rounded-pill px-5 flex-grow-1" style="background: linear-gradient(45deg, #1db954, #1ed760); border: none;">Save Changes</button>
+                <a asp-action="Index" class="btn btn-outline-light rounded-pill px-4">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

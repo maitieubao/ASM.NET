@@ -1,0 +1,756 @@
+@model YoutubeMusicPlayer.Models.HomeViewModel
+
+@{
+    ViewData["Title"] = "YouTube Music Player - Vietnam Trending";
+}
+
+<div class="home-page-container">
+    <!-- SEARCH SECTION (HERO) -->
+    <div class="hero-section text-center py-5">
+        <h1 class="display-3 fw-black text-white glow-text mb-4">MÚSICA VIỆT</h1>
+        <p class="text-white-50 mb-5 fs-5">Khám phá thế giới âm nhạc không giới hạn</p>
+        
+        <div class="glass-search-box mx-auto position-relative">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-0"><i class="bi bi-search text-white-50"></i></span>
+                <input type="text" id="searchInput" class="form-control" autocomplete="off" placeholder="Search song title, artist or paste YouTube link..." />
+                <button class="btn btn-premium px-4" id="searchBtn">EXPLORE</button>
+            </div>
+            @if(Model.RecentSearches != null && Model.RecentSearches.Any())
+            {
+                <ul id="searchSuggestions" class="dropdown-menu dropdown-menu-dark w-100 mt-1 shadow-lg border-secondary text-start" style="display:none; position:absolute; z-index: 1000;">
+                    <li class="dropdown-header text-white-50"><i class="bi bi-clock-history"></i> Lịch sử tìm kiếm</li>
+                    @foreach(var term in Model.RecentSearches) {
+                        <li><a class="dropdown-item text-white" href="#" onclick="useSearchTerm('@System.Web.HttpUtility.JavaScriptStringEncode(term)'); return false;">@term</a></li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+    <!-- SEARCH RESULTS (HIDDEN BY DEFAULT) -->
+    <div id="searchResultsContainer" class="container mb-5" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-white m-0 border-start border-4 border-accent ps-3">Kết quả tìm kiếm</h3>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearSearchResults()"><i class="bi bi-x-lg"></i> Clear</button>
+        </div>
+        <div id="searchResults" class="row row-cols-1 row-cols-md-5 g-4"></div>
+        <hr class="mt-5 border-secondary opacity-25" />
+    </div>
+
+    <!-- RECENT LISTENED -->
+    @if(Model.RecentListened != null && Model.RecentListened.Any())
+    {
+        <div class="container mb-5">
+            @RenderSection("Nghe Gần Đây", Model.RecentListened, "bi-clock-history", "nghe-gan-day")
+        </div>
+    }
+
+    <!-- GENRE TABS SECTION -->
+    <div class="container pb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-white m-0 border-start border-4 border-accent ps-3">Khám phá theo Thể loại</h3>
+        </div>
+        
+        <ul class="nav nav-pills genre-pills mb-5 gap-3" id="genreTabs" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-tre">Nhạc Trẻ</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pop">Nhạc Pop</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-kpop">K-Pop</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-usuk">US-UK</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-classic">Nhạc Classic</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-remix">Remix</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ballad">Ballad</button></li>
+        </ul>
+
+        <div class="tab-content" id="genreTabsContent">
+            <div class="tab-pane fade show active" id="tab-tre">@RenderSection("Trending Nhạc Trẻ", Model.NhacTre, "bi-fire", "nhac-tre")</div>
+            <div class="tab-pane fade" id="tab-pop">@RenderSection("V-Pop Highlights", Model.NhacPop, "bi-star", "nhac-pop")</div>
+            <div class="tab-pane fade" id="tab-kpop">@RenderSection("Hallyu Wave", Model.NhacKPop, "bi-heart-pulse", "nhac-kpop")</div>
+            <div class="tab-pane fade" id="tab-usuk">@RenderSection("Global Top 40", Model.NhacUSUK, "bi-globe", "nhac-usuk")</div>
+            <div class="tab-pane fade" id="tab-classic">@RenderSection("Timeless Masterpieces", Model.NhacClassic, "bi-music-note", "nhac-classic")</div>
+            <div class="tab-pane fade" id="tab-remix">@RenderSection("Dance & Remix", Model.NhacRemix, "bi-lightning", "nhac-remix")</div>
+            <div class="tab-pane fade" id="tab-ballad">@RenderSection("Sentimental Ballads", Model.NhacBallad, "bi-droplet", "nhac-ballad")</div>
+        </div>
+    </div>
+</div>
+
+<!-- QUEUE DRAWER (SIDE PANEL) -->
+<div id="queueDrawer" class="queue-drawer glass-morphism">
+    <div class="d-flex justify-content-between align-items-center p-4 border-bottom border-secondary">
+        <h5 class="m-0 text-white fw-bold"><i class="bi bi-music-note-list text-accent me-2"></i> Tiếp theo</h5>
+        <button class="btn-close btn-close-white" onclick="toggleQueue()"></button>
+    </div>
+    <div id="queueContainer" class="queue-items-list p-3">
+        <!-- Queue items injected here -->
+    </div>
+</div>
+
+@functions {
+    public Microsoft.AspNetCore.Html.IHtmlContent RenderSection(string title, IEnumerable<YoutubeMusicPlayer.Application.Interfaces.YoutubeVideoDetails> items, string icon, string dataId)
+    {
+        string html = $@"
+        <div class=""category-section mb-5 position-relative"" data-section=""{dataId}"">
+            <div class=""d-flex justify-content-between align-items-center mb-4"">
+                <h4 class=""fw-bold text-white m-0""><i class=""bi {icon} text-accent me-2""></i> {title}</h4>
+                <div class=""scroll-controls d-flex gap-2"">
+                    <button class=""btn-scroll prev-scroll""><i class=""bi bi-chevron-left""></i></button>
+                    <button class=""btn-scroll next-scroll""><i class=""bi bi-chevron-right""></i></button>
+                </div>
+            </div>
+
+            <div class=""horizontal-carousel-wrapper"">
+                <div class=""horizontal-carousel"">";
+        
+        int index = 0;
+        foreach (var item in items)
+        {
+            var safeTitle = System.Web.HttpUtility.HtmlAttributeEncode(item.Title).Replace("'", "\\'");
+            var safeAuthor = System.Web.HttpUtility.HtmlAttributeEncode(item.AuthorName).Replace("'", "\\'");
+            
+            html += $@"
+                    <div class=""carousel-item-card"" 
+                         data-videoId=""{item.YoutubeVideoId}"" 
+                         data-title=""{safeTitle}"" 
+                         data-author=""{safeAuthor}"" 
+                         data-thumb=""{item.ThumbnailUrl}""
+                         onclick=""playFromQueue('{dataId}', {index})"">
+                        <div class=""card-thumb-container"">
+                            <img src=""{item.ThumbnailUrl}"" class=""card-thumb"" />
+                            <div class=""card-play-overlay"">
+                                <i class=""bi bi-play-fill display-4""></i>
+                            </div>
+                            <span class=""duration-badge"">{(item.Duration?.ToString(@"mm\:ss") ?? "00:00")}</span>
+                        </div>
+                        <div class=""card-info mt-3 d-flex justify-content-between align-items-center"">
+                            <div class=""overflow-hidden pe-2"" style=""width: calc(100% - 25px);"">
+                                <div class=""card-title-text"" title=""{safeTitle}"">{item.Title}</div>
+                                <div class=""card-author-text"">{item.AuthorName}</div>
+                            </div>
+                            <button class=""btn btn-sm btn-link text-white-50 hover-accent p-0"" title=""Thêm vào playlist"" onclick=""event.stopPropagation(); openPlaylistModal('{item.YoutubeVideoId}')"">
+                                <i class=""bi bi-three-dots-vertical""></i>
+                            </button>
+                        </div>
+                    </div>";
+            index++;
+        }
+
+        html += @"
+                </div>
+            </div>
+        </div>";
+        
+        return new Microsoft.AspNetCore.Html.HtmlString(html);
+    }
+}
+
+<!-- PLAYLIST MODAL -->
+<div class="modal fade" id="playlistModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content bg-dark text-white border-secondary glass-morphism">
+      <div class="modal-header border-bottom border-secondary">
+        <h6 class="modal-title fw-bold"><i class="bi bi-music-note-list text-accent me-2"></i> Thêm vào Playlist</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <input type="hidden" id="modalTargetVideoId" />
+        <div id="playlistModalLoading" class="text-center p-4" style="display:none;"><div class="spinner-border text-primary spinner-border-sm"></div></div>
+        <ul id="playlistModalList" class="list-group list-group-flush bg-transparent" style="max-height: 300px; overflow-y: auto;">
+             <!-- Injected via JS -->
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GLOBAL PLAYER (FLOATING) -->
+<div class="player-bar-container fixed-bottom">
+    <div class="container overflow-visible">
+        <div class="player-bar glass-morphism p-3 row align-items-center mb-3">
+            <!-- Track Info -->
+            <div class="col-md-3 d-flex align-items-center gap-3">
+                <img src="https://via.placeholder.com/60" id="currentThumbnail" class="player-thumb rounded-3 shadow" />
+                <div class="player-info overflow-hidden">
+                    <div id="currentTitle" class="text-white fw-bold text-truncate" style="max-width: 15vw;">Sẵn sàng phát nhạc</div>
+                    <div id="currentAuthor" class="text-white-50 small text-truncate" style="max-width: 15vw;">Chọn bài hát bạn yêu thích</div>
+                </div>
+            </div>
+            
+            <!-- Controls & Seek -->
+            <div class="col-md-6">
+                <div class="d-flex flex-column align-items-center text-center">
+                    <div class="player-controls d-flex align-items-center gap-4 mb-2">
+                        <button class="btn-icon-prem fs-4" id="shuffleBtn" onclick="toggleShuffle()"><i class="bi bi-shuffle"></i></button>
+                        <button class="btn-icon-prem fs-3" onclick="prevTrack()"><i class="bi bi-skip-start-fill"></i></button>
+                        <button class="btn-icon-play" id="playPauseBtn"><i class="bi bi-play-fill"></i></button>
+                        <button class="btn-icon-prem fs-3" onclick="nextTrack()"><i class="bi bi-skip-end-fill"></i></button>
+                        <button class="btn-icon-prem fs-4" id="repeatBtn" onclick="toggleRepeat()" title="Repeat Mode"><i class="bi bi-repeat"></i> <span id="repeatIndicator" class="repeat-mode-label"></span></button>
+                    </div>
+                    <div class="d-flex w-100 align-items-center gap-3">
+                        <span id="currentTime" class="text-white-50 x-small" style="min-width: 35px;">0:00</span>
+                        <div class="seeker-wrapper flex-grow-1 position-relative">
+                           <input type="range" class="form-range player-seeker" id="seekSlider" min="0" max="100" value="0">
+                        </div>
+                        <span id="durationTime" class="text-white-50 x-small" style="min-width: 35px;">0:00</span>
+                    </div>
+                    <audio id="audioPlayer" class="d-none">Your browser does not support the audio element.</audio>
+                </div>
+            </div>
+
+            <!-- Extra Settings -->
+            <div class="col-md-3 text-end d-none d-md-block">
+                <div class="d-flex justify-content-end align-items-center gap-3">
+                    <div class="form-check form-switch me-3">
+                        <input class="form-check-input" type="checkbox" id="autoplaySwitch" checked>
+                        <label class="form-check-label text-white-50 x-small" for="autoplaySwitch">Autoplay</label>
+                    </div>
+                    <button class="btn-icon-prem" id="queueBtn" onclick="toggleQueue()"><i class="bi bi-list-stars"></i></button>
+                    <div class="volume-control d-flex align-items-center gap-2">
+                        <i class="bi bi-volume-up text-white-50"></i>
+                        <input type="range" class="form-range" id="volumeControl" style="width: 80px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const seekSlider = document.getElementById('seekSlider');
+        const currentThumbnail = document.getElementById('currentThumbnail');
+        const currentTitle = document.getElementById('currentTitle');
+        const currentAuthor = document.getElementById('currentAuthor');
+        const autoplaySwitch = document.getElementById('autoplaySwitch');
+        const queueDrawer = document.getElementById('queueDrawer');
+        const queueContainer = document.getElementById('queueContainer');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationTimeEl = document.getElementById('durationTime');
+        const repeatBtn = document.getElementById('repeatBtn');
+        const repeatIndicator = document.getElementById('repeatIndicator');
+
+        // State Management
+        let playQueue = [];
+        let currentIndex = -1;
+        let isShuffle = false;
+        let repeatMode = 0; // 0: None, 1: Repeat One, 2: Repeat All
+        let streamCache = {}; // Cache for Stream URLs to optimize loading
+
+        // --- Core Playback ---
+
+        async function playFromQueue(sectionId, index) {
+            const items = document.querySelectorAll(`[data-section="${sectionId}"] .carousel-item-card`);
+            playQueue = Array.from(items).map(el => ({
+                videoId: el.dataset.videoid,
+                title: el.dataset.title,
+                author: el.dataset.author,
+                thumbnail: el.dataset.thumb
+            }));
+            
+            currentIndex = index;
+            await loadAndPlay(playQueue[currentIndex]);
+            renderQueue();
+        }
+
+        async function loadAndPlay(track) {
+            if (!track) return;
+
+            // Stop current track immediately
+            audioPlayer.pause();
+            audioPlayer.src = ""; 
+            updatePlayPauseUI(false);
+
+            currentTitle.textContent = track.title;
+            currentAuthor.textContent = track.author;
+            currentThumbnail.src = track.thumbnail;
+
+            document.querySelectorAll('.carousel-item-card, .queue-item-card').forEach(el => el.classList.remove('playing'));
+            const activeEls = document.querySelectorAll(`[data-videoid="${track.videoId}"]`);
+            activeEls.forEach(el => el.classList.add('playing'));
+
+            // Check if Stream URL is already cached
+            if (streamCache[track.videoId]) {
+                audioPlayer.src = streamCache[track.videoId];
+                audioPlayer.load();
+                audioPlayer.play();
+                updatePlayPauseUI(true);
+                prefetchQueue(); // Prefetch next ones
+                return;
+            }
+
+            try {
+                const url = `https://youtube.com/watch?v=${track.videoId}`;
+                const res = await fetch(`/Home/GetStreamUrl?videoUrl=${encodeURIComponent(url)}`);
+                const data = await res.json();
+                
+                if (data.streamUrl) {
+                    streamCache[track.videoId] = data.streamUrl; // Cache it
+                    audioPlayer.src = data.streamUrl;
+                    audioPlayer.load();
+                    audioPlayer.play();
+                    updatePlayPauseUI(true);
+                    prefetchQueue(); // Trigger prefetch for next songs
+                } else {
+                    nextTrack();
+                }
+            } catch (err) {
+                nextTrack();
+            }
+            renderQueue();
+        }
+
+        async function prefetchQueue() {
+            // Look ahead 2 songs
+            for (let i = 1; i <= 2; i++) {
+                const nextIdx = currentIndex + i;
+                if (nextIdx < playQueue.length) {
+                    const nextTrack = playQueue[nextIdx];
+                    if (!streamCache[nextTrack.videoId]) {
+                        try {
+                            const url = `https://youtube.com/watch?v=${nextTrack.videoId}`;
+                            const res = await fetch(`/Home/GetStreamUrl?videoUrl=${encodeURIComponent(url)}`);
+                            const data = await res.json();
+                            if (data.streamUrl) {
+                                streamCache[nextTrack.videoId] = data.streamUrl;
+                            }
+                        } catch (e) { /* silent fail for prefetch */ }
+                    }
+                }
+            }
+        }
+
+        function nextTrack() {
+            if (playQueue.length === 0) return;
+
+            // Handle Repeat Modes
+            if (repeatMode === 1) { // Repeat One
+                audioPlayer.currentTime = 0;
+                audioPlayer.play();
+                return;
+            }
+
+            if (isShuffle) {
+                currentIndex = Math.floor(Math.random() * playQueue.length);
+            } else {
+                currentIndex++;
+            }
+
+            if (currentIndex < playQueue.length) {
+                loadAndPlay(playQueue[currentIndex]);
+            } else {
+                // End of Queue reached
+                if (repeatMode === 2) { // Repeat All
+                    currentIndex = 0;
+                    loadAndPlay(playQueue[currentIndex]);
+                } else if (autoplaySwitch.checked) {
+                    handleAutoplay();
+                } else {
+                    currentIndex = -1;
+                    updatePlayPauseUI(false);
+                    audioPlayer.pause();
+                }
+            }
+        }
+
+        async function handleAutoplay() {
+            const lastTrack = playQueue[playQueue.length - 1];
+            if (!lastTrack || playQueue.length >= 20) return;
+
+            try {
+                const res = await fetch(`/Home/GetRecommendations?videoId=${lastTrack.videoId}`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const existingIds = new Set(playQueue.map(q => q.videoId));
+                    let addedCount = 0;
+                    
+                    for (const newTrack of data) {
+                        if (playQueue.length >= 20) break;
+                        if (!existingIds.has(newTrack.youtubeVideoId)) {
+                            playQueue.push({
+                                videoId: newTrack.youtubeVideoId,
+                                title: newTrack.title,
+                                author: newTrack.authorName,
+                                thumbnail: newTrack.thumbnailUrl
+                            });
+                            addedCount++;
+                        }
+                    }
+                    if (addedCount > 0) renderQueue();
+                }
+            } catch (e) { console.error("Autoplay failed", e); }
+        }
+
+        function prevTrack() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                loadAndPlay(playQueue[currentIndex]);
+            }
+        }
+
+        // --- UI Interactions ---
+
+        function toggleShuffle() {
+            isShuffle = !isShuffle;
+            document.getElementById('shuffleBtn').classList.toggle('active', isShuffle);
+        }
+
+        function toggleRepeat() {
+            repeatMode = (repeatMode + 1) % 3;
+            repeatBtn.classList.toggle('active', repeatMode > 0);
+            
+            if (repeatMode === 0) {
+                repeatBtn.innerHTML = '<i class="bi bi-repeat"></i>';
+                repeatIndicator.textContent = '';
+            } else if (repeatMode === 1) {
+                repeatBtn.innerHTML = '<i class="bi bi-repeat-1"></i>';
+                repeatIndicator.textContent = 'One';
+            } else {
+                repeatBtn.innerHTML = '<i class="bi bi-repeat"></i>';
+                repeatIndicator.textContent = 'All';
+            }
+        }
+
+        function toggleQueue() {
+            queueDrawer.classList.toggle('open');
+            document.getElementById('queueBtn').classList.toggle('active', queueDrawer.classList.contains('open'));
+            if (queueDrawer.classList.contains('open')) renderQueue();
+        }
+
+        function renderQueue() {
+            queueContainer.innerHTML = '';
+            if (playQueue.length === 0) {
+                queueContainer.innerHTML = '<p class="text-white-50 text-center py-5">Empty</p>';
+                return;
+            }
+
+            playQueue.forEach((track, idx) => {
+                const isCurrent = idx === currentIndex;
+                const item = document.createElement('div');
+                item.className = `queue-item-card d-flex align-items-center gap-3 p-2 mb-2 rounded-3 ${isCurrent ? 'playing' : ''}`;
+                item.innerHTML = `
+                    <div class="queue-thumb-sm position-relative">
+                        <img src="${track.thumbnail}" class="rounded" />
+                        ${isCurrent ? '<div class="playing-overlay-sm"><i class="bi bi-volume-up-fill"></i></div>' : ''}
+                    </div>
+                    <div class="flex-grow-1 overflow-hidden" onclick="playAtIndex(${idx})">
+                        <div class="text-white fw-medium text-truncate small">${track.title}</div>
+                        <div class="text-white-50 x-small">${track.author}</div>
+                    </div>
+                    <button class="btn btn-sm btn-link text-white-50 p-0" onclick="removeFromQueue(${idx})"><i class="bi bi-trash"></i></button>
+                `;
+                queueContainer.appendChild(item);
+            });
+        }
+
+        window.playAtIndex = (index) => {
+            currentIndex = index;
+            loadAndPlay(playQueue[currentIndex]);
+        };
+
+        window.removeFromQueue = (index) => {
+            if (index === currentIndex) nextTrack();
+            playQueue.splice(index, 1);
+            if (index < currentIndex) currentIndex--;
+            renderQueue();
+        };
+
+        // --- Utils ---
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "0:00";
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return (h > 0 ? h + ":" : "") + (m < 10 && h > 0 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+        }
+
+        audioPlayer.addEventListener('timeupdate', () => {
+             currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
+             durationTimeEl.textContent = formatTime(audioPlayer.duration || 0);
+             if (audioPlayer.duration) {
+                seekSlider.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+             }
+        });
+
+        seekSlider.addEventListener('input', () => {
+            if (audioPlayer.duration) {
+                audioPlayer.currentTime = (seekSlider.value / 100) * audioPlayer.duration;
+            }
+        });
+
+        audioPlayer.addEventListener('ended', nextTrack);
+
+        playPauseBtn.addEventListener('click', () => {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                updatePlayPauseUI(true);
+            } else {
+                audioPlayer.pause();
+                updatePlayPauseUI(false);
+            }
+        });
+
+        function updatePlayPauseUI(isPlaying) {
+            playPauseBtn.innerHTML = isPlaying ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill"></i>';
+        }
+
+        document.getElementById('volumeControl').addEventListener('input', e => {
+            audioPlayer.volume = e.target.value / 100;
+        });
+
+        // --- Search Logic ---
+
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsContainer = document.getElementById('searchResultsContainer');
+        const resultsGrid = document.getElementById('searchResults');
+
+        searchBtn.addEventListener('click', async () => {
+             const query = searchInput.value;
+             if (!query) return;
+
+             resultsContainer.style.display = 'block';
+             resultsGrid.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-3 text-white-50">Searching...</p></div>';
+
+             try {
+                const response = await fetch(`/Home/Search?query=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                resultsGrid.innerHTML = '';
+                
+                const searchItems = data.map(v => ({
+                    videoId: v.url.split('v=')[1],
+                    title: v.title,
+                    author: v.author,
+                    thumbnail: v.thumbnail
+                }));
+
+                data.forEach((item, idx) => {
+                    const col = document.createElement('div');
+                    col.className = 'col animate__animated animate__fadeInUp';
+                    col.innerHTML = `
+                        <div class="search-item-card" onclick="setSearchQueueAndPlay(${idx})">
+                            <div class="search-thumb-box position-relative overflow-hidden rounded-4">
+                                <img src="${item.thumbnail}" class="w-100" />
+                                <div class="play-hover"><i class="bi bi-play-fill display-5"></i></div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                                <div class="text-start overflow-hidden text-truncate w-100 pe-2">
+                                    <div class="text-white fw-medium text-truncate small">${item.title}</div>
+                                    <div class="text-white-50 x-small">${item.author}</div>
+                                </div>
+                                <button class="btn btn-sm btn-link text-white-50 hover-accent p-0" title="Thêm vào playlist" onclick="event.stopPropagation(); openPlaylistModal('${item.videoId}')">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    resultsGrid.appendChild(col);
+                });
+
+                window.setSearchQueueAndPlay = (index) => {
+                    playQueue = searchItems;
+                    currentIndex = index;
+                    loadAndPlay(playQueue[index]);
+                };
+                resultsContainer.scrollIntoView({ behavior: 'smooth' });
+             } catch (err) { resultsGrid.innerHTML = '<div class="col-12 text-center py-5">Error searching.</div>'; }
+        });
+
+        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchBtn.click(); });
+
+        document.addEventListener('click', e => {
+            const btn = e.target.closest('.btn-scroll');
+            if (btn) {
+                const wrapper = btn.closest('.category-section').querySelector('.horizontal-carousel');
+                const direction = btn.classList.contains('prev-scroll') ? -1 : 1;
+                const scrollAmount = wrapper.offsetWidth * 0.8 * direction;
+                wrapper.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            }
+        });
+
+        // Search Suggestions Logic
+        const searchSuggestions = document.getElementById('searchSuggestions');
+        if (searchInput && searchSuggestions) {
+            searchInput.addEventListener('focus', () => { searchSuggestions.style.display = 'block'; });
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.glass-search-box')) {
+                    searchSuggestions.style.display = 'none';
+                }
+            });
+        }
+        window.useSearchTerm = function(term) {
+            searchInput.value = term;
+            if (searchSuggestions) searchSuggestions.style.display = 'none';
+            searchBtn.click();
+        };
+
+        // Playlist Modal Logic
+        const playlistModalEl = document.getElementById('playlistModal');
+        let bsPlaylistModal;
+        if (playlistModalEl && typeof bootstrap !== 'undefined') {
+            bsPlaylistModal = new bootstrap.Modal(playlistModalEl);
+        }
+
+        window.openPlaylistModal = async function(videoId) {
+            if (!bsPlaylistModal) { 
+                alert("Bạn cần đăng nhập để dùng tính năng này.");
+                window.location.href = '/Auth/Login';
+                return; 
+            }
+            document.getElementById('modalTargetVideoId').value = videoId;
+            const listEl = document.getElementById('playlistModalList');
+            const loading = document.getElementById('playlistModalLoading');
+            
+            listEl.innerHTML = '';
+            loading.style.display = 'block';
+            bsPlaylistModal.show();
+            
+            try {
+                const res = await fetch('/Playlist/GetPlaylistsJson');
+                if (res.status === 401) {
+                    window.location.href = '/Auth/Login';
+                    return;
+                }
+                const playlists = await res.json();
+                loading.style.display = 'none';
+                
+                if (!playlists || playlists.length === 0) {
+                    listEl.innerHTML = '<li class="list-group-item bg-transparent text-white-50 text-center p-3">Chưa có playlist nào.<br/> <a href="/Playlist" class="text-accent">Quản lý Playlist</a></li>';
+                    return;
+                }
+                
+                playlists.forEach(pl => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item bg-transparent text-white border-secondary list-group-item-action d-flex justify-content-between align-items-center hover-bg-dark';
+                    li.style.cursor = 'pointer';
+                    li.innerHTML = `<span class="text-truncate" style="max-width:70%;"><i class="bi bi-music-note-list me-2 text-accent"></i> ${pl.title}</span> <button class="btn btn-sm btn-outline-light rounded-pill px-3" style="font-size:0.75rem;">Thêm</button>`;
+                    li.onclick = () => addVideoToPlaylist(pl.playlistId, videoId);
+                    listEl.appendChild(li);
+                });
+            } catch(e) {
+                loading.style.display = 'none';
+                listEl.innerHTML = '<div class="p-3 text-danger text-center"><small>Lỗi tải playlist</small></div>';
+            }
+        };
+
+        window.addVideoToPlaylist = async function(playlistId, videoId) {
+            const btnList = document.querySelectorAll('#playlistModalList button');
+            btnList.forEach(btn => btn.disabled = true);
+            
+            try {
+                const res = await fetch('/Playlist/AddSongByYoutubeId?playlistId=' + playlistId + '&youtubeId=' + videoId, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    bsPlaylistModal.hide();
+                    // Optional toast success
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể thêm bài.'));
+                }
+            } catch(e) { 
+                alert('Không thể thêm vào playlist, vui lòng thử lại.'); 
+            }
+            btnList.forEach(btn => btn.disabled = false);
+        };
+    </script>
+}
+
+<style>
+    .genre-pills .nav-link {
+        color: rgba(255,255,255,0.7);
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 50px;
+        padding: 10px 25px;
+        font-weight: 600;
+        transition: 0.3s;
+    }
+    
+    .genre-pills .nav-link:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+    }
+    
+    .genre-pills .nav-link.active {
+        background: var(--accent-color) !important;
+        color: white !important;
+        box-shadow: 0 5px 20px rgba(255, 87, 87, 0.4);
+        border-color: transparent;
+    }
+
+    .queue-drawer {
+        position: fixed;
+        right: -350px;
+        top: 0;
+        width: 350px;
+        height: 100vh;
+        z-index: 2000;
+        transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border-left: 1px solid rgba(255,255,255,0.1);
+        box-shadow: -10px 0 50px rgba(0,0,0,0.8);
+    }
+    
+    .queue-drawer.open { right: 0; }
+    
+    .queue-items-list { height: calc(100vh - 80px); overflow-y: auto; }
+    
+    .queue-item-card { cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+    .queue-item-card:hover { background: rgba(255,255,255,0.08); }
+    .queue-item-card.playing { background: rgba(255, 87, 87, 0.15); border-color: rgba(255, 87, 87, 0.3); }
+    
+    .queue-thumb-sm img { width: 50px; height: 50px; object-fit: cover; }
+    
+    .playing-overlay-sm {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 87, 87, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        border-radius: 4px;
+    }
+    
+    .player-seeker {
+        height: 4px;
+        cursor: pointer;
+        background: rgba(255,255,255,0.1);
+        border: none;
+    }
+    
+    .player-seeker::-webkit-slider-thumb {
+        background: var(--accent-color);
+        box-shadow: 0 0 10px var(--accent-color);
+    }
+    
+    .repeat-mode-label {
+        font-size: 0.6rem;
+        position: absolute;
+        bottom: -5px;
+        right: -5px;
+        background: var(--accent-color);
+        color: white;
+        padding: 1px 4px;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+
+    .btn-icon-prem.active {
+        color: var(--accent-color) !important;
+        text-shadow: 0 0 10px rgba(255, 87, 87, 0.5);
+    }
+    
+    .carousel-item-card.playing {
+        border: 2px solid var(--accent-color);
+        box-shadow: 0 0 15px rgba(255, 87, 87, 0.3);
+    }
+    
+    .btn-icon-play {
+        width: 50px; height: 50px;
+        background: var(--accent-color);
+        border: none; border-radius: 50%;
+        color: white; display: flex; align-items: center; justify-content: center;
+        font-size: 1.8rem; transition: 0.3s;
+        box-shadow: 0 5px 15px rgba(255, 87, 87, 0.4);
+    }
+</style>

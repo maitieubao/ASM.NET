@@ -1,0 +1,76 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.SongDto>
+
+@{
+    ViewData["Title"] = "Manage Songs";
+}
+
+<div class="management-container animate__animated animate__fadeIn">
+    <div class="management-header">
+        <h2 class="fw-bold mb-0">Songs Library</h2>
+        <div class="d-flex gap-2">
+            <a asp-action="Import" class="btn btn-outline-prem text-danger border-danger">
+                <i class="bi bi-lightning-fill me-2"></i> Fast Import
+            </a>
+            <a asp-action="Create" class="btn btn-premium">
+                <i class="bi bi-music-note me-2"></i> Add Manually
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table-glass">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Genre</th>
+                    <th>ISRC</th>
+                    <th>YouTube ID</th>
+                    <th>Plays</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model) {
+                <tr>
+                    <td class="fw-bold fs-5">@item.Title @(item.IsExplicit ? "🔞" : "")</td>
+                    <td>
+                        @if (item.GenreNames != null && item.GenreNames.Any()) {
+                            @foreach (var gname in item.GenreNames) {
+                                <span class="badge bg-secondary opacity-50 fw-normal rounded-pill me-1" style="font-size: 0.7rem;">@gname</span>
+                            }
+                        } else {
+                            <span class="text-white-10">...</span>
+                        }
+                    </td>
+                    <td class="text-muted small">@item.Isrc</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(item.YoutubeVideoId)) {
+                        <a href="https://youtube.com/watch?v=@item.YoutubeVideoId" target="_blank" class="text-accent text-decoration-none">
+                            <code>@item.YoutubeVideoId</code>
+                        </a>
+                        } else {
+                            <span class="text-muted">No ID</span>
+                        }
+                    </td>
+                    <td><span class="badge bg-dark">@item.PlayCount.ToString("N0")</span></td>
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                             <a asp-action="Edit" asp-route-id="@item.SongId" class="btn-outline-prem">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <a asp-action="Delete" asp-route-id="@item.SongId" class="btn-outline-prem text-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                }
+                @if (!Model.Any()) {
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted small">Your music collection is empty.</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

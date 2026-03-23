@@ -1,0 +1,221 @@
+@model YoutubeMusicPlayer.Application.DTOs.ArtistDto
+
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="artist-details-page animate__animated animate__fadeIn">
+    <!-- Hero Banner Section -->
+    <div class="artist-banner" style="background-image: url('@(Model.BannerUrl ?? "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=2000")');">
+        <div class="banner-overlay"></div>
+        <div class="container banner-inner">
+             <div class="d-flex align-items-end gap-4 h-100">
+                @if (!string.IsNullOrEmpty(Model.AvatarUrl)) {
+                    <img src="@Model.AvatarUrl" class="artist-round-lg shadow-lg border border-3 border-dark" />
+                } else {
+                     <div class="artist-round-lg shadow-lg bg-dark d-flex align-items-center justify-content-center border border-3 border-secondary">
+                        <i class="bi bi-person display-1 text-muted"></i>
+                    </div>
+                }
+                <div class="mb-4">
+                    @if (Model.IsVerified) {
+                        <span class="badge bg-primary rounded-pill mb-2 shadow-sm"><i class="bi bi-patch-check-fill me-1"></i> Verified Artist</span>
+                    }
+                    <h1 class="display-2 fw-black text-white m-0">@Model.Name</h1>
+                    <div class="d-flex align-items-center gap-4 mt-2">
+                        <span class="text-white-50"><i class="bi bi-people-fill me-2"></i> @Model.SubscriberCount.ToString("N0") subscribers</span>
+                        @if(!string.IsNullOrEmpty(Model.MonthlyListeners)) {
+                            <span class="text-white-50"><i class="bi bi-activity me-2"></i> @Model.MonthlyListeners monthly listeners</span>
+                        }
+                    </div>
+                </div>
+             </div>
+        </div>
+    </div>
+
+    <!-- Content Section -->
+    <div class="container py-5">
+        <div class="row g-5">
+            <!-- Left Column: Content Tabs -->
+            <div class="col-lg-8">
+                <ul class="nav nav-tabs nav-tabs-premium mb-4 border-0 gap-4" id="artistTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active fw-bold" id="top-tab" data-bs-toggle="tab" data-bs-target="#top-content">
+                            <i class="bi bi-star-fill me-2"></i> Highlights
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="new-tab" data-bs-toggle="tab" data-bs-target="#new-content">
+                            <i class="bi bi-calendar-event me-2"></i> Newest
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-content">
+                            <i class="bi bi-collection-play me-2"></i> All Tracks
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="artistTabsContent">
+                    <!-- Tab 1: Highlights (Top 10) -->
+                    <div class="tab-pane fade show active" id="top-content">
+                        <div class="song-list-premium">
+                            @foreach (var song in Model.TopSongs) {
+                                <div class="song-item-row d-flex align-items-center gap-3 p-3 rounded-4 mb-2 hover-bg-dark">
+                                    <div class="song-thumb-sm position-relative">
+                                        <img src="@song.ThumbnailUrl" class="rounded-3 shadow-sm" width="60" height="60" style="object-fit: cover;" />
+                                        <a href="https://youtube.com/watch?v=@song.YoutubeVideoId" target="_blank" class="play-btn-mini"><i class="bi bi-play-fill text-white"></i></a>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold text-white mb-0">@song.Title</div>
+                                        <div class="text-muted small">@song.PlayCount.ToString("N0") plays</div>
+                                    </div>
+                                    <div class="song-duration text-muted small">
+                                         @(song.Duration.HasValue ? TimeSpan.FromSeconds(song.Duration.Value).ToString(@"m\:ss") : "--:--")
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: New Releases -->
+                    <div class="tab-pane fade" id="new-content">
+                        <div class="song-list-premium">
+                            @foreach (var song in Model.LatestSongs) {
+                                <div class="song-item-row d-flex align-items-center gap-3 p-3 rounded-4 mb-2 hover-bg-dark">
+                                    <div class="song-thumb-sm position-relative">
+                                        <img src="@song.ThumbnailUrl" class="rounded-3 shadow-sm" width="60" height="60" style="object-fit: cover;" />
+                                        <a href="https://youtube.com/watch?v=@song.YoutubeVideoId" target="_blank" class="play-btn-mini"><i class="bi bi-play-fill text-white"></i></a>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold text-white mb-0">@song.Title</div>
+                                        <div class="text-muted small">Released @(song.ReleaseDate?.ToShortDateString() ?? "Recently")</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: All Tracks (PAGINATED: 2 Columns x 5 Rows) -->
+                    <div class="tab-pane fade" id="all-content">
+                        <div class="row row-cols-1 row-cols-md-2 g-3">
+                            @foreach (var song in Model.PaginatedSongs) {
+                                <div class="col">
+                                    <div class="p-3 bg-dark bg-opacity-25 rounded-4 border border-secondary border-opacity-10 d-flex gap-3 align-items-center h-100">
+                                         <img src="@song.ThumbnailUrl" class="rounded-3 shadow-sm" width="50" height="50" />
+                                         <div class="flex-grow-1 overflow-hidden">
+                                             <div class="text-truncate fw-bold text-white mb-0">@song.Title</div>
+                                             <div class="text-muted x-small">Official Track</div>
+                                         </div>
+                                         <a href="https://youtube.com/watch?v=@song.YoutubeVideoId" target="_blank" class="text-white-50"><i class="bi bi-play-circle fs-4"></i></a>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Pagination Footer -->
+                        @if (Model.TotalPages > 1) {
+                            <div class="d-flex justify-content-center mt-5">
+                                <nav>
+                                    <ul class="pagination pagination-premium">
+                                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                                            <a class="page-link" href="?page=@(Model.CurrentPage - 1)">Previous</a>
+                                        </li>
+                                        @for (int i = 1; i <= Model.TotalPages; i++) {
+                                            <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                                                <a class="page-link" href="?page=@i">@i</a>
+                                            </li>
+                                        }
+                                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                                            <a class="page-link" href="?page=@(Model.CurrentPage + 1)">Next</a>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Albums Section -->
+                @if(Model.Albums.Any()) {
+                    <div class="mt-5">
+                        <h3 class="fw-bold mb-4 text-white">Discography</h3>
+                        <div class="row g-4">
+                            @foreach(var album in Model.Albums) {
+                                <div class="col-md-3">
+                                    <div class="album-card-glass p-3 rounded-4 overflow-hidden h-100">
+                                        <div class="position-relative mb-3">
+                                            <img src="@(album.CoverImageUrl ?? "https://placehold.co/400x400")" class="w-100 rounded-4 shadow" />
+                                            <div class="album-overlay-play">
+                                                <i class="bi bi-play-fill display-5"></i>
+                                            </div>
+                                        </div>
+                                        <h6 class="text-white fw-bold mb-1 text-truncate">@album.Title</h6>
+                                        <p class="text-muted small mb-0">Album • @album.ReleaseYear</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Right Column: Biography & Info -->
+            <div class="col-lg-4">
+                <div class="sidebar-artist shadow-sm sticky-top" style="top: 2rem;">
+                    <div class="p-4 bg-dark bg-opacity-25 rounded-5 border border-white border-opacity-10 backdrop-blur">
+                        <h4 class="fw-bold text-white mb-4 border-bottom border-secondary border-opacity-25 pb-3">Biography</h4>
+                        
+                        <div class="artist-bio text-white-50" style="font-size: 0.95rem; line-height: 1.8; max-height: 500px; overflow-y: auto; padding-right: 10px;">
+                            @if (string.IsNullOrEmpty(Model.Bio) || Model.Bio.Contains("automatically imported")) {
+                                <div class="text-center py-4">
+                                    <i class="bi bi-wikipedia display-4 text-muted opacity-25 d-block mb-3"></i>
+                                    <span class="text-muted small d-block mb-3">No detailed Wikipedia data found yet.</span>
+                                    <form asp-action="RefreshBio" method="post">
+                                        <input type="hidden" name="id" value="@Model.ArtistId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-accent rounded-pill">
+                                            <i class="bi bi-arrow-repeat me-1"></i> Sync from Wikipedia
+                                        </button>
+                                    </form>
+                                </div>
+                            } else {
+                                @Model.Bio
+                            }
+                        </div>
+
+                        <div class="mt-4 pt-4 border-top border-secondary border-opacity-25">
+                            <h6 class="fw-bold small text-uppercase text-accent mb-3">Artist Stats</h6>
+                            <div class="d-flex justify-content-between py-2 border-bottom border-white border-opacity-5">
+                                <span class="text-muted small">Total Tracks</span>
+                                <span class="text-white small fw-bold">@Model.TotalSongsCount</span>
+                            </div>
+                            <div class="d-flex justify-content-between py-2">
+                                <span class="text-muted small">Verified Status</span>
+                                <span class="@(Model.IsVerified ? "text-success" : "text-danger") small fw-bold">
+                                    @(Model.IsVerified ? "Official" : "Standard")
+                                </span>
+                            </div>
+                            
+                            <div class="mt-4 d-grid">
+                                <a asp-action="Edit" asp-route-id="@Model.ArtistId" class="btn btn-outline-secondary rounded-pill btn-sm">
+                                    Update Profiler
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Smoothly handle tab switching URL params if needed
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('page')) {
+            var tab = new bootstrap.Tab(document.querySelector('#all-tab'));
+            tab.show();
+        }
+    </script>
+}

@@ -1,0 +1,37 @@
+@{
+    ViewData["Title"] = "Import from YouTube";
+}
+
+<div class="container py-5">
+    <div class="form-glass animate__animated animate__zoomIn" style="max-width: 600px; margin: 0 auto;">
+        <div class="text-center mb-5">
+            <div class="youtube-icon-large mb-3">
+                <i class="bi bi-youtube text-danger display-1"></i>
+            </div>
+            <h2 class="fw-bold">Fast Import</h2>
+            <p class="text-muted small">Automatically populate Artist and Song data from YouTube</p>
+        </div>
+        
+        <form asp-action="Import">
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+            
+            <div class="mb-4">
+                <label class="form-label text-muted small fw-bold text-uppercase">YouTube Video URL</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-link-45deg"></i></span>
+                    <input name="videoUrl" class="form-control form-control-prem" placeholder="https://www.youtube.com/watch?v=..." required />
+                </div>
+                <div class="form-text small text-muted mt-2">
+                    <i class="bi bi-info-circle me-1"></i> We'll automatically identify the Channel as the Artist.
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-5">
+                <a asp-action="Index" class="btn-outline-prem">Back</a>
+                <button type="submit" class="btn btn-premium px-5">
+                    <i class="bi bi-cloud-download me-2"></i> Fetch & Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

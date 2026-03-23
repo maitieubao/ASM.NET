@@ -1,0 +1,62 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.ArtistDto>
+
+@{
+    ViewData["Title"] = "Manage Artists";
+}
+
+<div class="management-container animate__animated animate__fadeIn">
+    <div class="management-header">
+        <h2 class="fw-bold mb-0">Artists</h2>
+        <a asp-action="Create" class="btn btn-premium">
+            <i class="bi bi-plus-lg me-2"></i> Add Artist
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table-glass">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>Name</th>
+                    <th>Bio</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model) {
+                <tr>
+                    <td>
+                        @if (!string.IsNullOrEmpty(item.AvatarUrl)) {
+                            <img src="@item.AvatarUrl" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;" />
+                        } else {
+                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="bi bi-person"></i>
+                            </div>
+                        }
+                    </td>
+                    <td class="fw-bold">@item.Name</td>
+                    <td><div class="text-truncate" style="max-width: 400px; color: var(--subtext-color);">@item.Bio</div></td>
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                            <a asp-action="Details" asp-route-id="@item.ArtistId" class="btn-outline-prem">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a asp-action="Edit" asp-route-id="@item.ArtistId" class="btn-outline-prem">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <a asp-action="Delete" asp-route-id="@item.ArtistId" class="btn-outline-prem text-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                }
+                @if (!Model.Any()) {
+                <tr>
+                    <td colspan="4" class="text-center py-5 text-muted small">No artists found. Start by adding one.</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

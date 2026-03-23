@@ -1,0 +1,353 @@
+{
+  "$schema": "http://json.schemastore.org/sarif-1.0.0",
+  "version": "1.0.0",
+  "runs": [
+    {
+      "tool": {
+        "name": "Microsoft (R) Visual C# Compiler",
+        "version": "5.0.0.0",
+        "fileVersion": "5.0.0-2.26075.103 (c2435c3e)",
+        "semanticVersion": "5.0.0",
+        "language": "en-US"
+      },
+      "results": [
+        {
+          "ruleId": "CS0117",
+          "level": "error",
+          "message": "'AlbumDto' does not contain a definition for 'Id'",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 25,
+                  "startColumn": 13,
+                  "endLine": 25,
+                  "endColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'Album' does not contain a definition for 'Id' and no accessible extension method 'Id' accepting a first argument of type 'Album' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 25,
+                  "startColumn": 20,
+                  "endLine": 25,
+                  "endColumn": 22
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS0117",
+          "level": "error",
+          "message": "'AlbumDto' does not contain a definition for 'ImageUrl'",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 28,
+                  "startColumn": 13,
+                  "endLine": 28,
+                  "endColumn": 21
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'Album' does not contain a definition for 'ImageUrl' and no accessible extension method 'ImageUrl' accepting a first argument of type 'Album' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 28,
+                  "startColumn": 26,
+                  "endLine": 28,
+                  "endColumn": 34
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS0117",
+          "level": "error",
+          "message": "'AlbumDto' does not contain a definition for 'Id'",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 36,
+                  "startColumn": 31,
+                  "endLine": 36,
+                  "endColumn": 33
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'Album' does not contain a definition for 'Id' and no accessible extension method 'Id' accepting a first argument of type 'Album' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 36,
+                  "startColumn": 38,
+                  "endLine": 36,
+                  "endColumn": 40
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS0117",
+          "level": "error",
+          "message": "'AlbumDto' does not contain a definition for 'ImageUrl'",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 36,
+                  "startColumn": 88,
+                  "endLine": 36,
+                  "endColumn": 96
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'Album' does not contain a definition for 'ImageUrl' and no accessible extension method 'ImageUrl' accepting a first argument of type 'Album' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 36,
+                  "startColumn": 101,
+                  "endLine": 36,
+                  "endColumn": 109
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS0117",
+          "level": "error",
+          "message": "'Album' does not contain a definition for 'ImageUrl'",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 41,
+                  "startColumn": 93,
+                  "endLine": 41,
+                  "endColumn": 101
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'AlbumDto' does not contain a definition for 'ImageUrl' and no accessible extension method 'ImageUrl' accepting a first argument of type 'AlbumDto' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 41,
+                  "startColumn": 113,
+                  "endLine": 41,
+                  "endColumn": 121
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'AlbumDto' does not contain a definition for 'Id' and no accessible extension method 'Id' accepting a first argument of type 'AlbumDto' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 48,
+                  "startColumn": 81,
+                  "endLine": 48,
+                  "endColumn": 83
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'AlbumDto' does not contain a definition for 'ImageUrl' and no accessible extension method 'ImageUrl' accepting a first argument of type 'AlbumDto' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/AlbumService.cs",
+                "region": {
+                  "startLine": 53,
+                  "startColumn": 39,
+                  "endLine": 53,
+                  "endColumn": 47
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS0117",
+          "level": "error",
+          "message": "'GenreDto' does not contain a definition for 'Id'",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/GenreService.cs",
+                "region": {
+                  "startLine": 23,
+                  "startColumn": 50,
+                  "endLine": 23,
+                  "endColumn": 52
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'Genre' does not contain a definition for 'Id' and no accessible extension method 'Id' accepting a first argument of type 'Genre' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/GenreService.cs",
+                "region": {
+                  "startLine": 23,
+                  "startColumn": 57,
+                  "endLine": 23,
+                  "endColumn": 59
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS0117",
+          "level": "error",
+          "message": "'GenreDto' does not contain a definition for 'Id'",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/GenreService.cs",
+                "region": {
+                  "startLine": 30,
+                  "startColumn": 31,
+                  "endLine": 30,
+                  "endColumn": 33
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'Genre' does not contain a definition for 'Id' and no accessible extension method 'Id' accepting a first argument of type 'Genre' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/GenreService.cs",
+                "region": {
+                  "startLine": 30,
+                  "startColumn": 38,
+                  "endLine": 30,
+                  "endColumn": 40
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CS1061",
+          "level": "error",
+          "message": "'GenreDto' does not contain a definition for 'Id' and no accessible extension method 'Id' accepting a first argument of type 'GenreDto' could be found (are you missing a using directive or an assembly reference?)",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/maiti/OneDrive/Desktop/ASM.NET/YoutubeMusicPlayer.Application/Services/GenreService.cs",
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 81,
+                  "endLine": 42,
+                  "endColumn": 83
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "rules": {
+        "CS0117": {
+          "id": "CS0117",
+          "defaultLevel": "error",
+          "helpUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn&k=k(CS0117)",
+          "properties": {
+            "category": "Compiler",
+            "isEnabledByDefault": true,
+            "tags": [
+              "Compiler",
+              "Telemetry",
+              "NotConfigurable"
+            ]
+          }
+        },
+        "CS1061": {
+          "id": "CS1061",
+          "defaultLevel": "error",
+          "helpUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn&k=k(CS1061)",
+          "properties": {
+            "category": "Compiler",
+            "isEnabledByDefault": true,
+            "tags": [
+              "Compiler",
+              "Telemetry",
+              "NotConfigurable"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

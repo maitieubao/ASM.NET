@@ -1,0 +1,38 @@
+@model YoutubeMusicPlayer.Application.DTOs.ArtistDto
+
+@{
+    ViewData["Title"] = "Add New Artist";
+}
+
+<div class="container py-5">
+    <div class="form-glass animate__animated animate__fadeInUp">
+        <h2 class="fw-bold mb-4 text-center">Add New Artist</h2>
+        
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+            
+            <div class="mb-4">
+                <label asp-for="Name" class="form-label text-muted small fw-bold text-uppercase">Artist Name</label>
+                <input asp-for="Name" class="form-control form-control-prem" placeholder="e.g., The Weeknd" required />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="AvatarUrl" class="form-label text-muted small fw-bold text-uppercase">Avatar URL</label>
+                <input asp-for="AvatarUrl" class="form-control form-control-prem" placeholder="https://..." />
+                <span asp-validation-for="AvatarUrl" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-5">
+                <label asp-for="Bio" class="form-label text-muted small fw-bold text-uppercase">Biography</label>
+                <textarea asp-for="Bio" class="form-control form-control-prem" rows="4" placeholder="Brief artist bio..."></textarea>
+                <span asp-validation-for="Bio" class="text-danger small"></span>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <a asp-action="Index" class="btn-outline-prem">Cancel</a>
+                <button type="submit" class="btn btn-premium px-5">Save Artist</button>
+            </div>
+        </form>
+    </div>
+</div>
