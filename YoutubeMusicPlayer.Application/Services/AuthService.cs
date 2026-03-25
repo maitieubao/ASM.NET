@@ -77,7 +77,8 @@ public class AuthService : IAuthService
                 GoogleId = googleId,
                 AvatarUrl = avatarUrl,
                 Role = "Customer",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                PasswordHash = "GOOGLE_AUTH_USER" // Gán giá trị giả để thỏa mãn NOT NULL constraint của DB
             };
             await _unitOfWork.Repository<User>().AddAsync(user);
             await _unitOfWork.CompleteAsync();

@@ -36,6 +36,9 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="Playlist" asp-action="Index">Playlists</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-warning fw-bold" asp-controller="Subscription" asp-action="Index"><i class="bi bi-gem me-1"></i> Premium</a>
+                        </li>
                         
                         @if (User.Identity?.IsAuthenticated == true)
                         {

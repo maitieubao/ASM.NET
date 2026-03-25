@@ -1,0 +1,41 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.SubscriptionPlanDto>
+@{
+    ViewData["Title"] = "Gói Hội Viên Premium";
+}
+
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-white mb-3">Nâng cấp trải nghiệm âm nhạc</h1>
+        <p class="text-white-50 fs-5">Chọn gói phù hợp với bạn để tận hưởng âm nhạc không giới hạn.</p>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 g-4 justify-content-center">
+        @foreach (var plan in Model)
+        {
+            <div class="col">
+                <div class="card h-100 bg-dark text-white border-secondary glass-morphism p-4 text-center hover-up">
+                    <div class="card-body">
+                        <h3 class="card-title fw-bold text-accent mb-4">@plan.Name</h3>
+                        <div class="display-5 fw-bold mb-3">@String.Format("{0:N0} VNĐ", plan.Price)</div>
+                        <p class="text-white-50 mb-4">Thời hạn: @plan.DurationDays ngày</p>
+                        <p class="small text-start mb-5">
+                            <i class="bi bi-check-circle-fill text-accent me-2"></i> Nghe nhạc không quảng cáo<br/>
+                            <i class="bi bi-check-circle-fill text-accent me-2"></i> Chất lượng âm thanh cao cấp<br/>
+                            <i class="bi bi-check-circle-fill text-accent me-2"></i> @plan.Description
+                        </p>
+                        
+                        <div class="d-grid">
+                            <a asp-controller="Payment" asp-action="CreatePayment" asp-route-planId="@plan.PlanId" class="btn btn-premium w-100 py-3 fw-bold">NÂNG CẤP NGAY</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .hover-up { transition: 0.3s; cursor: default; }
+    .hover-up:hover { transform: translateY(-10px); background: rgba(255,255,255,0.05); }
+    .btn-premium { background: var(--accent-color); color: white; border-radius: 50px; }
+</style>

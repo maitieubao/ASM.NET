@@ -22,19 +22,21 @@ public class AuthController : Controller
 
     [HttpGet]
     [AllowAnonymous]
-    public IActionResult Login()
+    public IActionResult Login(string? returnUrl = null)
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToAction("Index", "Home");
+            return string.IsNullOrEmpty(returnUrl) ? 
+                RedirectToAction("Index", "Home") : Redirect(returnUrl);
         }
+        ViewData["ReturnUrl"] = returnUrl;
         return View();
     }
 
     [HttpPost]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginDto model)
+    public async Task<IActionResult> Login(LoginDto model, string? returnUrl = null)
     {
         if (!ModelState.IsValid) return View(model);
 
@@ -46,7 +48,9 @@ public class AuthController : Controller
         }
 
         await SignInUser(user, model.RememberMe);
-        return RedirectToAction("Index", "Home");
+        
+        return string.IsNullOrEmpty(returnUrl) ? 
+                RedirectToAction("Index", "Home") : Redirect(returnUrl);
     }
 
     [HttpGet]
@@ -81,53 +85,45 @@ public class AuthController : Controller
     }
 
     [AllowAnonymous]
-    public IActionResult LoginWithGoogle()
+    public IActionResult LoginWithGoogle(string? returnUrl = null)
     {
-        var properties = new AuthenticationProperties { RedirectUri = Url.Action("GoogleResponse") };
+        var properties = new AuthenticationProperties { RedirectUri = Url.Action("GoogleResponse", new { returnUrl }) };
         return Challenge(properties, GoogleDefaults.AuthenticationScheme);
     }
 
     [AllowAnonymous]
-    public async Task<IActionResult> GoogleResponse()
+    public async Task<IActionResult> GoogleResponse(string? returnUrl = null)
     {
         var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         
-        // ASP.NET Core usually puts external login claims into Cookie directly if we didn't specify an External scheme, 
-        // but typically one should use a separate external scheme. For simplicity we check if we got claims.
-        // Wait, since we are doing direct cookie login with Google, result is from Cookie scheme.
-        // BUT wait, Google will redirect to signin-google and use the default sign-in scheme (Cookie).
-        // Let's get info.
-        
         var claims = result.Principal?.Identities.FirstOrDefault()?.Claims;
-        if (claims == null) return RedirectToAction("Login");
+        if (claims == null) return RedirectToAction("Login", new { returnUrl });
 
         var email = claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         var name = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
         var nameIdentifier = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         
-        // Google picture is usually under this claim
         var picture = claims.FirstOrDefault(c => c.Type == "picture")?.Value 
                    ?? claims.FirstOrDefault(c => c.Type == "image")?.Value;
 
         if (email == null || nameIdentifier == null)
         {
-            return RedirectToAction("Login");
+            return RedirectToAction("Login", new { returnUrl });
         }
 
         try
         {
             var user = await _authService.AuthenticateGoogleUserAsync(email, name ?? "Unknown", nameIdentifier, picture);
             
-            // Re-issue cookie with our app's claims
             await SignInUser(user, true);
 
-            return RedirectToAction("Index", "Home");
+            return string.IsNullOrEmpty(returnUrl) ? 
+                RedirectToAction("Index", "Home") : Redirect(returnUrl);
         }
         catch (System.Exception ex)
         {
-            // Trả về lỗi rõ ràng thay vì trang trắng chết chóc
             ModelState.AddModelError(string.Empty, "Lỗi kết nối Cơ sở dữ liệu Supabase: " + ex.Message);
-            return View("Login"); // Trả về trang đăng nhập kèm lỗi
+            return View("Login"); 
         }
     }
 
@@ -143,6 +139,7 @@ public class AuthController : Controller
     {
         var claims = new List<Claim>
         {
+            new Claim("InternalUserId", user.UserId.ToString()), // Dùng tên riêng để tránh nhầm với Google ID
             new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new Claim(ClaimTypes.Name, user.Username),
             new Claim(ClaimTypes.Email, user.Email),

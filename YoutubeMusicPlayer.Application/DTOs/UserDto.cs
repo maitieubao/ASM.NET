@@ -10,4 +10,5 @@ public class UserDto
     public string Role { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsPremium { get; set; }
 }

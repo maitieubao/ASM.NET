@@ -39,5 +39,8 @@ public class User
     [Column("createdat")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("ispremium")]
+    public bool IsPremium { get; set; } = false;
+
     public ICollection<UserSession> UserSessions { get; set; } = new List<UserSession>();
 }

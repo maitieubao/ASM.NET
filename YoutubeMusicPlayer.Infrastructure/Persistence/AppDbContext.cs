@@ -20,7 +20,9 @@ public class AppDbContext : DbContext
     public DbSet<UserSearchHistory> UserSearchHistories => Set<UserSearchHistory>();
     public DbSet<Playlist> Playlists => Set<Playlist>();
     public DbSet<PlaylistSong> PlaylistSongs => Set<PlaylistSong>();
-
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
+    public DbSet<Payment> Payments => Set<Payment>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

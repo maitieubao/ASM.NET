@@ -17,9 +17,12 @@ builder.Services.AddControllersWithViews();
 // Performance Optimization: Memory Cache
 builder.Services.AddMemoryCache();
 
-// Database
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Performance// 2. Database (Tối ưu hóa tốc độ bằng pooling và giảm độ trễ DNS)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContextPool<AppDbContext>(options =>
+    options.UseNpgsql(connectionString, npgsqlOptions => {
+        npgsqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+    }));
 
 // Authentication & Identity
 builder.Services.AddAuthentication(options =>
@@ -48,6 +51,8 @@ builder.Services.AddScoped<IGenreService, GenreService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IInteractionService, InteractionService>();
 builder.Services.AddScoped<IPlaylistService, PlaylistService>();
+builder.Services.AddScoped<IPayOSService, PayOSService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 
 // External Services
 builder.Services.AddScoped<IYoutubeService, YoutubeService>();
@@ -62,11 +67,20 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Thêm hệ thống giám sát Request
+app.Use(async (context, next) =>
+{
+    Console.WriteLine($"[MONITOR] Request: {context.Request.Method} {context.Request.Path}");
+    await next();
+});
+
+// app.UseHttpsRedirection(); // Tạm tắt để tránh lỗi chuyển hướng sai port
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapStaticAssets();
 
 app.MapControllerRoute(

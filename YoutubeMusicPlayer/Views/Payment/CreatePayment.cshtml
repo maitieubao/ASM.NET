@@ -1,0 +1,56 @@
+@model YoutubeMusicPlayer.Application.DTOs.SubscriptionPlanDto
+@{
+    ViewData["Title"] = "Xác nhận nâng cấp Premium";
+}
+
+<div class="container py-5 mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card bg-dark text-white border-secondary glass-morphism p-4">
+                <div class="card-body text-center">
+                    <h2 class="fw-bold text-accent mb-4">Chi tiết thanh toán</h2>
+                    
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger">@TempData["Error"]</div>
+                    }
+
+                    <div class="bg-secondary bg-opacity-10 p-4 rounded mb-4">
+                        <div class="d-flex justify-content-between mb-3 text-white-50">
+                            <span>Gói đã chọn:</span>
+                            <span class="text-white fw-bold">@Model.Name</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3 text-white-50">
+                            <span>Thời hạn:</span>
+                            <span class="text-white fw-bold">@Model.DurationDays ngày</span>
+                        </div>
+                        <hr class="border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <span class="fs-5">Tổng tiền:</span>
+                            <span class="fs-3 fw-bold text-accent">@String.Format("{0:N0} VNĐ", Model.Price)</span>
+                        </div>
+                    </div>
+
+                    <form asp-controller="Payment" asp-action="CreatePayment" method="post">
+                        <input type="hidden" name="planId" value="@Model.PlanId" />
+                        <div class="d-grid gap-3">
+                            <button type="submit" class="btn btn-premium btn-lg py-3 fw-bold">THANH TOÁN QUA PAYOS</button>
+                            <a asp-controller="Subscription" asp-action="Index" class="btn btn-outline-secondary py-2 border-0">Quay lại</a>
+                        </div>
+                    </form>
+                    
+                    <p class="small text-white-50 mt-4">
+                        <i class="bi bi-shield-lock me-1"></i> Thanh toán an toàn qua cổng PayOS
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-accent { color: var(--accent-color, #ff0000); }
+    .btn-premium { background: var(--accent-color, #ff0000); color: white; border-radius: 50px; }
+    .btn-premium:hover { opacity: 0.9; color: white; }
+    .glass-morphism { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); }
+</style>

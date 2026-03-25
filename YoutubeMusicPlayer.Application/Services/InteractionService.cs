@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Domain.Entities;
 using YoutubeMusicPlayer.Domain.Interfaces;
-using YoutubeMusicPlayer.Domain.Interfaces;
 
 namespace YoutubeMusicPlayer.Application.Services;
 

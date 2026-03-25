@@ -1,0 +1,45 @@
+@{
+    ViewData["Title"] = "Thanh toán bị hủy";
+}
+
+<style>
+    .cancel-container {
+        min-height: 70vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .cancel-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 4rem 2rem;
+        text-align: center;
+        max-width: 500px;
+        width: 100%;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+    .icon-cancel {
+        font-size: 5rem;
+        color: #ff4d4d;
+        margin-bottom: 1.5rem;
+    }
+</style>
+
+<div class="cancel-container">
+    <div class="cancel-card">
+        <i class="bi bi-x-circle-fill icon-cancel"></i>
+        <h2 class="text-white fw-bold mb-3">Đã hủy thanh toán</h2>
+        <p class="text-white-50 mb-5">Bạn đã hủy quy trình thanh toán Premium. Đừng lo lắng, chúng tôi vẫn ở đây nếu bạn thay đổi ý định.</p>
+        
+        <div class="d-grid gap-3">
+            <a asp-controller="Subscription" asp-action="Index" class="btn btn-outline-light btn-lg rounded-pill">
+                Xem lại các gói
+            </a>
+            <a href="/" class="text-white-50 text-decoration-none small mt-2">
+                Quay về trang chủ
+            </a>
+        </div>
+    </div>
+</div>
