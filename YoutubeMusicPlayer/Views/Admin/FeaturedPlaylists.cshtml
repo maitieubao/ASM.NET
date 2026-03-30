@@ -1,0 +1,75 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.PlaylistDto>
+@{
+    ViewData["Title"] = "Featured Playlists Management";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white fw-bold"><i class="bi bi-star-fill me-2 text-warning"></i> Featured Playlists</h2>
+        <a asp-action="CreateFeaturedPlaylist" class="btn btn-warning rounded-pill px-4 fw-bold">
+            <i class="bi bi-plus-lg me-1"></i> New System Playlist
+        </a>
+    </div>
+
+    <div class="card bg-dark-glass text-white border-secondary border-opacity-25 shadow-lg">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 p-4 align-middle text-center">
+                <thead>
+                    <tr class="text-white-50">
+                        <th class="text-start ps-4">Playlist Info</th>
+                        <th>Type</th>
+                        <th>Songs</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="text-start ps-4">
+                                <div class="d-flex align-items-center">
+                                    @if (!string.IsNullOrEmpty(item.CoverImageUrl))
+                                    {
+                                        <img src="@item.CoverImageUrl" class="rounded me-3" width="50" height="50" style="object-fit: cover;">
+                                    }
+                                    else
+                                    {
+                                        <div class="rounded bg-secondary me-3 d-flex align-items-center justify-content-center shadow" style="width: 50px; height: 50px;">
+                                            <i class="bi bi-collection-play-fill text-white-50"></i>
+                                        </div>
+                                    }
+                                    <div>
+                                        <div class="fw-bold text-white">@item.Title</div>
+                                        <div class="text-white-50 small">@item.Description</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge @(item.FeaturedType == "Trending" ? "bg-info" : (item.FeaturedType == "TopHits" ? "bg-danger" : "bg-success")) px-3 py-2">
+                                    @item.FeaturedType
+                                </span>
+                            </td>
+                            <td>
+                                <span class="text-white-50">
+                                    <i class="bi bi-music-note-beamed me-1"></i> Managed
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a asp-action="EditFeaturedPlaylist" asp-route-id="@item.PlaylistId" class="btn btn-sm btn-outline-info" title="Manage Songs">
+                                        <i class="bi bi-gear-fill"></i>
+                                    </a>
+                                    <form asp-action="DeleteFeaturedPlaylist" asp-route-id="@item.PlaylistId" method="post" onsubmit="return confirm('Delete this system playlist?')" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

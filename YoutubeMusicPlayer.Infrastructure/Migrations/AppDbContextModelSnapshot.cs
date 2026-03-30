@@ -136,6 +136,87 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("artists");
                 });
 
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.ArtistFollower", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ArtistId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FollowedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "ArtistId");
+
+                    b.HasIndex("ArtistId");
+
+                    b.ToTable("ArtistFollowers");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Category", b =>
+                {
+                    b.Property<int>("CategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("categoryid");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("CategoryId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createdat");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("CategoryId");
+
+                    b.ToTable("categories");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Comment", b =>
+                {
+                    b.Property<int>("CommentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("commentid");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("CommentId"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createdat");
+
+                    b.Property<int>("SongId")
+                        .HasColumnType("integer")
+                        .HasColumnName("songid");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
+
+                    b.HasKey("CommentId");
+
+                    b.HasIndex("SongId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("comments");
+                });
+
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Genre", b =>
                 {
                     b.Property<int>("GenreId")
@@ -144,6 +225,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnName("genreid");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("GenreId"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -183,6 +268,48 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("listeninghistory");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Notification", b =>
+                {
+                    b.Property<int>("NotificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("notificationid");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("NotificationId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createdat");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean")
+                        .HasColumnName("isread");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("message");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
+
+                    b.HasKey("NotificationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("notifications");
                 });
 
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Payment", b =>
@@ -254,15 +381,28 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<string>("FeaturedType")
+                        .HasColumnType("text")
+                        .HasColumnName("featuredtype");
+
+                    b.Property<bool>("IsFeatured")
+                        .HasColumnType("boolean")
+                        .HasColumnName("isfeatured");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("title");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("integer")
                         .HasColumnName("userid");
+
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("visibility");
 
                     b.HasKey("PlaylistId");
 
@@ -285,11 +425,67 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("addedat");
 
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
                     b.HasKey("PlaylistId", "SongId");
 
                     b.HasIndex("SongId");
 
                     b.ToTable("playlistsongs");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Report", b =>
+                {
+                    b.Property<int>("ReportId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("reportid");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ReportId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createdat");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text")
+                        .HasColumnName("details");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolvedat");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TargetId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("targetid");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("targettype");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
+
+                    b.HasKey("ReportId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("reports");
                 });
 
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Song", b =>
@@ -304,6 +500,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Property<int?>("AlbumId")
                         .HasColumnType("integer")
                         .HasColumnName("albumid");
+
+                    b.Property<int?>("CategoryId")
+                        .HasColumnType("integer")
+                        .HasColumnName("categoryid");
 
                     b.Property<int?>("Duration")
                         .HasColumnType("integer")
@@ -355,6 +555,8 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
 
                     b.HasIndex("AlbumId");
 
+                    b.HasIndex("CategoryId");
+
                     b.ToTable("songs");
                 });
 
@@ -394,6 +596,27 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.HasIndex("GenreId");
 
                     b.ToTable("songgenres");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongLike", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
+
+                    b.Property<int>("SongId")
+                        .HasColumnType("integer")
+                        .HasColumnName("songid");
+
+                    b.Property<DateTime>("LikedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("likedat");
+
+                    b.HasKey("UserId", "SongId");
+
+                    b.HasIndex("SongId");
+
+                    b.ToTable("songlikes");
                 });
 
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SubscriptionPlan", b =>
@@ -445,6 +668,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("createdat");
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dateofbirth");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -454,6 +681,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Property<string>("GoogleId")
                         .HasColumnType("text")
                         .HasColumnName("googleid");
+
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("boolean")
+                        .HasColumnName("islocked");
 
                     b.Property<bool>("IsPremium")
                         .HasColumnType("boolean")
@@ -469,6 +700,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("role");
 
+                    b.Property<double>("TotalListenSeconds")
+                        .HasColumnType("double precision")
+                        .HasColumnName("total_listen_seconds");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -478,6 +713,38 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("users");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserGenreStat", b =>
+                {
+                    b.Property<int>("StatId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("statid");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("StatId"));
+
+                    b.Property<string>("GenreName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("genre_name");
+
+                    b.Property<double>("ListenSeconds")
+                        .HasColumnType("double precision")
+                        .HasColumnName("listen_seconds");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updatedat");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
+
+                    b.HasKey("StatId");
+
+                    b.ToTable("user_genre_stats");
                 });
 
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserSearchHistory", b =>
@@ -605,6 +872,44 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("Artist");
                 });
 
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.ArtistFollower", b =>
+                {
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Artist", "Artist")
+                        .WithMany()
+                        .HasForeignKey("ArtistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Artist");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Comment", b =>
+                {
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
+                        .WithMany()
+                        .HasForeignKey("SongId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Song");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.ListeningHistory", b =>
                 {
                     b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
@@ -620,6 +925,15 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Song");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
 
                     b.Navigation("User");
                 });
@@ -647,9 +961,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                 {
                     b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UserId");
 
                     b.Navigation("User");
                 });
@@ -673,6 +985,17 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("Song");
                 });
 
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Report", b =>
+                {
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Song", b =>
                 {
                     b.HasOne("YoutubeMusicPlayer.Domain.Entities.Album", "Album")
@@ -680,7 +1003,13 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasForeignKey("AlbumId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Category", "Category")
+                        .WithMany("Songs")
+                        .HasForeignKey("CategoryId");
+
                     b.Navigation("Album");
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongArtist", b =>
@@ -719,6 +1048,25 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("Genre");
 
                     b.Navigation("Song");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongLike", b =>
+                {
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
+                        .WithMany()
+                        .HasForeignKey("SongId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Song");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserSearchHistory", b =>
@@ -774,6 +1122,11 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("AlbumArtists");
 
                     b.Navigation("SongArtists");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Category", b =>
+                {
+                    b.Navigation("Songs");
                 });
 
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Genre", b =>

@@ -1,0 +1,81 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.NotificationDto>
+@{
+    ViewData["Title"] = "System Notifications";
+}
+
+<div class="container mt-4 pb-5">
+    <div class="row g-4 mb-5">
+        <div class="col-lg-5">
+            <div class="card bg-dark-glass text-white border-secondary border-opacity-25 shadow-lg p-4 h-100">
+                <h3 class="fw-bold mb-4"><i class="bi bi-megaphone-fill me-2 text-warning"></i> Send Notification</h3>
+                <form asp-action="SendNotification" method="post">
+                    <div class="mb-3">
+                        <label class="form-label text-white-50">Target User (Optional)</label>
+                        <input type="number" name="userId" class="form-control bg-dark text-white border-secondary" placeholder="Leave empty for all users">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-white-50">Title</label>
+                        <input type="text" name="title" required class="form-control bg-dark text-white border-secondary" placeholder="e.g. System Maintenance">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-white-50">Message Content</label>
+                        <textarea name="message" required class="form-control bg-dark text-white border-secondary" rows="4" placeholder="Enter your message..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100 fw-bold py-3 mt-2 shadow">
+                        <i class="bi bi-send-fill me-2"></i> Broadcast Notification
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card bg-dark-glass text-white border-secondary border-opacity-25 shadow-lg p-4 h-100">
+                <h3 class="fw-bold mb-4"><i class="bi bi-history me-2 text-info"></i> Notification History</h3>
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-dark table-hover align-middle mb-0">
+                        <thead class="text-white-50 small text-uppercase">
+                            <tr>
+                                <th>Target</th>
+                                <th>Content</th>
+                                <th>Sent At</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var n in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="badge @(n.UserId == null ? "bg-primary" : "bg-info text-dark")">
+                                            @n.UserName
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-white">@n.Title</div>
+                                        <div class="text-white-50 small text-truncate" style="max-width: 250px;">@n.Message</div>
+                                    </td>
+                                    <td class="small opacity-75">
+                                        @n.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+                                    <td class="text-end">
+                                        <form asp-action="DeleteNotification" asp-route-id="@n.NotificationId" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-link text-danger p-0 border-0"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!Model.Any())
+                            {
+                                <tr><td colspan="4" class="text-center py-5 text-white-50">No notifications sent yet.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-dark-glass { background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(12px); }
+</style>

@@ -1,0 +1,127 @@
+@model YoutubeMusicPlayer.Application.DTOs.ArtistDto
+@{
+    ViewData["Title"] = "Chỉnh sửa Nghệ sĩ";
+}
+
+<div class="container mt-4 pb-5 text-white animate-fade-in">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-black m-0">Trình chỉnh sửa Nghệ sĩ</h2>
+            <div class="text-dim small">ID: #@Model.ArtistId • @Model.SubscriberCount Người theo dõi</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Artists" class="btn btn-outline-light rounded-pill px-4">Hủy bỏ</a>
+            <button type="button" form="artistForm" class="btn btn-accent rounded-pill px-5 fw-bold">Lưu thay đổi</button>
+        </div>
+    </div>
+
+    <!-- Media Area (Banner & Avatar) -->
+    <div class="glass-card rounded-5 border-0 overflow-hidden mb-5 shadow-2xl position-relative">
+        <div class="edit-banner-display position-relative" style="height: 300px; background: url('@(Model.BannerUrl ?? "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=2000")') center/cover;">
+             <div class="banner-overlay"></div>
+             <button class="btn btn-dark btn-sm rounded-pill position-absolute top-0 end-0 m-4 bg-opacity-50 border-white border-opacity-20 px-3">
+                 <i class="fa-solid fa-camera me-2"></i>Thay đổi Banner
+             </button>
+        </div>
+        <div class="edit-avatar-display position-absolute bottom-0 start-0 m-5 translate-middle-y z-10">
+            <div class="position-relative group">
+                <img src="@(Model.AvatarUrl ?? "https://ui-avatars.com/api/?name=" + Model.Name)" class="rounded-pill shadow-2xl border border-5 border-dark" style="width: 160px; height: 160px; object-fit: cover;">
+                <div class="avatar-change-overlay rounded-pill"><i class="fa-solid fa-camera fs-3"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <form id="artistForm" asp-action="EditArtist" method="post">
+        <input type="hidden" asp-for="ArtistId" />
+        <div class="row g-5">
+            <!-- Basic Info -->
+            <div class="col-lg-8">
+                <div class="glass-card p-5 rounded-5 border-0 shadow-lg">
+                    <h4 class="fw-bold mb-4">Thông tin cơ bản</h4>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label x-small uppercase fw-bold text-dim">Tên nghệ sĩ</label>
+                            <input asp-for="Name" class="form-control-pro" placeholder="Nhập tên nghệ sĩ..." required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label x-small uppercase fw-bold text-dim">Quốc gia</label>
+                            <input asp-for="Country" class="form-control-pro" placeholder="Ví dụ: Vietnam, USA..." />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label x-small uppercase fw-bold text-dim">Avatar URL</label>
+                            <input asp-for="AvatarUrl" class="form-control-pro" placeholder="https://example.com/avatar.jpg" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label x-small uppercase fw-bold text-dim">Banner URL</label>
+                            <input asp-for="BannerUrl" class="form-control-pro" placeholder="https://example.com/banner.jpg" />
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label x-small uppercase fw-bold text-dim m-0">Tiểu sử nghệ sĩ (Bio)</label>
+                                <button type="button" class="btn btn-link text-warning p-0 x-small text-decoration-none" onclick="document.getElementById('refreshBioForm').submit()">
+                                    <i class="fa-solid fa-rotate me-1"></i>Cập nhật từ Wikipedia
+                                </button>
+                            </div>
+                            <textarea asp-for="Bio" class="form-control-pro" rows="12" placeholder="Kể về câu chuyện âm nhạc của nghệ sĩ..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration & Stats -->
+            <div class="col-lg-4">
+                <div class="glass-card p-5 rounded-5 border-0 shadow-lg mb-5">
+                    <h4 class="fw-bold mb-4">Cấu hình hệ thống</h4>
+                    <div class="mb-4">
+                        <label class="form-label x-small uppercase fw-bold text-dim">Người theo dõi (Override)</label>
+                        <input asp-for="SubscriberCount" type="number" class="form-control-pro" />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label x-small uppercase fw-bold text-dim">Trạng thái xác minh</label>
+                        <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-3">
+                            <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" asp-for="IsVerified">
+                            <label class="form-check-label small" asp-for="IsVerified">Xác minh nghệ sĩ chính thức</label>
+                        </div>
+                    </div>
+                    <hr class="border-white border-opacity-10 my-4">
+                    <h6 class="x-small uppercase fw-bold text-dim mb-3">Thống kê hiện tại</h6>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-white-50">Ngày đăng ký</span>
+                        <span>@(Model.ArtistId > 0 ? "20/03/2026" : "Hôm nay")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-white-50">Tổng số bản nhạc</span>
+                        <span>@Model.TotalSongsCount</span>
+                    </div>
+                </div>
+
+                <!-- Related Albums mini-list -->
+                <div class="glass-card p-5 rounded-5 border-0 shadow-lg">
+                    <h4 class="fw-bold mb-4">Các Album hiện có</h4>
+                    <div class="d-flex flex-column gap-3">
+                        @foreach(var album in Model.Albums) {
+                            <div class="d-flex align-items-center gap-3 p-2 rounded-4 hover-bg-light hover-bg-opacity-5">
+                                <img src="@album.CoverImageUrl" class="rounded-3" style="width: 48px; height: 48px; object-fit: cover;">
+                                <div class="flex-grow-1 overflow-hidden">
+                                     <div class="fw-bold text-white small text-truncate">@album.Title</div>
+                                     <div class="text-dim x-small">@album.ReleaseYear • @album.AlbumType</div>
+                                </div>
+                                <a href="/Admin/EditAlbum/@album.AlbumId" class="text-white-50"><i class="fa-solid fa-pen-to-square"></i></a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <form id="refreshBioForm" asp-action="RefreshArtistBio" asp-route-id="@Model.ArtistId" method="post" class="d-none"></form>
+</div>
+
+<style>
+    .form-control-pro { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; padding: 12px 18px; width: 100%; transition: 0.2s; }
+    .form-control-pro:focus { background: rgba(255,255,255,0.08); border-color: var(--accent-primary); outline: none; box-shadow: 0 0 0 4px rgba(30, 215, 96, 0.1); }
+    .banner-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(0deg, #0c0c0c 0%, transparent 100%); }
+    .avatar-change-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.2s; cursor: pointer; }
+    .group:hover .avatar-change-overlay { opacity: 1; }
+</style>

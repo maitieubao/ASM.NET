@@ -39,8 +39,17 @@ public class User
     [Column("createdat")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("dateofbirth")]
+    public DateTime? DateOfBirth { get; set; }
+
     [Column("ispremium")]
     public bool IsPremium { get; set; } = false;
+
+    [Column("islocked")]
+    public bool IsLocked { get; set; } = false;
+
+    [Column("total_listen_seconds")]
+    public double TotalListenSeconds { get; set; } = 0;
 
     public ICollection<UserSession> UserSessions { get; set; } = new List<UserSession>();
 }

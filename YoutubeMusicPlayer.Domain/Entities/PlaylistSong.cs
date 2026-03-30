@@ -18,6 +18,9 @@ public class PlaylistSong
     [Column("addedat")]
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("position")]
+    public int Position { get; set; } = 0;
+
     [ForeignKey("PlaylistId")]
     public Playlist Playlist { get; set; } = null!;
 

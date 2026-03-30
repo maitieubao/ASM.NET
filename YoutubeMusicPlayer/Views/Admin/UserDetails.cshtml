@@ -1,0 +1,159 @@
+@model YoutubeMusicPlayer.Application.DTOs.UserDto
+@{
+    ViewData["Title"] = "User Details";
+    var listeningHistory = ViewBag.ListeningHistory as IEnumerable<YoutubeMusicPlayer.Application.DTOs.ListeningHistoryDto>;
+}
+
+<div class="container mt-4 pb-5">
+    <div class="mb-4">
+        <a asp-action="Users" class="btn btn-outline-secondary btn-sm mb-3">
+            <i class="bi bi-arrow-left me-1"></i> Back to list
+        </a>
+        <h2 class="text-white fw-bold"><i class="bi bi-person-badge-fill me-2 text-accent"></i> User Details</h2>
+    </div>
+
+    <div class="row g-4">
+        <!-- User Info Card -->
+        <div class="col-lg-4">
+            <div class="card bg-dark-glass text-center border-secondary border-opacity-25 shadow-lg p-4 h-100">
+                <div class="mb-3 position-relative d-inline-block mx-auto">
+                    @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                    {
+                        <img src="@Model.AvatarUrl" class="rounded-circle shadow" width="120" height="120" style="object-fit: cover; border: 4px solid rgba(255,255,255,0.1);">
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center shadow" style="width: 120px; height: 120px;">
+                            <i class="bi bi-person-fill text-white" style="font-size: 4rem;"></i>
+                        </div>
+                    }
+                    @if (Model.IsPremium)
+                    {
+                        <span class="position-absolute bottom-0 end-0 bg-warning text-dark rounded-circle p-1 shadow border border-dark" title="Premium User">
+                            <i class="bi bi-diamond-fill" style="font-size: 0.8rem;"></i>
+                        </span>
+                    }
+                </div>
+                <h3 class="text-white fw-bold mb-1">@Model.Username</h3>
+                <p class="text-white-50 small mb-3">@Model.Email</p>
+                <div class="d-flex justify-content-center gap-2 mb-4">
+                    <span class="badge @(Model.Role == "Admin" ? "bg-danger" : "bg-primary") px-3 py-2">@Model.Role</span>
+                    @if (Model.IsLocked)
+                    {
+                        <span class="badge bg-danger px-3 py-2">Locked</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success px-3 py-2">Active</span>
+                    }
+                </div>
+                <hr class="border-secondary opacity-25">
+                <div class="text-start mt-3 px-2">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-white-50 small">Register Date:</span>
+                        <span class="text-white small">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                </div>
+                <div class="mt-auto pt-4">
+                    <form asp-action="ToggleUserLock" asp-route-id="@Model.UserId" method="post" class="d-grid">
+                        <button type="submit" class="btn btn-outline-@(Model.IsLocked ? "success" : "warning") btn-sm">
+                            <i class="bi @(Model.IsLocked ? "bi-unlock" : "bi-lock") me-2"></i>
+                            @(Model.IsLocked ? "Unlock Account" : "Lock Account")
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Listening History Section -->
+        <div class="col-lg-8">
+            <div class="card bg-dark-glass text-white border-secondary border-opacity-25 shadow-lg h-100">
+                <div class="card-header border-bottom border-secondary border-opacity-25 bg-transparent p-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-accent"></i> Listening History</h5>
+                    <span class="badge bg-dark-glass border border-secondary border-opacity-50 text-white-50">
+                        @(listeningHistory?.Count() ?? 0) Recent plays
+                    </span>
+                </div>
+                <div class="card-body p-0 scrollbar-thin" style="max-height: 500px; overflow-y: auto;">
+                    @if (listeningHistory == null || !listeningHistory.Any())
+                    {
+                        <div class="p-5 text-center text-white-50">
+                            <i class="bi bi-music-note-list fs-1 mb-3 d-block opacity-25"></i>
+                            <p>No listening history recorded yet.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <table class="table table-dark table-hover mb-0 p-4 align-middle">
+                            <thead class="sticky-top bg-dark border-bottom border-secondary border-opacity-25">
+                                <tr class="text-white-50">
+                                    <th class="ps-4">#</th>
+                                    <th>Song</th>
+                                    <th>Listened At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var count = 1; }
+                                @foreach (var item in listeningHistory)
+                                {
+                                    <tr>
+                                        <td class="ps-4 text-white-50 small">@count</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                @if (!string.IsNullOrEmpty(item.ThumbnailUrl))
+                                                {
+                                                    <img src="@item.ThumbnailUrl" class="rounded me-3 shadow-sm" width="45" height="45" style="object-fit: cover;">
+                                                }
+                                                else
+                                                {
+                                                    <div class="rounded bg-secondary me-3 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                                                        <i class="bi bi-music-note"></i>
+                                                    </div>
+                                                }
+                                                <div>
+                                                    <div class="text-white fw-bold mb-0">@item.SongTitle</div>
+                                                    <div class="text-white-50 small">Youtube Source</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-white-50 small">@item.ListenedAt.ToString("g")</td>
+                                    </tr>
+                                    count++;
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-dark-glass {
+        background: rgba(26, 26, 26, 0.8) !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+    .text-accent {
+        color: #1ed760 !important;
+    }
+    .btn-outline-accent {
+        color: #1ed760;
+        border-color: #1ed760;
+    }
+    .btn-outline-accent:hover {
+        background: #1ed760;
+        color: black;
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+        background: rgba(255,255,255,0.05);
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+    }
+</style>

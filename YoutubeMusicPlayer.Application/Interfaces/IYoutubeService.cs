@@ -21,15 +21,22 @@ public class YoutubeVideoDetails
     public string TrackType { get; set; } = "Official"; // Official, Remix, Live, Cover, Lyrics, Mix
     public string CleanedTitle { get; set; } = string.Empty;
     public string CleanedArtist { get; set; } = string.Empty;
-    public int PopularityScore { get; set; } = 0;
+    public long ViewCount { get; set; } = 0;
+    public long LikeCount { get; set; } = 0;
+    public bool IsPersonalized { get; set; } = false; // Flag for special user-matched songs
+    public string? Lyrics { get; set; }
+    public string? ArtistBio { get; set; }
+    public string? SectionTitle { get; set; } // Used for "Because you listened to..." dynamic text
 }
 
 public interface IYoutubeService
 {
-    Task<string> GetAudioStreamUrlAsync(string videoUrl);
+    Task<string> GetAudioStreamUrlAsync(string videoUrl, string? title = null, string? artist = null);
     Task<YoutubeVideoDetails> GetVideoDetailsAsync(string videoUrl);
     Task<IEnumerable<YoutubeVideoDetails>> GetChannelVideosAsync(string channelId);
-    Task<IEnumerable<YoutubeVideoDetails>> SearchVideosAsync(string query);
-    Task<IEnumerable<YoutubeVideoDetails>> GetRelatedVideosAsync(string videoId);
+    Task<IEnumerable<YoutubeVideoDetails>> SearchVideosAsync(string query, int limit = 30);
+    Task<IEnumerable<YoutubeAlbumDetails>> SearchPlaylistsAsync(string query, int limit = 5);
+    Task<IEnumerable<YoutubeVideoDetails>> GetPlaylistVideosAsync(string playlistId);
+    Task<IEnumerable<YoutubeVideoDetails>> GetTrendingMusicAsync(int limit = 15);
     bool IsMusic(YoutubeVideoDetails details);
 }

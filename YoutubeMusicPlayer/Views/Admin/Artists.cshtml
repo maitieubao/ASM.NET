@@ -1,0 +1,162 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.ArtistDto>
+@{
+    ViewData["Title"] = "Quản lý Nghệ sĩ";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    string searchTerm = ViewBag.SearchTerm ?? "";
+}
+
+<div class="container-fluid mt-4 pb-5 px-lg-5 text-white animate-fade-in">
+    <!-- Analytics Header -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="glass-card p-4 rounded-5 border-0 shadow-lg position-relative overflow-hidden">
+                <div class="text-dim uppercase small fw-bold mb-1">Tổng số nghệ sĩ</div>
+                <div class="fs-1 fw-black">@ViewBag.TotalCount</div>
+                <i class="fa-solid fa-microphone-lines position-absolute text-white opacity-5" style="font-size: 80px; bottom: -10px; right: 10px;"></i>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card p-4 rounded-5 border-0 shadow-lg position-relative overflow-hidden">
+                <div class="text-dim uppercase small fw-bold mb-1">Nghệ sĩ xác minh</div>
+                <div class="fs-1 fw-black text-info">@Model.Count(a => a.IsVerified)</div>
+                <i class="fa-solid fa-circle-check position-absolute text-info opacity-5" style="font-size: 80px; bottom: -10px; right: 10px;"></i>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card p-4 rounded-5 border-0 shadow-lg position-relative overflow-hidden">
+                <div class="text-dim uppercase small fw-bold mb-1">Tăng trưởng tháng</div>
+                <div class="fs-1 fw-black text-accent">+12%</div>
+                <i class="fa-solid fa-chart-line position-absolute text-accent opacity-5" style="font-size: 80px; bottom: -10px; right: 10px;"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <h2 class="fw-black m-0">Danh sách Nghệ sĩ</h2>
+            <a asp-controller="Artist" asp-action="Create" class="btn btn-accent rounded-pill px-4 fw-bold">
+                <i class="fa-solid fa-plus me-2"></i>Thêm nghệ sĩ
+            </a>
+        </div>
+        <div class="d-flex gap-2">
+            <form asp-action="Artists" method="get" class="search-input-wrapper" style="width: 300px;">
+                <i class="fa-solid fa-magnifying-glass text-muted me-2"></i>
+                <input type="text" name="searchTerm" value="@searchTerm" placeholder="Tìm tên nghệ sĩ..." />
+            </form>
+            <button class="btn btn-outline-light rounded-pill px-3"><i class="fa-solid fa-filter me-2"></i>Lọc</button>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="glass-card rounded-5 border-0 overflow-hidden shadow-2xl">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle admin-table">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Nghệ sĩ</th>
+                        <th>Trạng thái</th>
+                        <th>Quốc gia</th>
+                        <th>Số bản nhạc</th>
+                        <th>Người theo dõi</th>
+                        <th class="text-end pe-4">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    <img src="@a.AvatarUrl" class="rounded-pill" style="width: 44px; height: 44px; object-fit: cover;">
+                                    <div class="fw-bold">@a.Name</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-2">
+                                    <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" 
+                                           @(a.IsVerified ? "checked" : "") onclick="toggleVerify(@a.ArtistId, this)">
+                                    <span class="badge @(a.IsVerified ? "bg-info" : "bg-secondary") rounded-pill x-small">
+                                        @(a.IsVerified ? "Verified" : "Unverified")
+                                    </span>
+                                </div>
+                            </td>
+                            <td><span class="text-dim small">@a.Country</span></td>
+                            <td><span class="fw-bold">@a.TotalSongsCount</span></td>
+                            <td><span class="text-accent fw-bold">@a.SubscriberCount.ToString("N0")</span></td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group">
+                                    <a asp-action="EditArtist" asp-route-id="@a.ArtistId" class="btn btn-icon-small" title="Chỉnh sửa"><i class="fa-solid fa-pen-to-square"></i></a>
+                                    <form asp-action="DeleteArtist" asp-route-id="@a.ArtistId" method="post" onsubmit="return confirm('Xóa nghệ sĩ này vĩnh viễn?')" class="d-inline">
+                                        <button type="submit" class="btn btn-icon-small text-danger" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        @if(!Model.Any()) {
+            <div class="p-5 text-center">
+                <i class="fa-solid fa-ghost display-1 text-white opacity-10 mb-3"></i>
+                <h4 class="text-dim">Không tìm thấy nghệ sĩ nào phù hợp</h4>
+            </div>
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if(totalPages > 1) {
+        <div class="mt-4 d-flex justify-content-center">
+             <nav>
+                <ul class="pagination pagination-premium">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Artists" asp-route-page="@(currentPage - 1)" asp-route-searchTerm="@searchTerm"><i class="fa-solid fa-chevron-left"></i></a>
+                    </li>
+                    @for(int i = 1; i <= totalPages; i++) {
+                        <li class="page-item @(i == currentPage ? "active" : "")">
+                            <a class="page-link" asp-action="Artists" asp-route-page="@i" asp-route-searchTerm="@searchTerm">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Artists" asp-route-page="@(currentPage + 1)" asp-route-searchTerm="@searchTerm"><i class="fa-solid fa-chevron-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        async function toggleVerify(id, input) {
+            try {
+                const res = await fetch(`/Admin/ToggleArtistVerify/${id}`, { method: 'POST' });
+                const data = await res.json();
+                if(data.success) {
+                    const badge = input.nextElementSibling;
+                    if(data.isVerified) {
+                        badge.className = 'badge bg-info rounded-pill x-small';
+                        badge.innerText = 'Verified';
+                    } else {
+                        badge.className = 'badge bg-secondary rounded-pill x-small';
+                        badge.innerText = 'Unverified';
+                    }
+                    showToast('Cập nhật trạng thái xác minh thành công', 'success');
+                }
+            } catch(e) {
+                input.checked = !input.checked;
+            }
+        }
+    </script>
+}
+
+<style>
+    .admin-table thead th { background: rgba(255,255,255,0.02); color: #888; text-transform: uppercase; font-size: 11px; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .admin-table tbody td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .btn-icon-small { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; color: #888; transition: 0.2s; border-radius: 8px; }
+    .btn-icon-small:hover { background: rgba(255,255,255,0.1); color: white; }
+    .x-small { font-size: 10px; }
+</style>

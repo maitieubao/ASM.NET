@@ -1,0 +1,192 @@
+@model YoutubeMusicPlayer.Application.DTOs.PlaylistDto
+@{
+    ViewData["Title"] = "Manage Featured Playlist";
+    var allSongs = (ViewBag.AllSongs as IEnumerable<YoutubeMusicPlayer.Application.DTOs.SongDto>) ?? new List<YoutubeMusicPlayer.Application.DTOs.SongDto>();
+}
+
+<div class="container mt-4 pb-5">
+    <div class="mb-4">
+        <a asp-action="FeaturedPlaylists" class="btn btn-outline-secondary btn-sm mb-3">
+            <i class="bi bi-arrow-left me-1"></i> Back to list
+        </a>
+        <h2 class="text-white fw-bold"><i class="bi bi-gear-fill me-2 text-warning"></i> Manage Featured Playlist</h2>
+    </div>
+
+    <div class="row g-4">
+        <!-- Playlist Details Card -->
+        <div class="col-lg-4">
+            <div class="card bg-dark-glass text-white border-secondary border-opacity-25 shadow-lg p-3 h-100">
+                <div class="card-body">
+                    <form asp-action="EditFeaturedPlaylist" method="post">
+                        <input type="hidden" asp-for="PlaylistId" />
+                        <input type="hidden" asp-for="IsFeatured" value="true" />
+                        
+                        <div class="mb-3">
+                            <label asp-for="Title" class="form-label text-white-50 small">Title</label>
+                            <input asp-for="Title" class="form-control bg-dark text-white border-secondary" placeholder="Top Hits...">
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="FeaturedType" class="form-label text-white-50 small">Featured Category</label>
+                            <select asp-for="FeaturedType" class="form-select bg-dark text-white border-secondary">
+                                <option value="Trending">Trending</option>
+                                <option value="TopHits">Top Hits</option>
+                                <option value="NewReleases">New Releases</option>
+                                <option value="Chill">Chill</option>
+                                <option value="Study">Study</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label text-white-50 small">Description</label>
+                            <textarea asp-for="Description" class="form-control bg-dark text-white border-secondary" rows="3" placeholder="Explain what this category contains..."></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="CoverImageUrl" class="form-label text-white-50 small">Cover Image URL</label>
+                            <input asp-for="CoverImageUrl" class="form-control bg-dark text-white border-secondary" placeholder="Image link...">
+                        </div>
+
+                        <div class="d-grid mt-auto pt-3">
+                            <button type="submit" class="btn btn-warning rounded-pill py-2 fw-bold text-dark shadow">
+                                <i class="bi bi-save me-1"></i> Update Playlist
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Songs Section -->
+        <div class="col-lg-8">
+            <div class="card bg-dark-glass text-white border-secondary border-opacity-25 shadow-lg h-100 p-3">
+                <ul class="nav nav-tabs border-secondary border-opacity-25 mb-3" id="playlistTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active text-white fw-bold bg-transparent border-0 border-bottom border-warning border-3" id="current-tab" data-bs-toggle="tab" data-bs-target="#current" type="button">Current Songs (@Model.Songs.Count())</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link text-white-50 bg-transparent border-0" id="add-tab" data-bs-toggle="tab" data-bs-target="#add" type="button">Add Songs</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="playlistTabsContent">
+                    <!-- Current Songs -->
+                    <div class="tab-pane fade show active" id="current" role="tabpanel">
+                        <div class="table-responsive p-0 scrollbar-thin" style="max-height: 500px; overflow-y: auto;">
+                            @if (!Model.Songs.Any())
+                            {
+                                <div class="text-center p-5 text-white-50">
+                                    <i class="bi bi-music-note-beamed fs-1 mb-3 d-block opacity-25"></i>
+                                    <p>No songs in this playlist yet.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <table class="table table-dark table-hover mb-0 p-4 align-middle">
+                                    <tbody>
+                                        @foreach (var s in Model.Songs)
+                                        {
+                                            <tr>
+                                                <td width="5%"><i class="bi bi-grip-vertical text-white-50"></i></td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <img src="@s.ThumbnailUrl" class="rounded me-3 shadow-sm" width="45" height="45" style="object-fit: cover;">
+                                                        <div>
+                                                            <div class="text-white fw-bold mb-0">@s.Title</div>
+                                                            <div class="text-white-50 small">Youtube ID: @s.YoutubeVideoId</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-end pe-4">
+                                                    <form asp-action="RemoveSongFromFeaturedPlaylist" method="post" class="d-inline">
+                                                        <input type="hidden" name="playlistId" value="@Model.PlaylistId" />
+                                                        <input type="hidden" name="songId" value="@s.SongId" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Add Songs -->
+                    <div class="tab-pane fade" id="add" role="tabpanel">
+                        <div class="p-3 mb-2">
+                             <input type="text" id="song-search" class="form-control bg-dark text-white border-secondary" placeholder="Filter from library...">
+                        </div>
+                        <div class="table-responsive p-0 scrollbar-thin" style="max-height: 450px; overflow-y: auto;">
+                            <table class="table table-dark table-hover mb-0 p-4 align-middle" id="song-table">
+                                <tbody>
+                                    @foreach (var s in allSongs.Where(s => !Model.SongIds.Contains(s.SongId)))
+                                    {
+                                        <tr class="song-row">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="@s.ThumbnailUrl" class="rounded me-3" width="40" height="40" style="object-fit: cover;">
+                                                    <div>
+                                                        <div class="text-white fw-bold mb-0 song-title">@s.Title</div>
+                                                        <div class="text-white-50 small">Plays: @s.PlayCount</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-end pe-4">
+                                                <form asp-action="AddSongToFeaturedPlaylist" method="post" class="d-inline">
+                                                    <input type="hidden" name="playlistId" value="@Model.PlaylistId" />
+                                                    <input type="hidden" name="songId" value="@s.SongId" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning">
+                                                        <i class="bi bi-plus-lg me-1"></i> Add
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('song-search').addEventListener('keyup', function() {
+        var term = this.value.toLowerCase();
+        var rows = document.querySelectorAll('.song-row');
+        rows.forEach(function(row) {
+            var title = row.querySelector('.song-title').textContent.toLowerCase();
+            if(title.indexOf(term) > -1) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
+
+<style>
+    .bg-dark-glass {
+        background: rgba(26, 26, 26, 0.8) !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+    .text-accent {
+        color: #1ed760 !important;
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+        background: rgba(255,255,255,0.05);
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+    }
+</style>

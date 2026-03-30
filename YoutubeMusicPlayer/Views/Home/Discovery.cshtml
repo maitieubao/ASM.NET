@@ -1,0 +1,133 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.Interfaces.YoutubeVideoDetails>
+@{
+    ViewData["Title"] = "Khám phá: " + ViewBag.Tag;
+}
+
+<div class="discovery-container animate-fade-in">
+    <div class="d-flex justify-content-between align-items-end mb-4 pt-3">
+        <div>
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb extra-small uppercase fw-bold mb-2">
+                <li class="breadcrumb-item"><a href="/" class="text-dim text-decoration-none">Khám phá</a></li>
+                <li class="breadcrumb-item active text-white" aria-current="page">@ViewBag.Tag</li>
+              </ol>
+            </nav>
+            <h1 class="display-4 fw-black text-white m-0">@ViewBag.Tag</h1>
+        </div>
+        <button class="btn btn-accent rounded-pill px-4 py-2 fw-bold shadow-lg" onclick="playAllDiscovery()">
+            <i class="fa-solid fa-play me-2"></i> Phát tất cả
+        </button>
+    </div>
+
+    <div class="discovery-grid">
+        @foreach (var item in Model)
+        {
+            <div class="ytm-card-discovery" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
+                <div class="ytm-card-thumb">
+                    <img src="@item.ThumbnailUrl" alt="@item.Title" loading="lazy">
+                    <div class="ytm-card-play"><i class="fa-solid fa-play"></i></div>
+                </div>
+                <div class="ytm-card-info">
+                    <div class="ytm-card-title">@item.Title</div>
+                    <div class="ytm-card-meta">@item.AuthorName</div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function playAllDiscovery() {
+            const cards = document.querySelectorAll('.ytm-card-discovery');
+            if (cards.length === 0) return;
+            // logic to load all these into the queue...
+            // Implementation depends on global player script
+        }
+    </script>
+}
+
+<style>
+    .discovery-container {
+        padding-bottom: 120px;
+    }
+
+    .discovery-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    @@media (min-width: 576px) { .discovery-grid { grid-template-columns: repeat(3, 1fr); } }
+    @@media (min-width: 768px) { .discovery-grid { grid-template-columns: repeat(4, 1fr); } }
+    @@media (min-width: 992px) { .discovery-grid { grid-template-columns: repeat(5, 1fr); } }
+    @@media (min-width: 1400px) { .discovery-grid { grid-template-columns: repeat(6, 1fr); } }
+
+    .ytm-card-discovery {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 12px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid transparent;
+    }
+
+    .ytm-card-discovery:hover {
+        background: rgba(255, 255, 255, 0.08);
+        transform: translateY(-4px);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .ytm-card-thumb {
+        position: relative;
+        aspect-ratio: 1/1;
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 12px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    }
+
+    .ytm-card-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .ytm-card-play {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: white;
+        opacity: 0;
+        transition: 0.2s;
+    }
+
+    .ytm-card-discovery:hover .ytm-card-play {
+        opacity: 1;
+    }
+
+    .ytm-card-title {
+        font-weight: 700;
+        color: white;
+        font-size: 1rem;
+        margin-bottom: 4px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .ytm-card-meta {
+        font-size: 0.85rem;
+        color: #b3b3b3;
+    }
+
+    .breadcrumb-item + .breadcrumb-item::before {
+        color: #b3b3b3;
+    }
+</style>

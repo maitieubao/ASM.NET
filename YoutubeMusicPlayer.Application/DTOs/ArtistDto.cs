@@ -23,4 +23,6 @@ public class ArtistDto
     public int CurrentPage { get; set; }
     public int TotalPages { get; set; }
     public int TotalSongsCount { get; set; }
+    public bool IsFollowing { get; set; }
+    public IEnumerable<ArtistDto> RelatedArtists { get; set; } = new List<ArtistDto>();
 }

@@ -5,9 +5,13 @@ namespace YoutubeMusicPlayer.Application.DTOs;
 public class PlaylistDto
 {
     public int PlaylistId { get; set; }
-    public int UserId { get; set; }
+    public int? UserId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? CoverImageUrl { get; set; }
+    public bool IsFeatured { get; set; }
+    public string? FeaturedType { get; set; }
+    public string Visibility { get; set; } = "Public";
     public IEnumerable<int> SongIds { get; set; } = new List<int>();
+    public IEnumerable<SongDto> Songs { get; set; } = new List<SongDto>();
 }

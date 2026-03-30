@@ -1,0 +1,173 @@
+@model YoutubeMusicPlayer.Application.DTOs.SongDto
+@{
+    ViewData["Title"] = "Chỉnh sửa bài hát";
+    var genres = ViewBag.Genres as IEnumerable<YoutubeMusicPlayer.Application.DTOs.GenreDto> ?? new List<YoutubeMusicPlayer.Application.DTOs.GenreDto>();
+}
+
+<div class="container mt-4 pb-5 text-white animate-fade-in">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-black m-0">Trình quản lý bài hát</h2>
+            <div class="text-dim small">ID: #@Model.SongId • @Model.PlayCount Lượt phát</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Songs" class="btn btn-outline-light rounded-pill px-4">Hủy bỏ</a>
+            <button type="submit" form="songForm" class="btn btn-accent rounded-pill px-5 fw-bold">Lưu thông tin</button>
+        </div>
+    </div>
+
+    <div class="row g-5">
+        <!-- Preview Sidebar -->
+        <div class="col-lg-4">
+            <div class="glass-card p-4 rounded-5 border-0 shadow-lg text-center mb-4 sticky-sidebar" style="top: 100px;">
+                <div class="position-relative mb-4 group">
+                    <img src="@Model.ThumbnailUrl" class="w-100 rounded-4 shadow-2xl transition-all group-hover-brightness-50" style="aspect-ratio: 1; object-fit: cover;">
+                    <div class="absolute-center opacity-0 group-hover-opacity-100 pointer-events-none transition-all">
+                        <i class="fa-solid fa-play fs-1 text-white"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold text-white mb-1">@Model.Title</h4>
+                <div class="text-dim small mb-4">Mã ISRC: @(Model.YoutubeVideoId ?? "Chưa có")</div>
+                
+                <div class="d-grid gap-2">
+                    <a href="https://www.youtube.com/watch?v=@Model.YoutubeVideoId" target="_blank" class="btn btn-outline-danger rounded-pill fw-bold btn-sm py-2">
+                        <i class="fa-brands fa-youtube me-2"></i>Xem trên YouTube
+                    </a>
+                </div>
+
+                <div class="mt-4 pt-4 border-top border-white border-opacity-10 text-start">
+                    <div class="text-dim uppercase small fw-bold mb-3">Thông số kỹ thuật</div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-white-50 small">Thời lượng</span>
+                        <span class="small">@(Model.Duration.HasValue ? TimeSpan.FromSeconds(Model.Duration.Value).ToString(@"mm\:ss") : "--:--")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-white-50 small">Độ phân giải</span>
+                        <span class="small">1080p (YTM)</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-white-50 small">Bản quyền</span>
+                        <span class="small">© YoutubeMusicPlayer</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Form Tabs -->
+        <div class="col-lg-8">
+            <form id="songForm" asp-action="EditSong" method="post">
+                <input type="hidden" asp-for="SongId" />
+                <input type="hidden" asp-for="YoutubeVideoId" />
+                <input type="hidden" asp-for="ThumbnailUrl" />
+                <input type="hidden" asp-for="Duration" />
+
+                <div class="glass-card rounded-5 border-0 overflow-hidden shadow-2xl">
+                    <!-- Tab Headers -->
+                    <ul class="nav nav-tabs admin-tabs border-0 px-4 pt-4" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#general-info">Thông tin chung</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#lyrics-tab">Lời nhạc (Lyrics)</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#config-tab">Cấu hình & Bản quyền</button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Contents -->
+                    <div class="tab-content p-5">
+                        <!-- Tab 1: General Info -->
+                        <div class="tab-pane fade show active" id="general-info">
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Tên bài hát</label>
+                                    <input asp-for="Title" class="form-control-pro" placeholder="Nhập tên bài hát..." required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">ID Album</label>
+                                    <input asp-for="AlbumId" type="number" class="form-control-pro" placeholder="ID Album..." />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Youtube Video ID</label>
+                                    <input asp-for="YoutubeVideoId" class="form-control-pro" readonly />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Thể loại nhạc</label>
+                                    <div class="genre-selector-grid p-4 rounded-4 bg-dark bg-opacity-25 border border-white border-opacity-5">
+                                        <div class="row row-cols-2 row-cols-md-3 g-3">
+                                            @foreach(var g in genres) {
+                                                <div class="col">
+                                                    <div class="form-check custom-check">
+                                                         <input class="form-check-input" type="checkbox" name="GenreIds" value="@g.GenreId" 
+                                                                id="g-@g.GenreId" @(Model.GenreIds != null && Model.GenreIds.Contains(g.GenreId) ? "checked" : "")>
+                                                         <label class="form-check-label small" for="g-@g.GenreId">@g.Name</label>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Lyrics -->
+                        <div class="tab-pane fade" id="lyrics-tab">
+                            <div class="mb-4">
+                                <label class="form-label x-small uppercase fw-bold text-dim">Lời bài hát (Toàn bộ)</label>
+                                <textarea name="lyricstext" class="form-control-pro font-monospace" rows="15" placeholder="Hế lô... hế lô... hế lô..."></textarea>
+                            </div>
+                            <div>
+                                <label class="form-label x-small uppercase fw-bold text-dim">Đường dẫn đồng bộ (.lrc)</label>
+                                <input type="text" class="form-control-pro" placeholder="https://example.com/sync-lyrics.lrc" />
+                            </div>
+                        </div>
+
+                        <!-- Tab 3: Config -->
+                        <div class="tab-pane fade" id="config-tab">
+                            <div class="row g-5">
+                                <div class="col-md-6">
+                                    <div class="config-card glass-card p-4 rounded-4 border-0">
+                                        <h6 class="fw-bold mb-3">Bản quyền (Rights)</h6>
+                                        <div class="mb-3">
+                                            <label class="form-label x-small uppercase fw-bold text-dim">Mã ISRC</label>
+                                            <input type="text" class="form-control-pro" value="USBMG23@(Model.SongId.ToString("D5"))" />
+                                        </div>
+                                        <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-3">
+                                            <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" asp-for="IsExplicit">
+                                            <label class="form-check-label small" asp-for="IsExplicit">Nội dung Explicit (18+)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="config-card glass-card p-4 rounded-4 border-0">
+                                        <h6 class="fw-bold mb-3">Thương mại (Access)</h6>
+                                        <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-3 mb-3">
+                                            <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" asp-for="IsPremiumOnly">
+                                            <label class="form-check-label small" asp-for="IsPremiumOnly">Chỉ dành cho Premium</label>
+                                        </div>
+                                        <div class="text-dim x-small">
+                                            <i class="fa-solid fa-circle-info me-1"></i> Bật tính năng này sẽ khóa nội dung đối với người dùng Free.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .admin-tabs .nav-link { color: #888; border: 0 !important; background: transparent !important; padding: 12px 24px; font-weight: 700; font-size: 14px; position: relative; }
+    .admin-tabs .nav-link.active { color: var(--accent-primary); }
+    .admin-tabs .nav-link.active::after { content: ''; position: absolute; bottom: 0; left: 24px; right: 24px; height: 3px; background: var(--accent-primary); border-radius: 3px; }
+    
+    .form-control-pro { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; padding: 12px 18px; width: 100%; transition: 0.2s; }
+    .form-control-pro:focus { background: rgba(255,255,255,0.08); border-color: var(--accent-primary); outline: none; }
+    
+    .custom-check .form-check-input { background-color: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
+    .custom-check .form-check-input:checked { background-color: var(--accent-primary); border-color: var(--accent-primary); }
+</style>

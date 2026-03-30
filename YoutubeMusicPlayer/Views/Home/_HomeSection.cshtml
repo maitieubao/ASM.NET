@@ -1,0 +1,94 @@
+@model YoutubeMusicPlayer.Models.MusicSection
+
+<div class="mb-5 section-reveal">
+    <div class="section-header d-flex justify-content-between align-items-end mb-3">
+        <div>
+            @if (!string.IsNullOrEmpty(Model.Subtitle)) {
+                <div class="section-subtitle">@Model.Subtitle.ToUpper()</div>
+            }
+            <h2 class="section-title">@Model.Title</h2>
+        </div>
+    </div>
+
+    @if (Model.Albums != null && Model.Albums.Any())
+    {
+        <div class="carousel-wrapper">
+            <button class="carousel-nav carousel-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="carousel-nav carousel-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="horizontal-carousel scrollbar-hide">
+                @foreach (var album in Model.Albums)
+                {
+                    <div class="ytm-card" onclick="window.location.href='/Album/Details/@album.AlbumId'">
+                        <div class="ytm-card-thumb">
+                            <img src="@album.CoverImageUrl" alt="@album.Title" loading="lazy" onerror="this.src='/images/default-album.png'">
+                            <div class="ytm-card-play"><i class="fa-solid fa-play"></i></div>
+                        </div>
+                        <div class="ytm-card-info">
+                            <div class="ytm-card-title">@album.Title</div>
+                            <div class="ytm-card-meta">Album • @(album.AuthorName ?? "Nghệ sĩ")</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else if (Model.Layout == "List3")
+    {
+        <div class="song-list-grid">
+            @foreach (var item in Model.Songs)
+            {
+                <div class="song-list-item" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
+                    <img src="@item.ThumbnailUrl" class="song-list-img" alt="@item.Title">
+                    <div class="song-list-info">
+                        <div class="song-list-title">@item.Title</div>
+                        <div class="song-list-meta">@item.AuthorName</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (Model.Layout == "Wide")
+    {
+        <div class="carousel-wrapper">
+            <button class="carousel-nav carousel-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="carousel-nav carousel-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="horizontal-carousel scrollbar-hide">
+                @foreach (var item in Model.Songs)
+                {
+                    <div class="ytm-card-wide" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
+                        <div class="wide-thumb-wrapper">
+                            <img src="@item.ThumbnailUrl" alt="@item.Title" loading="lazy">
+                            <div class="card-play-btn-center"><i class="fa-solid fa-play"></i></div>
+                        </div>
+                        <div class="mt-2">
+                            <div class="ytm-card-title text-truncate">@item.Title</div>
+                            <div class="ytm-card-meta">@item.AuthorName</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="carousel-wrapper">
+            <button class="carousel-nav carousel-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="carousel-nav carousel-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="horizontal-carousel scrollbar-hide">
+                @foreach (var item in Model.Songs)
+                {
+                    <div class="ytm-card" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
+                        <div class="ytm-card-thumb">
+                            <img src="@item.ThumbnailUrl" alt="@item.Title" loading="lazy">
+                            <div class="ytm-card-play"><i class="fa-solid fa-play"></i></div>
+                        </div>
+                        <div class="ytm-card-info">
+                            <div class="ytm-card-title">@item.Title</div>
+                            <div class="ytm-card-meta">@item.AuthorName</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

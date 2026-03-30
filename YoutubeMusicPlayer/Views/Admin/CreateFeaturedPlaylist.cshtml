@@ -1,0 +1,58 @@
+@model YoutubeMusicPlayer.Application.DTOs.PlaylistDto
+@{
+    ViewData["Title"] = "Create Featured Playlist";
+}
+
+<div class="container mt-4 pb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="mb-4">
+                <a asp-action="FeaturedPlaylists" class="btn btn-outline-secondary btn-sm mb-3">
+                    <i class="bi bi-arrow-left me-1"></i> Back
+                </a>
+                <h2 class="text-white fw-bold"><i class="bi bi-star-fill me-2 text-warning"></i> Add System Playlist</h2>
+            </div>
+
+            <div class="card bg-dark-glass text-white border-secondary border-opacity-25 shadow-lg p-3">
+                <div class="card-body">
+                    <form asp-action="CreateFeaturedPlaylist" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                        
+                        <div class="mb-3">
+                            <label asp-for="Title" class="form-label text-white-50 small">Playlist Title</label>
+                            <input asp-for="Title" class="form-control bg-dark text-white border-secondary" placeholder="Top Hits, Chill Vibe, etc...">
+                            <span asp-validation-for="Title" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="FeaturedType" class="form-label text-white-50 small">Featured Category</label>
+                            <select asp-for="FeaturedType" class="form-select bg-dark text-white border-secondary">
+                                <option value="Trending">Trending</option>
+                                <option value="TopHits">Top Hits</option>
+                                <option value="NewReleases">New Releases</option>
+                                <option value="Chill">Chill</option>
+                                <option value="Study">Study</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label text-white-50 small">Description</label>
+                            <textarea asp-for="Description" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Brief info..."></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="CoverImageUrl" class="form-label text-white-50 small">Cover Image URL</label>
+                            <input asp-for="CoverImageUrl" class="form-control bg-dark text-white border-secondary" placeholder="Image link...">
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning rounded-pill py-2 fw-bold text-dark">
+                                <i class="bi bi-save me-1"></i> Create Playlist
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

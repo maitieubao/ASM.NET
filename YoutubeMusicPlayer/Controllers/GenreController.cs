@@ -14,6 +14,13 @@ public class GenreController : Controller
         _genreService = genreService;
     }
 
+    public async Task<IActionResult> Details(int id)
+    {
+        var genre = await _genreService.GetGenreByIdWithSongsAsync(id);
+        if (genre == null) return NotFound();
+        return View(genre);
+    }
+
     public async Task<IActionResult> Index()
     {
         var genres = await _genreService.GetAllGenresAsync();

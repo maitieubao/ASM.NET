@@ -19,6 +19,10 @@ public class Song
     public int? AlbumId { get; set; }
     public Album? Album { get; set; }
 
+    [Column("categoryid")]
+    public int? CategoryId { get; set; }
+    public Category? Category { get; set; }
+
     [Column("duration")]
     public int? Duration { get; set; }
 

@@ -1,0 +1,12 @@
+@model YoutubeMusicPlayer.Application.Interfaces.YoutubeVideoDetails
+
+<div class="music-card" onclick="playSingleTrack('@Model.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(Model.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(Model.AuthorName)', '@Model.ThumbnailUrl')">
+    <div class="card-thumb-wrapper">
+        <img src="@Model.ThumbnailUrl" alt="@Model.Title" />
+        <div class="card-play-btn">
+            <i class="fa-solid fa-play"></i>
+        </div>
+    </div>
+    <div class="card-title">@Model.Title</div>
+    <div class="card-subtitle">@Model.AuthorName</div>
+</div>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Dashboard</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    
+    <style>
+        :root {
+            --admin-sidebar-width: 260px;
+        }
+
+        body {
+            background-color: #0c0c0c;
+            color: #e0e0e0;
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .admin-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .admin-sidebar {
+            width: var(--admin-sidebar-width);
+            background: #121212;
+            border-right: 1px solid rgba(255,255,255,0.05);
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .admin-main {
+            flex-grow: 1;
+            margin-left: var(--admin-sidebar-width);
+            padding: 2rem 3rem;
+        }
+
+        .admin-logo {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: #ffc107;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 3rem;
+            text-decoration: none;
+        }
+
+        .admin-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 1.25rem;
+            color: #b3b3b3;
+            text-decoration: none;
+            border-radius: 12px;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .admin-nav-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+
+        .admin-nav-item.active {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .admin-nav-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #4d4d4d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 2rem 0 1rem 1.25rem;
+        }
+
+        .glass-panel {
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-wrapper">
+        <aside class="admin-sidebar">
+            <a href="/" class="admin-logo">
+                <i class="fa-solid fa-bolt-lightning"></i>
+                <span>MÚSICA <small style="font-size: 10px; opacity: 0.7;">ADMIN</small></span>
+            </a>
+
+            <div class="admin-nav-label">Management</div>
+            <a href="/Admin" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/Admin/Songs" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Songs" ? "active" : "")">
+                <i class="fa-solid fa-music"></i>
+                <span>Bài hát</span>
+            </a>
+            <a href="/Admin/Artists" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Artists" ? "active" : "")">
+                <i class="fa-solid fa-microphone-lines"></i>
+                <span>Nghệ sĩ</span>
+            </a>
+            <a href="/Admin/Users" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Users" ? "active" : "")">
+                <i class="fa-solid fa-users-gear"></i>
+                <span>Người dùng</span>
+            </a>
+            <a href="/Admin/Reports" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Reports" ? "active" : "")">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span>Báo cáo</span>
+            </a>
+
+            <div class="admin-nav-label">System</div>
+            <a href="/Genre" class="admin-nav-item">
+                <i class="fa-solid fa-tags"></i>
+                <span>Thể loại</span>
+            </a>
+            
+            <div class="mt-auto pt-5">
+                <a href="/" class="admin-nav-item">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Về trang chủ</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="admin-main">
+            <header class="d-flex justify-content-between align-items-center mb-5">
+                <div>
+                    <h2 class="fw-bold mb-1">@ViewData["Title"]</h2>
+                    <p class="text-muted small mb-0">Hệ thống quản trị âm nhạc chuyên nghiệp</p>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="text-end d-none d-md-block">
+                        <div class="fw-bold small">@User.Identity?.Name</div>
+                        <div class="extra-small text-warning">Administrator</div>
+                    </div>
+                    <img src="https://ui-avatars.com/api/?name=@User.Identity?.Name&background=ffc107&color=000" class="rounded-circle" style="width: 40px; height: 40px;">
+                </div>
+            </header>
+
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

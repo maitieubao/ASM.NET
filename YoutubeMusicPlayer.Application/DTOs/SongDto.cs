@@ -19,4 +19,7 @@ public class SongDto
     public bool IsPremiumOnly { get; set; }
     public IEnumerable<int> GenreIds { get; set; } = new List<int>();
     public IEnumerable<string> GenreNames { get; set; } = new List<string>();
+    public bool IsLiked { get; set; }
+    public string? AuthorName { get; set; }
+    public string? AuthorBio { get; set; }
 }

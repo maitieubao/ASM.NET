@@ -12,9 +12,14 @@ public class Playlist
     [Column("playlistid")]
     public int PlaylistId { get; set; }
 
-    [Required]
     [Column("userid")]
-    public int UserId { get; set; }
+    public int? UserId { get; set; }
+
+    [Column("isfeatured")]
+    public bool IsFeatured { get; set; } = false;
+
+    [Column("featuredtype")]
+    public string? FeaturedType { get; set; } // "TopHits", "Trending", "NewReleases"
 
     [Required]
     [Column("title")]
@@ -27,11 +32,14 @@ public class Playlist
     [Column("coverimageurl")]
     public string? CoverImageUrl { get; set; }
 
+    [Column("visibility")]
+    public string Visibility { get; set; } = "Public"; // Public, Private
+
     [Column("createdat")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [ForeignKey("UserId")]
-    public User User { get; set; } = null!;
+    public User? User { get; set; }
 
     public ICollection<PlaylistSong> PlaylistSongs { get; set; } = new List<PlaylistSong>();
 }

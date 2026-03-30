@@ -1,0 +1,201 @@
+@model YoutubeMusicPlayer.Application.DTOs.DashboardDto
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    var playDates = Model.PlayHistory.Select(h => h.Date.ToString("dd/MM"));
+    var playCounts = Model.PlayHistory.Select(h => h.Count);
+}
+
+<div class="container-fluid mt-4 pb-5 px-lg-5">
+    <div class="mb-5 d-flex justify-content-between align-items-end">
+        <div>
+            <h1 class="text-white fw-bold mb-1">System Overview</h1>
+            <p class="text-white-50">Real-time statistics and platform health.</p>
+        </div>
+        <div class="text-end text-white-50 small">
+            Last updated: @DateTime.Now.ToString("HH:mm:ss")
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3 col-sm-6">
+            <div class="card bg-dark-glass border-secondary border-opacity-25 shadow p-4 text-center h-100">
+                <div class="text-white-50 small text-uppercase fw-bold mb-2">Total Users</div>
+                <div class="text-white fs-1 fw-bold">@Model.TotalUsers.ToString("N0")</div>
+                <div class="text-primary small mt-2"><i class="bi bi-arrow-up-short"></i> Community</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card bg-dark-glass border-secondary border-opacity-25 shadow p-4 text-center h-100">
+                <div class="text-white-50 small text-uppercase fw-bold mb-2">Total Songs</div>
+                <div class="text-white fs-1 fw-bold">@Model.TotalSongs.ToString("N0")</div>
+                <div class="text-info small mt-2"><i class="bi bi-music-note"></i> Tracks</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card bg-dark-glass border-secondary border-opacity-25 shadow p-4 text-center h-100">
+                <div class="text-white-50 small text-uppercase fw-bold mb-2">Total Plays</div>
+                <div class="text-white fs-1 fw-bold">@Model.TotalPlays.ToString("N0")</div>
+                <div class="text-accent small mt-2"><i class="bi bi-play-fill"></i> Stream Time</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a asp-action="Reports" class="text-decoration-none">
+                <div class="card @(Model.PendingReports > 0 ? "bg-danger bg-opacity-10 border-danger" : "bg-dark-glass border-secondary border-opacity-25") shadow p-4 text-center h-100 transition-hover">
+                    <div class="text-white-50 small text-uppercase fw-bold mb-2">Pending Reports</div>
+                    <div class="@(Model.PendingReports > 0 ? "text-danger" : "text-white") fs-1 fw-bold">@Model.PendingReports</div>
+                    <div class="text-danger small mt-2">@(Model.PendingReports > 0 ? "Action required!" : "Clean platform")</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Analytics Chart -->
+        <div class="col-lg-8">
+            <div class="card bg-dark-glass border-secondary border-opacity-25 shadow-lg p-4 h-100">
+                <h4 class="text-white fw-bold mb-4">Playback Analytics</h4>
+                <div style="height: 350px;">
+                    <canvas id="playHistoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation / Actions -->
+        <div class="col-lg-4">
+            <div class="card bg-dark-glass border-secondary border-opacity-25 shadow-lg p-4 mb-4">
+                <h4 class="text-white fw-bold mb-4">Quick Navigation</h4>
+                <div class="d-grid gap-2">
+                    <a asp-action="Users" class="btn btn-outline-primary py-3 text-start"><i class="bi bi-people me-2"></i> User Directory</a>
+                    <a asp-action="Songs" class="btn btn-outline-secondary py-3 text-start"><i class="bi bi-music-note-beamed me-2"></i> Song Library Manager</a>
+                    <a asp-action="Categories" class="btn btn-outline-info py-3 text-start"><i class="bi bi-folder me-2"></i> Categories Manager</a>
+                    <a asp-action="Genres" class="btn btn-outline-success py-3 text-start"><i class="bi bi-music-note-list me-2"></i> Music Genres</a>
+                    <a asp-action="FeaturedPlaylists" class="btn btn-outline-warning py-3 text-start"><i class="bi bi-star me-2"></i> Featured Playlists</a>
+                    <a asp-action="Artists" class="btn btn-outline-light py-3 text-start"><i class="bi bi-person-badge me-2"></i> Artist Management</a>
+                    <a asp-action="Albums" class="btn btn-outline-info py-3 text-start"><i class="bi bi-journal-album me-2"></i> Discography (Albums)</a>
+                    <a asp-action="Comments" class="btn btn-outline-info py-3 text-start"><i class="bi bi-chat-dots me-2"></i> Comment Moderation</a>
+                    <a asp-action="Notifications" class="btn btn-outline-danger py-3 text-start"><i class="bi bi-megaphone me-2"></i> System Notifications</a>
+                </div>
+            </div>
+            
+            <div class="card bg-dark-glass border-secondary border-opacity-25 shadow-lg p-4">
+                <h4 class="text-white fw-bold mb-4">Platform Health</h4>
+                <ul class="list-unstyled mb-0">
+                    <li class="d-flex justify-content-between mb-3">
+                        <span class="text-white-50">DB Status</span>
+                        <span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i> Connected</span>
+                    </li>
+                    <li class="d-flex justify-content-between mb-3">
+                        <span class="text-white-50">API Sync</span>
+                        <span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i> Active</span>
+                    </li>
+                    <li class="d-flex justify-content-between">
+                        <span class="text-white-50">Storage</span>
+                        <span class="text-white fw-bold">Normal</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Top Charts -->
+        <div class="col-md-6">
+            <div class="card bg-dark-glass border-secondary border-opacity-25 shadow-lg h-100">
+                <div class="p-4 border-bottom border-secondary border-opacity-25">
+                    <h4 class="text-white fw-bold mb-0">Most Played Tracks</h4>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <tbody>
+                            @foreach (var s in Model.TopSongs)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-white">@s.Title</div>
+                                        <div class="text-white-50 small">@s.Artist</div>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <span class="badge bg-accent text-dark">@s.PlayCount.ToString("N0") plays</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card bg-dark-glass border-secondary border-opacity-25 shadow-lg h-100">
+                <div class="p-4 border-bottom border-secondary border-opacity-25">
+                    <h4 class="text-white fw-bold mb-0">Popular Artists</h4>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <tbody>
+                            @foreach (var a in Model.TopArtists)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-white">@a.Name</div>
+                                        <div class="text-white-50 small">@a.SongCount Songs in library</div>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <span class="badge bg-info text-dark">@a.TotalPlays.ToString("N0") streams</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('playHistoryChart').getContext('2d');
+        const playHistoryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(playDates)),
+                datasets: [{
+                    label: 'Songs Played',
+                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(playCounts)),
+                    fill: true,
+                    backgroundColor: 'rgba(30, 215, 96, 0.1)',
+                    borderColor: '#1ed760',
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#1ed760'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#ffffff80' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#ffffff80' }
+                    }
+                }
+            }
+        });
+    </script>
+}
+
+<style>
+    .transition-hover { transition: all 0.3s ease; }
+    .transition-hover:hover { transform: translateY(-3px); }
+    .bg-accent { background-color: #1ed760 !important; }
+    .text-accent { color: #1ed760 !important; }
+</style>

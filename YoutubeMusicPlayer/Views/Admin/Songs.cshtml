@@ -1,0 +1,184 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.SongDto>
+@{
+    ViewData["Title"] = "Quản lý Bài hát";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    string searchTerm = ViewBag.SearchTerm ?? "";
+}
+
+<div class="container-fluid mt-4 pb-5 px-lg-5 text-white animate-fade-in">
+    <!-- Mini Analytics -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="glass-card p-4 rounded-5 border-0 shadow-lg position-relative overflow-hidden">
+                <div class="text-dim uppercase small fw-bold mb-1">Tổng số bài hát</div>
+                <div class="fs-1 fw-black">@ViewBag.TotalCount</div>
+                <i class="fa-solid fa-music position-absolute text-white opacity-5" style="font-size: 80px; bottom: -10px; right: 10px;"></i>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card p-4 rounded-5 border-0 shadow-lg position-relative overflow-hidden">
+                <div class="text-dim uppercase small fw-bold mb-1">Lượt phát hệ thống</div>
+                <div class="fs-1 fw-black text-accent">9.5M</div>
+                <i class="fa-solid fa-play position-absolute text-accent opacity-5" style="font-size: 80px; bottom: -10px; right: 10px;"></i>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card p-4 rounded-5 border-0 shadow-lg position-relative overflow-hidden">
+                <div class="text-dim uppercase small fw-bold mb-1">Bài hát Premium</div>
+                <div class="fs-1 fw-black text-warning">@Model.Count(s => s.IsPremiumOnly)</div>
+                <i class="fa-solid fa-gem position-absolute text-warning opacity-5" style="font-size: 80px; bottom: -10px; right: 10px;"></i>
+            </div>
+        </div>
+        <div class="col-md-3 text-decoration-none">
+             <div class="glass-card p-4 rounded-5 border-0 shadow-lg position-relative overflow-hidden bg-danger bg-opacity-10">
+                <div class="text-danger-emphasis uppercase small fw-bold mb-1">Báo cáo vi phạm</div>
+                <div class="fs-1 fw-black text-danger">3</div>
+                <i class="fa-solid fa-triangle-exclamation position-absolute text-danger opacity-10" style="font-size: 80px; bottom: -10px; right: 10px;"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <h2 class="fw-black m-0">Thư viện Bài hát</h2>
+            <button class="btn btn-accent rounded-pill px-4 fw-bold">
+                <i class="fa-solid fa-upload me-2"></i>Tải lên bản nhạc
+            </button>
+        </div>
+        <div class="d-flex gap-2">
+            <form asp-action="Songs" method="get" class="search-input-wrapper" style="width: 300px;">
+                <i class="fa-solid fa-magnifying-glass text-muted me-2"></i>
+                <input type="text" name="searchTerm" value="@searchTerm" placeholder="Tìm theo tên bài hát..." />
+            </form>
+            <div class="dropdown">
+                <button class="btn btn-outline-light rounded-pill px-3" data-bs-toggle="dropdown"><i class="fa-solid fa-sliders me-2"></i>Bộ lọc</button>
+                 <ul class="dropdown-menu dropdown-menu-dark p-3 border-0 shadow-2xl glass-card" style="width: 250px;">
+                    <li class="mb-3">
+                        <label class="form-label x-small uppercase fw-bold text-dim">Chế độ truy cập</label>
+                        <select class="form-select form-select-sm bg-dark text-white border-0">
+                            <option>Tất cả</option>
+                            <option>Miễn phí</option>
+                            <option>Premium Only</option>
+                        </select>
+                    </li>
+                    <li class="mb-3">
+                        <label class="form-label x-small uppercase fw-bold text-dim">Gán nhãn content</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="explicitCheck">
+                            <label class="form-check-label x-small" for="explicitCheck">Explicit (18+)</label>
+                        </div>
+                    </li>
+                    <li><button class="btn btn-accent btn-sm w-100 rounded-pill">Áp dụng</button></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="glass-card rounded-5 border-0 overflow-hidden shadow-2xl">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle admin-table">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Thông tin bài hát</th>
+                        <th>Nghệ sĩ & Album</th>
+                        <th>Premium</th>
+                        <th>Explicit</th>
+                        <th>Lượt phát</th>
+                        <th class="text-end pe-4">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    <img src="@s.ThumbnailUrl" class="rounded-3" style="width: 50px; height: 50px; object-fit: cover;">
+                                    <div>
+                                        <div class="fw-bold">@s.Title</div>
+                                        <div class="text-dim x-small">ISRC: @(string.IsNullOrEmpty(s.YoutubeVideoId) ? "N/A" : s.YoutubeVideoId)</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-white-50 small">Album: @(s.AlbumId ?? 0)</div>
+                                <div class="text-dim x-small">Nghệ sĩ: Featured Artists</div>
+                            </td>
+                            <td>
+                                <div class="form-check form-switch p-0 m-0">
+                                    <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" 
+                                           @(s.IsPremiumOnly ? "checked" : "") onclick="toggleSongPremium(@s.SongId, this)">
+                                </div>
+                            </td>
+                             <td>
+                                <div class="form-check form-switch p-0 m-0">
+                                    <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" 
+                                           @(s.IsExplicit ? "checked" : "") onclick="toggleSongExplicit(@s.SongId, this)">
+                                </div>
+                            </td>
+                            <td><span class="text-accent fw-bold">@s.PlayCount.ToString("N0")</span></td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group">
+                                    <a asp-action="EditSong" asp-route-id="@s.SongId" class="btn btn-icon-small" title="Chỉnh sửa"><i class="fa-solid fa-pen-to-square"></i></a>
+                                    <form asp-action="DeleteSong" asp-route-id="@s.SongId" method="post" onsubmit="return confirm('Xóa bài hát này?')" class="d-inline">
+                                        <button type="submit" class="btn btn-icon-small text-danger" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    @if(totalPages > 1) {
+        <div class="mt-4 d-flex justify-content-center">
+             <nav>
+                <ul class="pagination pagination-premium">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Songs" asp-route-page="@(currentPage - 1)" asp-route-searchTerm="@searchTerm"><i class="fa-solid fa-chevron-left"></i></a>
+                    </li>
+                    @for(int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++) {
+                        <li class="page-item @(i == currentPage ? "active" : "")">
+                            <a class="page-link" asp-action="Songs" asp-route-page="@i" asp-route-searchTerm="@searchTerm">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Songs" asp-route-page="@(currentPage + 1)" asp-route-searchTerm="@searchTerm"><i class="fa-solid fa-chevron-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        async function toggleSongPremium(id, input) {
+            try {
+                const res = await fetch(`/Admin/ToggleSongPremium/${id}`, { method: 'POST' });
+                const data = await res.json();
+                if(data.success) showToast('Cập nhật quyền truy cập Premium thành công', 'success');
+            } catch(e) { input.checked = !input.checked; }
+        }
+        async function toggleSongExplicit(id, input) {
+            try {
+                const res = await fetch(`/Admin/ToggleSongExplicit/${id}`, { method: 'POST' });
+                const data = await res.json();
+                if(data.success) showToast('Cập nhật gắn nhãn Explicit thành công', 'success');
+            } catch(e) { input.checked = !input.checked; }
+        }
+    </script>
+}
+
+<style>
+    .admin-table thead th { background: rgba(255,255,255,0.02); color: #888; text-transform: uppercase; font-size: 11px; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .admin-table tbody td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .btn-icon-small { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; color: #888; transition: 0.2s; border-radius: 8px; }
+    .btn-icon-small:hover { background: rgba(255,255,255,0.1); color: white; }
+</style>

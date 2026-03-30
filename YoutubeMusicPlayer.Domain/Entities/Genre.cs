@@ -14,5 +14,8 @@ public class Genre
     [Column("name")]
     public string Name { get; set; } = string.Empty;
 
+    [Column("description")]
+    public string? Description { get; set; }
+
     public ICollection<SongGenre> SongGenres { get; set; } = new List<SongGenre>();
 }

@@ -1,0 +1,199 @@
+@model YoutubeMusicPlayer.Application.DTOs.UserDto
+@{
+    ViewData["Title"] = "Chỉnh sửa hồ sơ";
+}
+
+<div class="edit-profile-container animate-fade-in py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+                <div class="card glass-card shadow-2xl overflow-hidden p-0 border-0">
+                    <div class="card-header bg-gradient-accent p-4 border-0 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="fw-black m-0 text-white"><i class="fa-solid fa-user-gear me-3"></i>Hồ sơ</h3>
+                            <p class="text-white-50 small m-0 fst-italic">Cập nhật thông tin cá nhân của bạn</p>
+                        </div>
+                        <a asp-action="Profile" class="btn btn-sm btn-white bg-white bg-opacity-10 text-white rounded-pill border-0 px-3 fw-bold">
+                            Hủy bỏ
+                        </a>
+                    </div>
+                    
+                    <div class="card-body p-4 p-md-5">
+                        <form asp-action="Edit" method="post" id="profileEditForm">
+                            <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4 bg-danger bg-opacity-10 border-danger border-opacity-25 text-danger small"></div>
+                            
+                            <input type="hidden" asp-for="UserId" />
+                            <input type="hidden" asp-for="Email" />
+                            <input type="hidden" asp-for="Role" />
+                            <input type="hidden" asp-for="CreatedAt" />
+                            <input type="hidden" asp-for="IsPremium" />
+                            <input type="hidden" asp-for="IsLocked" />
+
+                            <div class="d-flex flex-column align-items-center mb-5 profile-avatar-edit-wrapper">
+                                <div class="position-relative">
+                                    <img id="avatarPreview" src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + Model.Username + "&background=6C5CE7&color=fff&size=200" : Model.AvatarUrl)" 
+                                         alt="Avatar Preview" class="rounded-circle shadow-lg border border-4 border-accent" style="width: 140px; height: 140px; object-fit: cover;">
+                                    <div class="camera-icon-badge">
+                                        <i class="fa-solid fa-camera"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-center">
+                                    <h6 class="fw-bold mb-1">@Model.Username</h6>
+                                    <p class="text-dim extra-small">@Model.Email</p>
+                                </div>
+                            </div>
+
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-12">
+                                    <div class="form-floating-custom">
+                                        <label class="form-label text-dim small uppercase tracking-wider fw-bold">Tên hiển thị</label>
+                                        <div class="input-with-icon">
+                                            <i class="fa-solid fa-user"></i>
+                                            <input asp-for="Username" class="custom-input" placeholder="Nhập tên người dùng..." required />
+                                        </div>
+                                        <span asp-validation-for="Username" class="text-danger extra-small ms-1"></span>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-12">
+                                    <div class="form-floating-custom">
+                                        <label class="form-label text-dim small uppercase tracking-wider fw-bold">URL Ảnh đại diện</label>
+                                        <div class="input-with-icon">
+                                            <i class="fa-solid fa-image"></i>
+                                            <input asp-for="AvatarUrl" id="avatarUrlInput" class="custom-input" placeholder="https://example.com/avatar.jpg" />
+                                        </div>
+                                        <div class="form-text x-small text-dim mt-2 px-1">Gợi ý: Sử dụng liên kết ảnh trực tiếp từ Google, Pinterest hoặc dịch vụ lưu trữ ảnh.</div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-12">
+                                    <div class="form-floating-custom">
+                                        <label class="form-label text-dim small uppercase tracking-wider fw-bold">Ngày sinh</label>
+                                        <div class="input-with-icon">
+                                            <i class="fa-solid fa-calendar"></i>
+                                            <input asp-for="DateOfBirth" type="date" class="custom-input" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-accent w-100 py-3 rounded-pill fw-black uppercase tracking-wider mt-4 shadow-lg shadow-accent/20">
+                                Lưu thay đổi <i class="fa-solid fa-check ms-2"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-gradient-accent {
+        background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%);
+    }
+
+    .glass-card {
+        background: rgba(40, 40, 40, 0.4);
+        backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 28px;
+    }
+
+    .profile-avatar-edit-wrapper {
+        position: relative;
+    }
+
+    .camera-icon-badge {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        background: var(--accent-primary);
+        color: white;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 3px solid #1a1a1a;
+        font-size: 0.9rem;
+    }
+
+    .custom-input {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        width: 100%;
+        padding: 14px 16px 14px 44px;
+        border-radius: 14px;
+        outline: none;
+        transition: 0.3s;
+    }
+
+    .custom-input:focus {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 15px rgba(108, 92, 231, 0.2);
+    }
+
+    .form-label {
+        margin-left: 4px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .input-with-icon {
+        position: relative;
+    }
+
+    .input-with-icon i {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-dim);
+        font-size: 1.1rem;
+    }
+
+    .btn-accent {
+        background: var(--accent-primary);
+        color: white;
+        border: none;
+        transition: 0.3s;
+    }
+
+    .btn-accent:hover {
+        background: var(--accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(108, 92, 231, 0.4);
+        color: white;
+    }
+    
+    .x-small { font-size: 0.75rem; }
+
+    .animate-fade-in {
+        animation: fadeIn 0.6s ease-out;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        const avatarInput = document.getElementById('avatarUrlInput');
+        const avatarPreview = document.getElementById('avatarPreview');
+
+        avatarInput.addEventListener('input', function() {
+            const url = this.value.trim();
+            if (url) {
+                avatarPreview.src = url;
+            } else {
+                avatarPreview.src = "https://ui-avatars.com/api/?name=@Model.Username&background=6C5CE7&color=fff&size=200";
+            }
+        });
+    </script>
+}

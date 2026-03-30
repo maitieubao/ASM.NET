@@ -1,73 +1,70 @@
 @model IEnumerable<YoutubeMusicPlayer.Application.DTOs.SongDto>
 
 @{
-    ViewData["Title"] = "Manage Songs";
+    ViewData["Title"] = "Quản lý bài hát";
 }
 
-<div class="management-container animate__animated animate__fadeIn">
-    <div class="management-header">
-        <h2 class="fw-bold mb-0">Songs Library</h2>
-        <div class="d-flex gap-2">
-            <a asp-action="Import" class="btn btn-outline-prem text-danger border-danger">
-                <i class="bi bi-lightning-fill me-2"></i> Fast Import
+<div class="auth-card p-5 animate__animated animate__fadeIn">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h1 class="fw-bold mb-2">Thư viện bài hát</h1>
+            <p class="text-muted small">Quản lý cơ sở dữ liệu nhạc và metadata của bạn.</p>
+        </div>
+        <div class="d-flex gap-3">
+            <a asp-action="Import" class="btn btn-outline-danger border-danger border-opacity-25 rounded-pill px-4">
+                <i class="fa-solid fa-bolt me-2"></i> Nhập nhanh
             </a>
-            <a asp-action="Create" class="btn btn-premium">
-                <i class="bi bi-music-note me-2"></i> Add Manually
+            <a asp-action="Create" class="btn btn-primary premium-gradient border-0 rounded-pill px-5">
+                <i class="fa-solid fa-plus me-2"></i> Thêm thủ công
             </a>
         </div>
     </div>
 
     <div class="table-responsive">
-        <table class="table-glass">
+        <table class="modern-table">
             <thead>
                 <tr>
-                    <th>Title</th>
-                    <th>Genre</th>
-                    <th>ISRC</th>
-                    <th>YouTube ID</th>
-                    <th>Plays</th>
-                    <th class="text-end">Actions</th>
+                    <th>Tên bài hát</th>
+                    <th>Thể loại</th>
+                    <th>DỮ LIỆU YouTube</th>
+                    <th>LƯỢT NGHE</th>
+                    <th class="text-end">THAO TÁC</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var item in Model) {
                 <tr>
-                    <td class="fw-bold fs-5">@item.Title @(item.IsExplicit ? "🔞" : "")</td>
+                    <td>
+                        <div class="fw-bold">@item.Title @(item.IsExplicit ? "🔞" : "")</div>
+                        <div class="text-muted extra-small mt-1 px-1">ISRC: @item.Isrc</div>
+                    </td>
                     <td>
                         @if (item.GenreNames != null && item.GenreNames.Any()) {
-                            @foreach (var gname in item.GenreNames) {
-                                <span class="badge bg-secondary opacity-50 fw-normal rounded-pill me-1" style="font-size: 0.7rem;">@gname</span>
+                            foreach (var gname in item.GenreNames) {
+                                <span class="tag-badge me-1" style="font-size: 0.65rem;">@gname</span>
                             }
                         } else {
-                            <span class="text-white-10">...</span>
+                            <span class="text-white-50 small">...</span>
                         }
                     </td>
-                    <td class="text-muted small">@item.Isrc</td>
                     <td>
                         @if (!string.IsNullOrEmpty(item.YoutubeVideoId)) {
-                        <a href="https://youtube.com/watch?v=@item.YoutubeVideoId" target="_blank" class="text-accent text-decoration-none">
-                            <code>@item.YoutubeVideoId</code>
-                        </a>
+                            <a href="https://youtube.com/watch?v=@item.YoutubeVideoId" target="_blank" class="text-accent small font-monospace">
+                                <code>@item.YoutubeVideoId</code>
+                            </a>
                         } else {
-                            <span class="text-muted">No ID</span>
+                            <span class="text-muted small">Chưa có ID</span>
                         }
                     </td>
-                    <td><span class="badge bg-dark">@item.PlayCount.ToString("N0")</span></td>
+                    <td>
+                        <span class="badge bg-secondary bg-opacity-10 text-main fw-bold">@item.PlayCount.ToString("N0")</span>
+                    </td>
                     <td class="text-end">
-                        <div class="d-flex justify-content-end gap-2">
-                             <a asp-action="Edit" asp-route-id="@item.SongId" class="btn-outline-prem">
-                                <i class="bi bi-pencil-square"></i>
-                            </a>
-                            <a asp-action="Delete" asp-route-id="@item.SongId" class="btn-outline-prem text-danger">
-                                <i class="bi bi-trash"></i>
-                            </a>
+                        <div class="d-flex justify-content-end gap-3">
+                             <a asp-action="Edit" asp-route-id="@item.SongId" class="text-dim hover-text-main"><i class="fa-solid fa-pen-to-square"></i></a>
+                             <a asp-action="Delete" asp-route-id="@item.SongId" class="text-muted hover-text-danger"><i class="fa-solid fa-trash-can"></i></a>
                         </div>
                     </td>
-                </tr>
-                }
-                @if (!Model.Any()) {
-                <tr>
-                    <td colspan="6" class="text-center py-5 text-muted small">Your music collection is empty.</td>
                 </tr>
                 }
             </tbody>

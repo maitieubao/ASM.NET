@@ -1,0 +1,109 @@
+@model YoutubeMusicPlayer.Application.DTOs.GenreDetailsDto
+
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="genre-details-container">
+    <div class="genre-header" style="background: linear-gradient(to bottom, #1db954, #121212);">
+        <div class="header-content">
+            <h1 class="display-1 fw-bold">@Model.Name</h1>
+            <p class="lead">@Model.Description</p>
+            <div class="stats mt-3">
+                <span class="badge rounded-pill bg-light text-dark">@Model.Songs.Count() Tracks</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tracklist-section p-4">
+        <h3 class="mb-4">Popular in @Model.Name</h3>
+        
+        <table class="table table-dark table-hover tracklist">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 50px">#</th>
+                    <th scope="col">Title</th>
+                    <th scope="col" class="d-none d-md-table-cell">Plays</th>
+                    <th scope="col" style="width: 100px"><i class="bi bi-clock"></i></th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int i = 1; }
+                @foreach (var song in Model.Songs)
+                {
+                    <tr class="track-row" onclick="playMusic('@song.YoutubeVideoId', '@song.Title', '@(song.AuthorName ?? "Unknown")', '@song.ThumbnailUrl')">
+                        <td>@i</td>
+                        <td>
+                            <div class="track-info d-flex align-items-center">
+                                <img src="@song.ThumbnailUrl" alt="@song.Title" class="me-3 rounded shadow-sm" style="width: 45px; height: 45px; object-fit: cover;">
+                                <div>
+                                    <div class="fw-bold text-white">@song.Title</div>
+                                    <small class="text-secondary">@(song.AuthorName ?? "Unknown")</small>
+                                    @if(song.IsPremiumOnly) {
+                                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">PREMIUM</span>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+                        <td class="d-none d-md-table-cell">@song.PlayCount.ToString("N0")</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span class="me-3">@(song.Duration.HasValue ? TimeSpan.FromSeconds(song.Duration.Value).ToString(@"m\:ss") : "--:--")</span>
+                                <div class="btn-group dropstart">
+                                    <button class="btn btn-link text-white p-0" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+                                    <ul class="dropdown-menu dropdown-menu-dark shadow-lg border-secondary">
+                                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="addToPlaylist(@song.SongId)"><i class="bi bi-plus-circle me-2"></i>Add to Playlist</a></li>
+                                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="toggleLike(@song.SongId)"><i class="bi bi-heart me-2"></i>Like</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    i++;
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .genre-details-container {
+        min-height: 100vh;
+        background: #121212;
+    }
+
+    .genre-header {
+        height: 40vh;
+        display: flex;
+        align-items: flex-end;
+        padding: 4rem;
+    }
+
+    .header-content h1 {
+        font-size: clamp(3rem, 8vw, 6rem);
+    }
+
+    .tracklist-section {
+        background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);
+    }
+
+    .track-row {
+        cursor: pointer;
+        transition: background 0.2s ease;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .track-row:hover {
+        background: rgba(255,255,255,0.1) !important;
+    }
+
+    .track-row { vertical-align: middle; }
+
+    .track-row td {
+        padding: 0.75rem;
+    }
+
+    .table-dark {
+        --bs-table-bg: transparent;
+    }
+</style>

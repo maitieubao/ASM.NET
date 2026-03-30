@@ -10,15 +10,14 @@ namespace YoutubeMusicPlayer.Application.Services;
 
 public class PayOSService : IPayOSService
 {
-    private readonly PayOSClient _payOS;
+    private readonly PayOS.PayOSClient _payOS;
 
     public PayOSService(IConfiguration configuration)
     {
         string clientId = configuration["PayOS:ClientId"] ?? "";
         string apiKey = configuration["PayOS:ApiKey"] ?? "";
         string checksumKey = configuration["PayOS:ChecksumKey"] ?? "";
-        // In some versions it may require the partner code as well, but 3 parameters is standard
-        _payOS = new PayOSClient(clientId, apiKey, checksumKey);
+        _payOS = new PayOS.PayOSClient(clientId, apiKey, checksumKey);
     }
 
     public async Task<CreatePaymentLinkResponse> CreatePaymentLinkAsync(int userId, int planId, long orderCode, int amount, string description, string returnUrl, string cancelUrl)
@@ -50,8 +49,17 @@ public class PayOSService : IPayOSService
 
     public bool VerifyWebhookData(Webhook webhookData)
     {
-        // For production, you would call _payOS.Webhooks.VerifyAsync or check the signature
-        // The VerifyAsync returns the WebhookData if valid, or throws WebhookException
-        return webhookData.Success && webhookData.Data != null;
+        try
+        {
+            // The PayOS .NET SDK handles signature verification via the client
+            dynamic p = _payOS;
+            var verifiedData = p.verifyPaymentData(webhookData);
+            return verifiedData != null && webhookData.Success;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PayOS] Webhook Verification Failed: {ex.Message}");
+            return false;
+        }
     }
 }

@@ -24,6 +24,12 @@
             </div>
 
             <div class="mb-3">
+                <label asp-for="DateOfBirth" class="form-label text-white-50">Ngày sinh</label>
+                <input asp-for="DateOfBirth" type="date" class="form-control bg-dark border-secondary text-white rounded-pill px-4" />
+                <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
                 <label asp-for="Password" class="form-label text-white-50">Password</label>
                 <input asp-for="Password" type="password" class="form-control bg-dark border-secondary text-white rounded-pill px-4" placeholder="••••••••" />
                 <span asp-validation-for="Password" class="text-danger small"></span>

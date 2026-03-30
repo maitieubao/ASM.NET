@@ -1,0 +1,204 @@
+@model YoutubeMusicPlayer.Application.DTOs.PlaylistDto
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="playlist-details-container animate-fade-in">
+    <!-- HEADER -->
+    <div class="playlist-hero mb-5">
+        <div class="playlist-hero-bg" style="background-image: url('@(string.IsNullOrEmpty(Model.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + Model.Title + "&background=6C5CE7&color=fff&size=512" : Model.CoverImageUrl)')"></div>
+        <div class="playlist-hero-content d-flex align-items-end p-4 p-md-5">
+            <div class="playlist-thumb shadow-2xl me-4">
+                <img src="@(string.IsNullOrEmpty(Model.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + Model.Title + "&background=6C5CE7&color=fff&size=512" : Model.CoverImageUrl)" 
+                     alt="@Model.Title" class="rounded-4">
+            </div>
+            <div class="playlist-info">
+                <span class="badge bg-white bg-opacity-10 text-white px-3 py-2 rounded-pill small fw-bold tracking-wider uppercase mb-3">PLAYLIST</span>
+                <h1 class="display-2 fw-black mb-1">@Model.Title</h1>
+                <p class="text-dim mb-3">@Model.Description</p>
+                <div class="d-flex align-items-center gap-3 text-white-50 small">
+                    <span class="fw-bold text-main">@((User.Identity?.Name) ?? "User")</span>
+                    <span>•</span>
+                    <span>@Model.Songs.Count() bài hát</span>
+                    <span>•</span>
+                    <span>Hơn 1 giờ</span>
+                </div>
+                <div class="mt-4 d-flex align-items-center gap-3">
+                    <button class="btn btn-accent rounded-circle p-3 shadow-lg" style="width: 56px; height: 56px;" onclick="playPlaylist(@Model.PlaylistId)">
+                        <i class="fa-solid fa-play fs-4 ps-1"></i>
+                    </button>
+                    <button class="btn btn-outline-light border-opacity-25 rounded-circle p-3" style="width: 50px; height: 50px;">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+                    <button class="btn btn-outline-light border-opacity-25 rounded-circle p-3">
+                        <i class="fa-solid fa-ellipsis"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SONGS LIST -->
+    <div class="glass-card overflow-hidden">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th class="ps-4">#</th>
+                    <th>Tiêu đề bài hát</th>
+                    <th class="d-none d-md-table-cell">Thời lượng</th>
+                    <th class="text-end pe-4">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int i = 1; }
+                @foreach (var s in Model.Songs)
+                {
+                    <tr class="song-row" onclick="playSingleTrack('@s.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(s.Title)', 'Playlist: @System.Web.HttpUtility.JavaScriptStringEncode(Model.Title)', '@s.ThumbnailUrl')">
+                        <td class="ps-4 text-dim fw-bold">@i</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="@s.ThumbnailUrl" class="rounded me-3" style="width: 44px; height: 44px; object-fit: cover;">
+                                <div>
+                                    <div class="fw-bold text-main">@s.Title</div>
+                                    <div class="text-dim extra-small">YouTube Player</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="d-none d-md-table-cell text-dim small">@(s.Duration.HasValue ? TimeSpan.FromSeconds(s.Duration.Value).ToString(@"mm\:ss") : "--:--")</td>
+                        <td class="text-end pe-4">
+                            <div class="d-flex align-items-center justify-content-end gap-2 action-group">
+                                <button class="btn btn-icon btn-like @(s.IsLiked ? "liked" : "")" onclick="event.stopPropagation(); toggleLike(@s.SongId, this)">
+                                    <i class="fa-solid fa-heart"></i>
+                                </button>
+                                <button class="btn btn-icon" onclick="event.stopPropagation(); openAddToPlaylist(@s.SongId, '@s.YoutubeVideoId')">
+                                    <i class="fa-solid fa-ellipsis-v"></i>
+                                </button>
+                                <form asp-action="RemoveSong" method="post" onsubmit="event.stopPropagation(); return confirm('Gỡ bài hát này khỏi playlist?')" class="d-inline">
+                                    <input type="hidden" name="playlistId" value="@Model.PlaylistId" />
+                                    <input type="hidden" name="songId" value="@s.SongId" />
+                                    <button type="submit" class="btn btn-icon text-danger hover-bg-danger bg-opacity-10">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    i++;
+                }
+
+                @if (!Model.Songs.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-dim">
+                            <i class="fa-solid fa-music display-4 mb-3 opacity-10"></i>
+                            <p>Playlist này chưa có bài hát nào.<br/>Nhấn vào các bài gợi ý để thêm vào nhé!</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .playlist-details-container { padding-bottom: 50px; }
+    
+    .playlist-hero {
+        position: relative;
+        height: 420px;
+        border-radius: 24px;
+        overflow: hidden;
+        margin-top: -16px; 
+    }
+    
+    .playlist-hero-bg {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        filter: blur(80px) brightness(0.4);
+        transform: scale(1.2);
+    }
+    
+    .playlist-hero-content {
+        position: relative;
+        height: 100%;
+        background: linear-gradient(to top, rgba(15, 15, 15, 0.95) 0%, transparent 100%);
+        z-index: 1;
+    }
+    
+    .playlist-thumb img {
+        width: 280px;
+        height: 280px;
+        object-fit: cover;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .song-row {
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    
+    .song-row:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+    
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-dim);
+        border: none;
+        background: transparent;
+        transition: 0.2s;
+    }
+    
+    .btn-icon:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: white;
+    }
+    
+    .btn-like.liked {
+        color: #ff4757;
+    }
+    
+    .btn-like:hover {
+        color: #ff4757;
+    }
+    
+    .action-group {
+        opacity: 0;
+        transition: 0.2s;
+    }
+    
+    .song-row:hover .action-group {
+        opacity: 1;
+    }
+    
+    .animate-fade-in {
+        animation: fadeIn 0.8s ease-out;
+    }
+    
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script>
+    async function toggleLike(songId, btn) {
+        try {
+            const formData = new FormData();
+            formData.append('songId', songId);
+            const res = await fetch('/Interaction/ToggleLike', { method: 'POST', body: formData });
+            const data = await res.json();
+            if(data.success) {
+                if(data.isLiked) btn.classList.add('liked');
+                else btn.classList.remove('liked');
+            }
+        } catch(e) {}
+    }
+</script>

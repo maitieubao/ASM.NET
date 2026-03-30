@@ -20,9 +20,7 @@ builder.Services.AddMemoryCache();
 // Performance// 2. Database (Tối ưu hóa tốc độ bằng pooling và giảm độ trễ DNS)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContextPool<AppDbContext>(options =>
-    options.UseNpgsql(connectionString, npgsqlOptions => {
-        npgsqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
-    }));
+    options.UseNpgsql(connectionString));
 
 // Authentication & Identity
 builder.Services.AddAuthentication(options =>
@@ -50,15 +48,165 @@ builder.Services.AddScoped<IAlbumService, AlbumService>();
 builder.Services.AddScoped<IGenreService, GenreService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IInteractionService, InteractionService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IPlaylistService, PlaylistService>();
 builder.Services.AddScoped<IPayOSService, PayOSService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
+// --- NEW REFINED ARCHITECTURE (Background Processing) ---
+builder.Services.AddSingleton<IBackgroundQueue, BackgroundQueue>();
+builder.Services.AddHostedService<MusicBackgroundWorker>();
 
 // External Services
 builder.Services.AddScoped<IYoutubeService, YoutubeService>();
+builder.Services.AddHttpClient<ILyricsService, LyricsService>();
+builder.Services.AddHttpClient<ISpotifyService, DeezerService>();
 builder.Services.AddScoped<IWikipediaService, WikipediaService>();
 
 var app = builder.Build();
+
+// --- SELF-HEALING DATABASE MIGRATION ---
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        // ONE-TIME RESET FOR TRENDING ALBUMS (Force refresh from Deezer)
+        context.Database.ExecuteSqlRaw("TRUNCATE TABLE songartists CASCADE; TRUNCATE TABLE albumartists CASCADE; TRUNCATE TABLE songlikes CASCADE; TRUNCATE TABLE playlistsongs CASCADE; DELETE FROM songs; DELETE FROM albums;");
+        Console.WriteLine("[DB INIT] Albums and Songs cleared for fresh Deezer sync.");
+        
+        // Add lyricstext to songs if missing
+        // ... (rest of migration logic)
+        context.Database.ExecuteSqlRaw(@"
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='songs' AND column_name='lyricstext') THEN
+                    ALTER TABLE songs ADD COLUMN lyricstext text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='artists' AND column_name='bio') THEN
+                    ALTER TABLE artists ADD COLUMN bio text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='total_listen_seconds') THEN
+                    ALTER TABLE users ADD COLUMN total_listen_seconds double precision DEFAULT 0;
+                END IF;
+
+                -- Fix missing columns in reports
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='details') THEN
+                    ALTER TABLE reports ADD COLUMN details text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='status') THEN
+                    ALTER TABLE reports ADD COLUMN status text DEFAULT 'Pending';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='reason') THEN
+                    ALTER TABLE reports ADD COLUMN reason text NOT NULL DEFAULT 'User Report';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='resolvedat') THEN
+                    ALTER TABLE reports ADD COLUMN resolvedat timestamp with time zone;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='targettype') THEN
+                    ALTER TABLE reports ADD COLUMN targettype text NOT NULL DEFAULT 'Song';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='targetid') THEN
+                    ALTER TABLE reports ADD COLUMN targetid text NOT NULL DEFAULT '0';
+                END IF;
+
+                -- Fix missing columns in notifications
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='type') THEN
+                    ALTER TABLE notifications ADD COLUMN type text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='isread') THEN
+                    ALTER TABLE notifications ADD COLUMN isread boolean DEFAULT false;
+                END IF;
+
+                -- Fix missing columns in playlists
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='playlists' AND column_name='featuredtype') THEN
+                    ALTER TABLE playlists ADD COLUMN featuredtype text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='playlists' AND column_name='isfeatured') THEN
+                    ALTER TABLE playlists ADD COLUMN isfeatured boolean DEFAULT false;
+                END IF;
+
+                -- Fix missing columns in genres
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='genres' AND column_name='description') THEN
+                    ALTER TABLE genres ADD COLUMN description TEXT;
+                END IF;
+
+                -- Premium & Content Security
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='dateofbirth') THEN
+                    ALTER TABLE users ADD COLUMN dateofbirth TIMESTAMP WITH TIME ZONE;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='playlists' AND column_name='visibility') THEN
+                    ALTER TABLE playlists ADD COLUMN visibility TEXT DEFAULT 'Public';
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='playlistsongs' AND column_name='position') THEN
+                    ALTER TABLE playlistsongs ADD COLUMN position INTEGER DEFAULT 0;
+                END IF;
+
+                -- Fix missing tables
+                CREATE TABLE IF NOT EXISTS categories (
+                    categoryid SERIAL PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    description TEXT,
+                    createdat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS reports (
+                    reportid SERIAL PRIMARY KEY,
+                    userid INTEGER NOT NULL REFERENCES users(userid),
+                    targettype TEXT NOT NULL,
+                    targetid TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    details TEXT,
+                    status TEXT DEFAULT 'Pending',
+                    createdat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    resolvedat TIMESTAMP WITH TIME ZONE
+                );
+
+                CREATE TABLE IF NOT EXISTS notifications (
+                    notificationid SERIAL PRIMARY KEY,
+                    userid INTEGER REFERENCES users(userid),
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    type TEXT,
+                    isread BOOLEAN DEFAULT FALSE,
+                    createdat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS user_genre_stats (
+                    statid SERIAL PRIMARY KEY,
+                    userid INTEGER NOT NULL,
+                    genre_name VARCHAR(100) NOT NULL,
+                    listen_seconds DOUBLE PRECISION DEFAULT 0,
+                    updatedat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS songlikes (
+                    userid INTEGER NOT NULL REFERENCES users(userid),
+                    songid INTEGER NOT NULL REFERENCES songs(songid),
+                    likedat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (userid, songid)
+                );
+
+                CREATE TABLE IF NOT EXISTS artist_followers (
+                    userid INTEGER NOT NULL REFERENCES users(userid),
+                    artistid INTEGER NOT NULL REFERENCES artists(artistid),
+                    followedat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (userid, artistid)
+                );
+            END $$;");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[DB INIT] Warning: {ex.Message}. Make sure database is reachable.");
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -70,7 +218,7 @@ if (!app.Environment.IsDevelopment())
 // Thêm hệ thống giám sát Request
 app.Use(async (context, next) =>
 {
-    Console.WriteLine($"[MONITOR] Request: {context.Request.Method} {context.Request.Path}");
+    Console.WriteLine($"[MONITOR] Request: {context.Request.Method} {context.Request.Path}{context.Request.QueryString}");
     await next();
 });
 

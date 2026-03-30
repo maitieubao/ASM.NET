@@ -144,11 +144,11 @@ public class AuthController : Controller
             new Claim(ClaimTypes.Name, user.Username),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role),
+            new Claim("IsPremium", user.IsPremium.ToString()),
         };
 
         if (!string.IsNullOrEmpty(user.AvatarUrl))
         {
-            // Adding a custom claim for Avatar
             claims.Add(new Claim("AvatarUrl", user.AvatarUrl));
         }
 

@@ -11,4 +11,7 @@ public interface IAlbumService
     Task CreateAlbumAsync(AlbumDto albumDto);
     Task UpdateAlbumAsync(AlbumDto albumDto);
     Task DeleteAlbumAsync(int id);
+    Task<IEnumerable<AlbumDto>> GetRecentAlbumsAsync(int count);
+    Task<IEnumerable<AlbumDto>> SearchAlbumsAsync(string query);
+    Task<IEnumerable<AlbumDto>> GetTrendingAlbumsAsync(int count);
 }

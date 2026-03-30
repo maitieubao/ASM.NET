@@ -22,18 +22,13 @@ public class AuthService : IAuthService
         var user = await _unitOfWork.Repository<User>().FirstOrDefaultAsync(u => u.Email == email);
         if (user == null || user.PasswordHash == null) return null;
 
+        if (user.IsLocked)
+            throw new Exception("Your account has been locked. Please contact support.");
+
         bool isValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
         if (!isValid) return null;
 
-        return new UserDto
-        {
-            UserId = user.UserId,
-            Username = user.Username,
-            Email = user.Email,
-            Role = user.Role,
-            AvatarUrl = user.AvatarUrl,
-            CreatedAt = user.CreatedAt
-        };
+        return MapToDto(user);
     }
 
     public async Task<UserDto> RegisterAsync(RegisterDto dto)
@@ -48,26 +43,23 @@ public class AuthService : IAuthService
             Email = dto.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             Role = "Customer",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            DateOfBirth = dto.DateOfBirth
         };
 
         await _unitOfWork.Repository<User>().AddAsync(user);
         await _unitOfWork.CompleteAsync();
 
-        return new UserDto
-        {
-            UserId = user.UserId,
-            Username = user.Username,
-            Email = user.Email,
-            Role = user.Role,
-            CreatedAt = user.CreatedAt
-        };
+        return MapToDto(user);
     }
 
     public async Task<UserDto> AuthenticateGoogleUserAsync(string email, string name, string googleId, string? avatarUrl)
     {
         var user = await _unitOfWork.Repository<User>().FirstOrDefaultAsync(u => u.Email == email);
         
+        if (user != null && user.IsLocked)
+            throw new Exception("Your account has been locked. Please contact support.");
+
         if (user == null)
         {
             user = new User
@@ -78,14 +70,13 @@ public class AuthService : IAuthService
                 AvatarUrl = avatarUrl,
                 Role = "Customer",
                 CreatedAt = DateTime.UtcNow,
-                PasswordHash = "GOOGLE_AUTH_USER" // Gán giá trị giả để thỏa mãn NOT NULL constraint của DB
+                PasswordHash = "GOOGLE_AUTH_USER"
             };
             await _unitOfWork.Repository<User>().AddAsync(user);
             await _unitOfWork.CompleteAsync();
         }
         else if (user.GoogleId == null)
         {
-            // Link existing account to Google
             user.GoogleId = googleId;
             if (string.IsNullOrEmpty(user.AvatarUrl))
                 user.AvatarUrl = avatarUrl;
@@ -93,22 +84,18 @@ public class AuthService : IAuthService
             await _unitOfWork.CompleteAsync();
         }
 
-        return new UserDto
-        {
-            UserId = user.UserId,
-            Username = user.Username,
-            Email = user.Email,
-            Role = user.Role,
-            AvatarUrl = user.AvatarUrl,
-            CreatedAt = user.CreatedAt
-        };
+        return MapToDto(user);
     }
 
     public async Task<UserDto?> GetUserByIdAsync(int userId)
     {
         var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
         if (user == null) return null;
+        return MapToDto(user);
+    }
 
+    private UserDto MapToDto(User user)
+    {
         return new UserDto
         {
             UserId = user.UserId,
@@ -116,7 +103,10 @@ public class AuthService : IAuthService
             Email = user.Email,
             Role = user.Role,
             AvatarUrl = user.AvatarUrl,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            IsPremium = user.IsPremium,
+            IsLocked = user.IsLocked,
+            DateOfBirth = user.DateOfBirth
         };
     }
 }

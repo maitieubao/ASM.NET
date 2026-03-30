@@ -1,78 +1,125 @@
 @model IEnumerable<YoutubeMusicPlayer.Application.DTOs.PlaylistDto>
-
 @{
-    ViewData["Title"] = "My Playlists";
+    ViewData["Title"] = "Thư viện của tôi";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4 mt-3">
-    <h2 class="text-white fw-bold"><i class="bi bi-music-note-list me-2"></i> My Playlists</h2>
-    <button class="btn btn-primary rounded-pill pe-4 ps-3 fw-bold" style="background: linear-gradient(45deg, #1db954, #1ed760); border: none;" data-bs-toggle="modal" data-bs-target="#createPlaylistModal">
-        <i class="bi bi-plus-lg me-2"></i> Create Playlist
-    </button>
-</div>
-
-<div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
-    @if (!Model.Any())
-    {
-        <div class="col-12 text-center py-5">
-            <div class="text-white-50 fs-5">
-                <i class="bi bi-disc fs-1 d-block mb-3"></i>
-                You don't have any playlists yet.<br/>
-                Create one to start saving your favorite songs!
-            </div>
+<div class="library-container animate-fade-in">
+    <div class="d-flex justify-content-between align-items-end mb-5">
+        <div>
+            <h1 class="display-4 fw-black m-0 text-white">Thư viện của tôi</h1>
+            <p class="text-dim m-0">Quản lý và thưởng thức các danh sách phát của bạn</p>
         </div>
-    }
-    else
-    {
-        @foreach (var playlist in Model)
+        <button class="btn btn-accent rounded-pill px-4 py-2 fw-bold shadow-lg shadow-accent/20" data-bs-toggle="modal" data-bs-target="#createPlaylistModal">
+            <i class="fa-solid fa-plus me-2"></i> Tạo Playlist mới
+        </button>
+    </div>
+
+    <!-- PLAYLISTS GRID -->
+    <div class="music-grid">
+        @if (!Model.Any())
         {
-            <div class="col">
-                <div class="card bg-dark-glass h-100 border-secondary border-opacity-25 shadow-sm playlist-card">
-                    <div class="position-relative">
-                        <img src="@(playlist.CoverImageUrl ?? "/images/default-playlist.png")" class="card-img-top object-fit-cover" style="height: 200px; background-color: #282828;" alt="@playlist.Title">
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title text-white fw-bold mb-1 text-truncate">@playlist.Title</h5>
-                        <p class="card-text text-white-50 small mb-3">@playlist.SongIds.Count() songs</p>
-                        <p class="card-text text-white-50 small text-truncate">@playlist.Description</p>
-                    </div>
-                    <div class="card-footer bg-transparent border-0 pt-0 d-flex justify-content-between">
-                        <form asp-action="Delete" method="post" onsubmit="return confirm('Are you sure you want to delete this playlist?');">
-                            <input type="hidden" name="playlistId" value="@playlist.PlaylistId" />
-                            <button type="submit" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash3"></i> Delete</button>
-                        </form>
-                        <a href="#" class="btn btn-sm btn-outline-light rounded-pill px-3">View</a>
-                    </div>
+            <div class="col-12 text-center py-5 glass-card">
+                <div class="text-dim">
+                    <i class="fa-solid fa-compact-disc display-1 d-block mb-4 opacity-10"></i>
+                    <p class="fs-5">Bạn chưa có playlist nào.</p>
+                    <button class="btn btn-outline-accent rounded-pill px-4 mt-2" data-bs-toggle="modal" data-bs-target="#createPlaylistModal">Bắt đầu ngay</button>
                 </div>
             </div>
         }
-    }
+        else
+        {
+            @foreach (var p in Model)
+            {
+                <div class="music-card group" onclick="window.location.href='/Playlist/Details/@p.PlaylistId'">
+                    <div class="card-thumb-wrapper">
+                        <img src="@(string.IsNullOrEmpty(p.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + p.Title + "&background=282828&color=fff&size=512" : p.CoverImageUrl)" alt="@p.Title">
+                        <div class="card-play-btn" onclick="event.stopPropagation(); playPlaylist(@p.PlaylistId)">
+                            <i class="fa-solid fa-play"></i>
+                        </div>
+                    </div>
+                    <div class="card-content mt-3">
+                        <h6 class="card-title text-main fw-bold mb-1">@p.Title</h6>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-dim extra-small">@p.SongIds.Count() bài hát</span>
+                            <form asp-action="Delete" method="post" onsubmit="event.stopPropagation(); return confirm('Xóa playlist này?')">
+                                <input type="hidden" name="playlistId" value="@p.PlaylistId" />
+                                <button type="submit" class="btn btn-link text-dim hover-text-danger p-0 border-0 extra-small">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
 </div>
 
 <!-- Create Playlist Modal -->
-<div class="modal fade" id="createPlaylistModal" tabindex="-1" aria-hidden="true" data-bs-theme="dark">
+<div class="modal fade" id="createPlaylistModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content bg-dark border-secondary">
-            <div class="modal-header border-secondary border-opacity-25">
-                <h5 class="modal-title text-white">Create New Playlist</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content glass-card border-0 shadow-2xl overflow-hidden p-0">
+            <div class="modal-header bg-gradient-accent border-0 p-4">
+                <h5 class="modal-title fw-black text-white"><i class="fa-solid fa-folder-plus me-2"></i> Tạo Playlist</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form asp-action="Create" method="post">
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label for="title" class="form-label text-white-50">Playlist Name</label>
-                        <input type="text" class="form-control bg-dark border-secondary text-white rounded-3" id="title" name="title" required placeholder="e.g. Chill Vibes">
+                @Html.AntiForgeryToken()
+                <div class="modal-body p-4 bg-dark bg-opacity-50">
+                    <div class="mb-4">
+                        <label class="form-label text-dim small uppercase tracking-wider fw-bold">Tên Playlist</label>
+                        <input type="text" name="title" class="custom-input-simple" placeholder="Ví dụ: Nhạc chill cuối tuần..." required />
                     </div>
-                    <div class="mb-3">
-                        <label for="description" class="form-label text-white-50">Description (Optional)</label>
-                        <textarea class="form-control bg-dark border-secondary text-white rounded-3" id="description" name="description" rows="3" placeholder="Describe your playlist..."></textarea>
+                    <div class="mb-2">
+                        <label class="form-label text-dim small uppercase tracking-wider fw-bold">Mô tả (Không bắt buộc)</label>
+                        <textarea name="description" class="custom-input-simple" rows="3" placeholder="Ghi chú về playlist này..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-secondary border-opacity-25">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4" style="background: linear-gradient(45deg, #1db954, #1ed760); border: none;">Create</button>
+                <div class="modal-footer bg-dark bg-opacity-50 border-0 p-4 pt-0">
+                    <button type="button" class="btn btn-link text-dim text-decoration-none fw-bold" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-accent rounded-pill px-4 fw-bold shadow-lg">Tạo ngay</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<style>
+    .library-container { padding-bottom: 50px; }
+    
+    .custom-input-simple {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        outline: none;
+        transition: 0.3s;
+    }
+    
+    .custom-input-simple:focus {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--accent-primary);
+    }
+    
+    .bg-gradient-accent {
+        background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%);
+    }
+
+    .glass-card {
+        background: rgba(40, 40, 40, 0.4);
+        backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 24px;
+    }
+    
+    .animate-fade-in {
+        animation: fadeIn 0.8s ease-out;
+    }
+    
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>

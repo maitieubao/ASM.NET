@@ -8,10 +8,15 @@ public interface IPlaylistService
 {
     Task<PlaylistDto> CreatePlaylistAsync(int userId, string title, string? description);
     Task<IEnumerable<PlaylistDto>> GetUserPlaylistsAsync(int userId);
-    Task<PlaylistDto?> GetPlaylistByIdAsync(int playlistId);
-    Task AddSongToPlaylistAsync(int playlistId, int songId, int userId);
-    Task RemoveSongFromPlaylistAsync(int playlistId, int songId, int userId);
-    Task DeletePlaylistAsync(int playlistId, int userId);
+    Task<PlaylistDto?> GetPlaylistByIdAsync(int playlistId, int? userId = null);
+    Task AddSongToPlaylistAsync(int playlistId, int songId, int? userId = null);
+    Task RemoveSongFromPlaylistAsync(int playlistId, int songId, int? userId = null);
+    Task DeletePlaylistAsync(int playlistId, int? userId = null);
+    
+    // Featured Playlists
+    Task<IEnumerable<PlaylistDto>> GetFeaturedPlaylistsAsync();
+    Task<PlaylistDto> CreateFeaturedPlaylistAsync(string title, string? featuredType, string? description, string? coverImageUrl);
+    Task UpdatePlaylistAsync(PlaylistDto dto);
 }
 
 

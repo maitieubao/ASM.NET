@@ -20,9 +20,8 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     public async Task<T?> GetByIdAsync(int id) => await _context.Set<T>().FindAsync(id);
 
     public async Task<IEnumerable<T>> GetAllAsync() => await _context.Set<T>().ToListAsync();
-
-    public IEnumerable<T> Find(Expression<Func<T, bool>> expression) => _context.Set<T>().Where(expression);
-
+    public IQueryable<T> Find(Expression<Func<T, bool>> expression) => _context.Set<T>().Where(expression);
+    public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> expression) => await _context.Set<T>().Where(expression).ToListAsync();
     public async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> expression) => await _context.Set<T>().FirstOrDefaultAsync(expression);
 
     public async Task<bool> AnyAsync(Expression<Func<T, bool>> expression) => await _context.Set<T>().AnyAsync(expression);
@@ -32,4 +31,5 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     public void Remove(T entity) => _context.Set<T>().Remove(entity);
 
     public void Update(T entity) => _context.Set<T>().Update(entity);
+    public IQueryable<T> Query() => _context.Set<T>();
 }

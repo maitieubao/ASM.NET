@@ -112,6 +112,30 @@ public class PlaylistController : Controller
         if (userId == 0) return Unauthorized();
 
         await _playlistService.RemoveSongFromPlaylistAsync(playlistId, songId, userId);
-        return RedirectToAction(nameof(Index)); // Or wherever
+        return RedirectToAction(nameof(Details), new { id = playlistId });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetPlaylistSongs(int id)
+    {
+        var userId = GetCurrentUserId();
+        var playlist = await _playlistService.GetPlaylistByIdAsync(id, userId);
+        if (playlist == null) return NotFound();
+        return Json(playlist.Songs.Select(s => new {
+            YoutubeVideoId = s.YoutubeVideoId,
+            Title = s.Title,
+            AuthorName = "Playlist: " + playlist.Title,
+            ThumbnailUrl = s.ThumbnailUrl
+        }));
+    }
+
+    public async Task<IActionResult> Details(int id)
+    {
+        var userId = GetCurrentUserId();
+        var playlist = await _playlistService.GetPlaylistByIdAsync(id, userId);
+        if (playlist == null) return NotFound();
+        if (playlist.UserId != userId && !User.IsInRole("Admin")) return Forbid();
+
+        return View(playlist);
     }
 }

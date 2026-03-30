@@ -19,4 +19,7 @@ public class RegisterDto
     [Required]
     [Compare("Password", ErrorMessage = "Passwords do not match")]
     public string ConfirmPassword { get; set; } = string.Empty;
+
+    [Required]
+    public DateTime DateOfBirth { get; set; }
 }

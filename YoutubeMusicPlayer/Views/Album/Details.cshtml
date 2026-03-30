@@ -1,0 +1,195 @@
+@model YoutubeMusicPlayer.Application.DTOs.AlbumDto
+@{
+    ViewData["Title"] = Model.Title + " - Album";
+    var totalDuration = Model.Songs.Sum(s => s.Duration ?? 0);
+    var formattedTotalDuration = TimeSpan.FromSeconds(totalDuration).ToString(@"h\ \g\i\ờ\ m\ \p\h\ú\t");
+    if (totalDuration < 3600) formattedTotalDuration = TimeSpan.FromSeconds(totalDuration).ToString(@"m\ \p\h\ú\t\ s\ \g\i\â\y");
+}
+
+<div class="album-details-page animate-fade-in">
+    <!-- 1. ALBUM HEADER (Stunning Backdrop) -->
+    <div class="album-header shadow-2xl relative overflow-hidden p-5 d-flex flex-column flex-md-row align-items-end gap-5">
+        <div id="albumBackground" class="album-dynamic-bg"></div>
+        <div class="album-static-backdrop" style="background-image: url('@(Model.CoverImageUrl ?? "https://placehold.co/400x400/222/white?text=" + Model.Title)')"></div>
+        
+        <div class="album-cover-xl shadow-2xl z-10">
+            <img id="albumCoverImg" src="@(Model.CoverImageUrl ?? "https://placehold.co/400x400/222/white?text=" + Model.Title)" crossorigin="anonymous">
+        </div>
+
+        <div class="album-info-content z-10 pb-2">
+            <div class="uppercase small fw-bold text-white mb-2" style="letter-spacing: 2px;">@Model.AlbumType</div>
+            <h1 class="album-title-xl fw-black text-white mb-3">@Model.Title</h1>
+            
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                @foreach (var artist in Model.Artists)
+                {
+                    <a href="/Artist/Details/@artist.ArtistId" class="d-flex align-items-center gap-2 text-decoration-none group">
+                        <img src="@(artist.AvatarUrl ?? "https://ui-avatars.com/api/?name=" + artist.Name)" class="rounded-pill" style="width: 24px; height: 24px; object-fit: cover;">
+                        <span class="fw-bold text-white group-hover-underline small">@artist.Name</span>
+                    </a>
+                    @if (artist != Model.Artists.Last()) { <span class="text-white-50 small">•</span> }
+                }
+                <div class="dot-separator mx-2 d-none d-md-block"></div>
+                <span class="text-white-50 small fw-bold">@Model.ReleaseYear</span>
+                <div class="dot-separator mx-2 d-none d-md-block"></div>
+                <span class="text-white-50 small fw-bold">@Model.Songs.Count() bài hát, @formattedTotalDuration</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. ACTION BAR -->
+    <div class="container-fluid px-5 py-4 d-flex align-items-center gap-4">
+        <button class="btn-play-rounded shadow-accent" onclick="playPlaylist(@Json.Serialize(Model.Songs))">
+            <i class="fa-solid fa-play"></i>
+        </button>
+        <button class="btn btn-outline-light rounded-pill px-4 fw-bold uppercase">Lưu vào thư viện</button>
+        <button class="btn btn-link text-white-50 p-2"><i class="fa-solid fa-download fs-5"></i></button>
+        <button class="btn btn-link text-white-50 p-2"><i class="fa-solid fa-ellipsis fs-4"></i></button>
+    </div>
+
+    <!-- 3. TRACKLIST -->
+    <div class="container-fluid px-5 pb-5">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle album-track-table">
+                <thead>
+                    <tr>
+                        <th class="text-center" style="width: 60px;">#</th>
+                        <th>Tiêu đề</th>
+                        <th class="text-end d-none d-md-table-cell">Lượt nghe</th>
+                        <th class="text-end" style="width: 150px;"><i class="fa-regular fa-clock me-2"></i></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int i = 1; }
+                    @foreach (var song in Model.Songs)
+                    {
+                        <tr class="track-row group" onclick="playSingleTrack('@song.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(song.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(song.AuthorName)', '@song.ThumbnailUrl')">
+                            <td class="text-center text-dim">
+                                <span class="track-number group-hover-hide">@i</span>
+                                <i class="fa-solid fa-play track-play-icon group-hover-show text-white"></i>
+                            </td>
+                            <td class="px-0" style="width: 48px;">
+                                <img src="@(song.ThumbnailUrl ?? "https://placehold.co/48x48/222/white?text=" + song.Title)" 
+                                     class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <div class="fw-bold text-white d-flex align-items-center gap-2">
+                                        @song.Title
+                                        @if(song.IsExplicit){ <span class="badge-explicit">E</span> }
+                                        @if(song.IsPremiumOnly){ <i class="fa-solid fa-gem text-accent small" title="Premium Only"></i> }
+                                    </div>
+                                    <div class="text-dim x-small">@song.AuthorName</div>
+                                </div>
+                            </td>
+                            <td class="text-end text-dim d-none d-md-table-cell small">@song.PlayCount.ToString("N0")</td>
+                            <td class="text-end">
+                                <div class="d-flex align-items-center justify-content-end gap-3">
+                                    <button class="btn-icon group-hover-visible" onclick="event.stopPropagation(); toggleLikeByYoutubeId('@song.YoutubeVideoId', this)">
+                                        <i class="fa-regular fa-heart"></i>
+                                    </button>
+                                    <span class="text-dim small">@(song.Duration.HasValue ? TimeSpan.FromSeconds(song.Duration.Value).ToString(@"m\:ss") : "--:--")</span>
+                                    <button class="btn-icon group-hover-visible" onclick="event.stopPropagation(); openAddToPlaylist(@song.SongId, '@song.YoutubeVideoId')">
+                                        <i class="fa-solid fa-ellipsis"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        i++;
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 4. FOOTER -->
+        <div class="mt-5 pt-5 border-top border-white border-opacity-5">
+            <div class="text-dim small mb-1">Ngày phát hành: @(Model.ReleaseDate?.ToString("dd MMMM, yyyy") ?? "N/A")</div>
+            <div class="text-dim small fw-bold">@Model.CopyrightText</div>
+            <div class="text-dim extra-small mt-2">@Model.RecordLabel</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+    <script>
+        window.addEventListener('load', function() {
+            const img = document.getElementById('albumCoverImg');
+            const bg = document.getElementById('albumBackground');
+            
+            if (img.complete) {
+                extractColor();
+            } else {
+                img.addEventListener('load', extractColor);
+            }
+
+            function extractColor() {
+                try {
+                    const colorThief = new ColorThief();
+                    const color = colorThief.getColor(img);
+                    const rgb = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                    const rgbaBody = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.8)`;
+                    bg.style.background = `linear-gradient(180deg, ${rgbaBody} 0%, #0c0c0c 100%)`;
+                } catch (e) {
+                    console.error("Color extraction failed:", e);
+                    bg.style.background = `linear-gradient(180deg, #333 0%, #0c0c0c 100%)`;
+                }
+            }
+        });
+
+        async function toggleLikeByYoutubeId(youtubeId, btn) {
+            try {
+                const formData = new FormData();
+                formData.append('youtubeId', youtubeId);
+                const res = await fetch('/Interaction/ToggleLikeByYoutubeId', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.success) {
+                    const icon = btn.querySelector('i');
+                    if(data.isLiked) {
+                        icon.className = 'fa-solid fa-heart text-accent';
+                    } else {
+                        icon.className = 'fa-regular fa-heart';
+                    }
+                }
+            } catch(e) {}
+        }
+    </script>
+}
+
+<style>
+    .album-dynamic-bg {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: #121212;
+        z-index: 1;
+        transition: 1.5s ease;
+        opacity: 0.85;
+    }
+    .album-static-backdrop {
+        position: absolute;
+        top: -50px; left: -50px; width: calc(100% + 100px); height: calc(100% + 100px);
+        background-size: cover;
+        background-position: center;
+        filter: blur(80px) saturate(1.8) brightness(0.6);
+        z-index: 0;
+        opacity: 0.6;
+    }
+    .album-header { min-height: 400px; padding-top: 100px !important; }
+    .album-cover-xl img { width: 232px; height: 232px; object-fit: cover; border-radius: 8px; box-shadow: 0 15px 50px rgba(0,0,0,0.6); }
+    .album-title-xl { font-size: clamp(32px, 5vw, 96px); letter-spacing: -2px; line-height: 0.9; }
+
+    .album-track-table thead th { background: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); color: #888; text-transform: uppercase; font-size: 11px; font-weight: bold; letter-spacing: 1px; padding: 15px; }
+    .track-row { cursor: pointer; border-bottom: 1px solid transparent; }
+    .track-row:hover { background: rgba(255,255,255,0.05); }
+    .track-row td { border-bottom: 0; padding: 12px 15px; }
+    
+    .track-play-icon { display: none; }
+    .group-hover-show { display: none; }
+    .track-row:hover .group-hover-hide { display: none; }
+    .track-row:hover .group-hover-show { display: inline-block; }
+    .group-hover-visible { opacity: 0; transition: 0.2s; }
+    .track-row:hover .group-hover-visible { opacity: 1; }
+
+    .btn-icon { background: transparent; border: 0; color: #888; transition: 0.2s; }
+    .btn-icon:hover { color: white; transform: scale(1.1); }
+</style>
