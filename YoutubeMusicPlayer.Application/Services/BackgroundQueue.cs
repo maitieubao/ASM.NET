@@ -20,10 +20,10 @@ public class BackgroundQueue : IBackgroundQueue
         _queue = Channel.CreateBounded<Func<IServiceProvider, Task>>(options);
     }
 
-    public void QueueBackgroundWorkItem(Func<IServiceProvider, Task> workItem)
+    public async ValueTask QueueBackgroundWorkItemAsync(Func<IServiceProvider, Task> workItem)
     {
         if (workItem == null) throw new ArgumentNullException(nameof(workItem));
-        _queue.Writer.TryWrite(workItem);
+        await _queue.Writer.WriteAsync(workItem);
     }
 
     public async Task<Func<IServiceProvider, Task>> DequeueAsync(CancellationToken cancellationToken)

@@ -10,4 +10,8 @@ public interface IAuthService
     Task<UserDto> RegisterAsync(RegisterDto registerDto);
     Task<UserDto> AuthenticateGoogleUserAsync(string email, string name, string googleId, string? avatarUrl);
     Task<UserDto?> GetUserByIdAsync(int userId);
+    
+    // Forgot Password Flow
+    Task<string?> ForgotPasswordAsync(string email); 
+    Task<bool> ResetPasswordAsync(string email, string token, string newPassword);
 }

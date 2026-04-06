@@ -1,28 +1,57 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using System;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
+using YoutubeMusicPlayer.Models.ViewModels;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Threading.Tasks;
+using YoutubeMusicPlayer.Application.Interfaces;
+using YoutubeMusicPlayer.Models;
 
 namespace YoutubeMusicPlayer.Controllers;
 
-public class SongController : Controller
+[Authorize(Roles = "Admin")]
+public class SongController : BaseController
 {
     private readonly ISongService _songService;
     private readonly IAlbumService _albumService;
     private readonly IGenreService _genreService;
+    private readonly IBackgroundQueue _backgroundQueue;
 
-    public SongController(ISongService songService, IAlbumService albumService, IGenreService genreService)
+    public SongController(
+        ISongService songService, 
+        IAlbumService albumService, 
+        IGenreService genreService,
+        IBackgroundQueue backgroundQueue)
     {
         _songService = songService;
         _albumService = albumService;
         _genreService = genreService;
+        _backgroundQueue = backgroundQueue;
     }
 
-    public async Task<IActionResult> Index()
+    [AllowAnonymous]
+    public async Task<IActionResult> Index(string? searchTerm, int page = 1)
     {
-        var songs = await _songService.GetAllSongsAsync();
-        return View(songs);
+        const int pageSize = 10;
+        var (songs, totalCount) = await _songService.GetPaginatedSongsAsync(page, pageSize, searchTerm);
+        
+        var viewModel = new SongIndexViewModel
+        {
+            Songs = songs,
+            TotalCount = totalCount,
+            CurrentPage = page,
+            PageSize = pageSize,
+            SearchTerm = searchTerm
+        };
+
+        return View(viewModel);
     }
 
     public IActionResult Import()
@@ -42,59 +71,98 @@ public class SongController : Controller
 
         try
         {
-            await _songService.ImportFromYoutubeAsync(videoUrl);
+            // Background processing
+            await _backgroundQueue.QueueBackgroundWorkItemAsync(async (serviceProvider) =>
+            {
+                await _songService.ImportFromYoutubeAsync(videoUrl);
+            });
+
+            TempData["SuccessMessage"] = "Yêu cầu nhập bài hát đang được xử lý ngầm. Bài hát sẽ xuất hiện trong giây lát.";
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
-            ModelState.AddModelError("", "Failed to import video details: " + ex.Message);
+            ModelState.AddModelError("", "Failed to queue import: " + ex.Message);
             return View();
         }
     }
 
     public async Task<IActionResult> Create()
     {
-        ViewBag.Albums = await _albumService.GetAllAlbumsAsync();
-        ViewBag.Genres = await _genreService.GetAllGenresAsync();
-        return View();
+        var albumsTask = _albumService.GetAllAlbumsAsync();
+        var genresTask = _genreService.GetAllGenresAsync();
+
+        await Task.WhenAll(albumsTask, genresTask);
+
+        var viewModel = new SongFormViewModel
+        {
+            Song = new SongDto(),
+            Albums = await albumsTask,
+            Genres = await genresTask
+        };
+
+        return View(viewModel);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(SongDto songDto)
+    public async Task<IActionResult> Create(SongFormViewModel model)
     {
-        // Handle Genre IDs from the form (checkboxes/multi-select)
         if (ModelState.IsValid)
         {
-            await _songService.CreateSongAsync(songDto);
+            await _songService.CreateSongAsync(model.Song);
             return RedirectToAction(nameof(Index));
         }
-        ViewBag.Albums = await _albumService.GetAllAlbumsAsync();
-        ViewBag.Genres = await _genreService.GetAllGenresAsync();
-        return View(songDto);
+
+        var albumsTask = _albumService.GetAllAlbumsAsync();
+        var genresTask = _genreService.GetAllGenresAsync();
+        await Task.WhenAll(albumsTask, genresTask);
+
+        model.Albums = await albumsTask;
+        model.Genres = await genresTask;
+
+        return View(model);
     }
 
     public async Task<IActionResult> Edit(int id)
     {
-        var song = await _songService.GetSongByIdAsync(id);
+        var songTask = _songService.GetSongByIdAsync(id);
+        var albumsTask = _albumService.GetAllAlbumsAsync();
+        var genresTask = _genreService.GetAllGenresAsync();
+
+        await Task.WhenAll(songTask, albumsTask, genresTask);
+
+        var song = await songTask;
         if (song == null) return NotFound();
-        ViewBag.Albums = await _albumService.GetAllAlbumsAsync();
-        ViewBag.Genres = await _genreService.GetAllGenresAsync();
-        return View(song);
+
+        var viewModel = new SongFormViewModel
+        {
+            Song = song,
+            Albums = await albumsTask,
+            Genres = await genresTask
+        };
+
+        return View(viewModel);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(SongDto songDto)
+    public async Task<IActionResult> Edit(SongFormViewModel model)
     {
         if (ModelState.IsValid)
         {
-            await _songService.UpdateSongAsync(songDto);
+            await _songService.UpdateSongAsync(model.Song);
             return RedirectToAction(nameof(Index));
         }
-        ViewBag.Albums = await _albumService.GetAllAlbumsAsync();
-        ViewBag.Genres = await _genreService.GetAllGenresAsync();
-        return View(songDto);
+
+        var albumsTask = _albumService.GetAllAlbumsAsync();
+        var genresTask = _genreService.GetAllGenresAsync();
+        await Task.WhenAll(albumsTask, genresTask);
+
+        model.Albums = await albumsTask;
+        model.Genres = await genresTask;
+
+        return View(model);
     }
 
     public async Task<IActionResult> Delete(int id)

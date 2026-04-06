@@ -9,9 +9,16 @@ namespace YoutubeMusicPlayer.Infrastructure.External;
 public class WikipediaService : IWikipediaService
 {
     private readonly WikiSearcher _wikiSearcher = new WikiSearcher();
+    private readonly System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient();
+
+    public WikipediaService()
+    {
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "YoutubeMusicPlayer/1.0 (maiti@example.com)");
+    }
 
     public async Task<string?> GetArtistBioAsync(string artistName)
     {
+        if (string.IsNullOrWhiteSpace(artistName)) return null;
         string searchName = NormalizeArtistName(artistName);
         
         // Strategy: Try multiple variations to find the artist
@@ -70,6 +77,38 @@ public class WikipediaService : IWikipediaService
             Console.WriteLine($"Wiki.Net Error for {artistName} ({language}): {ex.Message}");
         }
 
+        return null;
+    }
+
+    public async Task<string?> GetArtistImageAsync(string artistName)
+    {
+        if (string.IsNullOrWhiteSpace(artistName)) return null;
+        string searchName = NormalizeArtistName(artistName);
+
+        try
+        {
+            // API: https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&titles=ArtistName
+            string url = $"https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&titles={Uri.EscapeDataString(searchName)}&origin=*";
+            var response = await _httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var doc = System.Text.Json.JsonDocument.Parse(json);
+                var pages = doc.RootElement.GetProperty("query").GetProperty("pages");
+                
+                foreach (var page in pages.EnumerateObject())
+                {
+                    if (page.Value.TryGetProperty("original", out var original))
+                    {
+                        return original.GetProperty("source").GetString();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+             Console.WriteLine($"Wiki Image Fetch Error for {artistName}: {ex.Message}");
+        }
         return null;
     }
 

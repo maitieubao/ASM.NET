@@ -63,7 +63,9 @@
                     @{ int i = 1; }
                     @foreach (var song in Model.Songs)
                     {
-                        <tr class="track-row group" onclick="playSingleTrack('@song.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(song.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(song.AuthorName)', '@song.ThumbnailUrl')">
+                        var isMatching = string.IsNullOrEmpty(song.YoutubeVideoId);
+                        <tr class="track-row group @(isMatching ? "track-matching" : "")" 
+                            onclick="@(isMatching ? "showSyncingMessage()" : $"playSingleTrack('{song.YoutubeVideoId}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.Title)}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.AuthorName)}', '{song.ThumbnailUrl}')")">
                             <td class="text-center text-dim">
                                 <span class="track-number group-hover-hide">@i</span>
                                 <i class="fa-solid fa-play track-play-icon group-hover-show text-white"></i>
@@ -76,13 +78,14 @@
                                 <div class="d-flex flex-column">
                                     <div class="fw-bold text-white d-flex align-items-center gap-2">
                                         @song.Title
+                                        @if(isMatching){ <span class="badge bg-warning bg-opacity-10 text-warning extra-small border border-warning border-opacity-25 px-2">Đang khớp nhạc...</span> }
                                         @if(song.IsExplicit){ <span class="badge-explicit">E</span> }
                                         @if(song.IsPremiumOnly){ <i class="fa-solid fa-gem text-accent small" title="Premium Only"></i> }
                                     </div>
                                     <div class="text-dim x-small">@song.AuthorName</div>
                                 </div>
                             </td>
-                            <td class="text-end text-dim d-none d-md-table-cell small">@song.PlayCount.ToString("N0")</td>
+                            <td class="text-end text-dim d-none d-md-table-cell small">@(isMatching ? "--" : song.PlayCount.ToString("N0"))</td>
                             <td class="text-end">
                                 <div class="d-flex align-items-center justify-content-end gap-3">
                                     <button class="btn-icon group-hover-visible" onclick="event.stopPropagation(); toggleLikeByYoutubeId('@song.YoutubeVideoId', this)">
@@ -136,6 +139,14 @@
                 }
             }
         });
+
+        function showSyncingMessage() {
+            if (window.Toast) {
+                Toast.info("Đang tìm nguồn âm thanh tốt nhất cho bài hát này. Vui lòng thử lại sau vài giây.");
+            } else {
+                alert("Hệ thống đang tìm kiếm nguồn âm thanh tốt nhất trên YouTube. Vui lòng tải lại trang sau vài giây.");
+            }
+        }
 
         async function toggleLikeByYoutubeId(youtubeId, btn) {
             try {

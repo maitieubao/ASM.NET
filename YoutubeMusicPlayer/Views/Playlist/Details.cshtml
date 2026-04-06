@@ -27,11 +27,11 @@
                     <button class="btn btn-accent rounded-circle p-3 shadow-lg" style="width: 56px; height: 56px;" onclick="playPlaylist(@Model.PlaylistId)">
                         <i class="fa-solid fa-play fs-4 ps-1"></i>
                     </button>
-                    <button class="btn btn-outline-light border-opacity-25 rounded-circle p-3" style="width: 50px; height: 50px;">
+                    <a asp-action="Edit" asp-route-id="@Model.PlaylistId" class="btn btn-outline-light border-opacity-25 rounded-circle p-3" style="width: 50px; height: 50px;" title="Chỉnh sửa">
+                        <i class="fa-solid fa-pen"></i>
+                    </a>
+                    <button class="btn btn-outline-light border-opacity-25 rounded-circle p-3" style="width: 50px; height: 50px;" title="Tải về">
                         <i class="fa-solid fa-download"></i>
-                    </button>
-                    <button class="btn btn-outline-light border-opacity-25 rounded-circle p-3">
-                        <i class="fa-solid fa-ellipsis"></i>
                     </button>
                 </div>
             </div>
@@ -73,6 +73,9 @@
                                 <button class="btn btn-icon" onclick="event.stopPropagation(); openAddToPlaylist(@s.SongId, '@s.YoutubeVideoId')">
                                     <i class="fa-solid fa-ellipsis-v"></i>
                                 </button>
+                                <a asp-controller="Subscription" asp-action="Download" asp-route-youtubeId="@s.YoutubeVideoId" asp-route-title="@s.Title" class="btn btn-icon text-dim hover-text-accent" title="Tải xuống">
+                                    <i class="fa-solid fa-download"></i>
+                                </a>
                                 <form asp-action="RemoveSong" method="post" onsubmit="event.stopPropagation(); return confirm('Gỡ bài hát này khỏi playlist?')" class="d-inline">
                                     <input type="hidden" name="playlistId" value="@Model.PlaylistId" />
                                     <input type="hidden" name="songId" value="@s.SongId" />

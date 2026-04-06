@@ -135,6 +135,45 @@ public class AuthController : Controller
         return RedirectToAction("Index", "Home");
     }
 
+    // Forgot Password Flow
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult ForgotPassword() => View();
+
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForgotPassword(string email)
+    {
+        var token = await _authService.ForgotPasswordAsync(email);
+        if (token != null)
+        {
+            TempData["Message"] = $"Your reset token is: {token}. In production, this would be sent to your email.";
+            return RedirectToAction(nameof(ResetPassword), new { email });
+        }
+        ModelState.AddModelError("", "Email not found.");
+        return View();
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult ResetPassword(string email) => View(new { email });
+
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetPassword(string email, string token, string newPassword)
+    {
+        var success = await _authService.ResetPasswordAsync(email, token, newPassword);
+        if (success)
+        {
+            TempData["Message"] = "Password reset successful. Please login.";
+            return RedirectToAction(nameof(Login));
+        }
+        ModelState.AddModelError("", "Invalid or expired token.");
+        return View();
+    }
+
     private async Task SignInUser(UserDto user, bool isPersistent)
     {
         var claims = new List<Claim>

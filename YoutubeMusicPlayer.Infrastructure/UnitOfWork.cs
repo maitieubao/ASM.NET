@@ -1,9 +1,9 @@
-using System;
+using System.Threading;
 using System.Collections;
-using System.Threading.Tasks;
 using YoutubeMusicPlayer.Domain.Interfaces;
 using YoutubeMusicPlayer.Infrastructure.Persistence;
 using YoutubeMusicPlayer.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace YoutubeMusicPlayer.Infrastructure;
 
@@ -21,7 +21,7 @@ public class UnitOfWork : IUnitOfWork
     {
         if (_repositories == null) _repositories = new Hashtable();
 
-        var type = typeof(T).Namespace + "." + typeof(T).Name;
+        var type = typeof(T);
 
         if (!_repositories.ContainsKey(type))
         {
@@ -33,7 +33,17 @@ public class UnitOfWork : IUnitOfWork
         return (IGenericRepository<T>)_repositories[type]!;
     }
 
-    public async Task<int> CompleteAsync() => await _context.SaveChangesAsync();
+    public async Task<int> CompleteAsync(CancellationToken ct = default) => 
+        await _context.SaveChangesAsync(ct);
+
+    public async Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default)
+    {
+        var transaction = await _context.Database.BeginTransactionAsync(ct);
+        return new DbContextTransactionWrapper(transaction);
+    }
+
+    public async Task<int> ExecuteSqlRawAsync(string sql, CancellationToken ct = default, params object[] parameters) => 
+        await _context.Database.ExecuteSqlRawAsync(sql, parameters, ct);
 
     public void Dispose() => _context.Dispose();
 }

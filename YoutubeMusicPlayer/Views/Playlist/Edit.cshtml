@@ -1,0 +1,90 @@
+@model YoutubeMusicPlayer.Application.DTOs.PlaylistDto
+@{
+    ViewData["Title"] = "Chỉnh sửa Playlist";
+}
+
+<div class="container mt-4 animate-fade-in pb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="glass-card shadow-2xl overflow-hidden border-0">
+                <div class="p-4 bg-gradient-accent d-flex justify-content-between align-items-center">
+                    <h4 class="m-0 fw-black text-white"><i class="fa-solid fa-pen-nib me-2"></i> Chỉnh sửa Playlist</h4>
+                    <a asp-action="Details" asp-route-id="@Model.PlaylistId" class="btn-close btn-close-white"></a>
+                </div>
+                
+                <form asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="PlaylistId" />
+                    <input type="hidden" asp-for="UserId" />
+                    <input type="hidden" asp-for="IsFeatured" />
+                    <input type="hidden" asp-for="FeaturedType" />
+                    
+                    <div class="p-4">
+                        <div class="mb-4">
+                            <label class="form-label text-dim small uppercase tracking-wider fw-bold">Tên Playlist</label>
+                            <input asp-for="Title" class="custom-input-simple" placeholder="Tên playlist của bạn..." required />
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label text-dim small uppercase tracking-wider fw-bold">Mô tả</label>
+                            <textarea asp-for="Description" class="custom-input-simple" rows="4" placeholder="Mô tả về playlist này..."></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label text-dim small uppercase tracking-wider fw-bold">Link ảnh bìa (Không bắt buộc)</label>
+                            <input asp-for="CoverImageUrl" class="custom-input-simple" placeholder="https://example.com/image.jpg" />
+                            <div class="form-text text-white-50 extra-small mt-2">Để trống để sử dụng ảnh mặc định.</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label text-dim small uppercase tracking-wider fw-bold">Chế độ hiển thị</label>
+                            <select asp-for="Visibility" class="custom-input-simple">
+                                <option value="Public">Công khai (Mọi người đều thấy)</option>
+                                <option value="Private">Riêng tư (Chỉ mình bạn)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="p-4 pt-0 d-flex gap-3">
+                        <a asp-action="Details" asp-route-id="@Model.PlaylistId" class="btn btn-dark rounded-pill px-4 fw-bold flex-grow-1">Hủy</a>
+                        <button type="submit" class="btn btn-accent rounded-pill px-4 fw-bold flex-grow-1">Lưu thay đổi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-gradient-accent {
+        background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%);
+    }
+
+    .custom-input-simple {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        outline: none;
+        transition: 0.3s;
+    }
+    
+    .custom-input-simple:focus {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--accent-primary);
+    }
+    
+    select.custom-input-simple option {
+        background: #181818;
+        color: white;
+    }
+
+    .glass-card {
+        background: rgba(40, 40, 40, 0.4);
+        backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 24px;
+    }
+</style>

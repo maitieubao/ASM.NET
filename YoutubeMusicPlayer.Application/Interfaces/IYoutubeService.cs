@@ -31,12 +31,14 @@ public class YoutubeVideoDetails
 
 public interface IYoutubeService
 {
-    Task<string> GetAudioStreamUrlAsync(string videoUrl, string? title = null, string? artist = null);
+    Task<string> GetAudioStreamUrlAsync(string videoUrl, string? title = null, string? artist = null, bool isPremium = false);
     Task<YoutubeVideoDetails> GetVideoDetailsAsync(string videoUrl);
     Task<IEnumerable<YoutubeVideoDetails>> GetChannelVideosAsync(string channelId);
-    Task<IEnumerable<YoutubeVideoDetails>> SearchVideosAsync(string query, int limit = 30);
+    Task<IEnumerable<YoutubeVideoDetails>> SearchVideosAsync(string query, int limit = 30, bool searchCompilations = false);
     Task<IEnumerable<YoutubeAlbumDetails>> SearchPlaylistsAsync(string query, int limit = 5);
     Task<IEnumerable<YoutubeVideoDetails>> GetPlaylistVideosAsync(string playlistId);
-    Task<IEnumerable<YoutubeVideoDetails>> GetTrendingMusicAsync(int limit = 15);
+    Task<IEnumerable<YoutubeVideoDetails>> GetTrendingMusicAsync(int limit = 15, bool forceRefresh = false);
     bool IsMusic(YoutubeVideoDetails details);
+    bool IsCompilation(YoutubeVideoDetails details);
+    bool IsKaraoke(YoutubeVideoDetails details);
 }

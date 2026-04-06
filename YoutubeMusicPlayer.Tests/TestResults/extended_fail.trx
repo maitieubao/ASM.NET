@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="73f81b58-2649-40eb-87f7-a9876d54bf33" name="maiti@DESKTOP-GDE40BI 2026-04-01 00:49:51" runUser="DESKTOP-GDE40BI\maiti" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-04-01T00:49:51.4564246+07:00" queuing="2026-04-01T00:49:51.4564255+07:00" start="2026-04-01T00:49:49.8646864+07:00" finish="2026-04-01T00:49:51.4718471+07:00" />
+  <TestSettings name="default" id="eca374dd-1046-4beb-974c-2cee19563e2f">
+    <Deployment runDeploymentRoot="maiti_DESKTOP-GDE40BI_2026-04-01_00_49_51" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="df258e39-6365-4a5c-9f2d-eceee7fc95e3" testId="2adbeaee-f65e-3d1f-5d9a-faa4bcf9aa63" testName="Subscription_Download_ReturnsForbid_IfNotPremium" computerName="DESKTOP-GDE40BI" duration="00:00:00.0083030" startTime="2026-04-01T00:49:51.1323939+07:00" endTime="2026-04-01T00:49:51.1406965+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="df258e39-6365-4a5c-9f2d-eceee7fc95e3" />
+    <UnitTestResult executionId="ee6d8afb-14de-4d3f-8e0e-b6e8b2eb2ff9" testId="eed55342-02ea-dd38-c192-4961035a1836" testName="Interaction_ToggleLike_ReturnsJson" computerName="DESKTOP-GDE40BI" duration="00:00:00.0081680" startTime="2026-04-01T00:49:51.1003780+07:00" endTime="2026-04-01T00:49:51.1085463+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ee6d8afb-14de-4d3f-8e0e-b6e8b2eb2ff9" />
+    <UnitTestResult executionId="36704e16-f094-4099-a28e-4df5687bb1e6" testId="29c9a31a-e5f8-ad90-125c-c7685cf301cc" testName="Playlist_Create_RedirectsToIndex" computerName="DESKTOP-GDE40BI" duration="00:00:00.0230190" startTime="2026-04-01T00:49:51.1092073+07:00" endTime="2026-04-01T00:49:51.1322261+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="36704e16-f094-4099-a28e-4df5687bb1e6">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : No service for type 'Microsoft.AspNetCore.Mvc.Routing.IUrlHelperFactory' has been registered.</Message>
+          <StackTrace>   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)&#xD;
+   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)&#xD;
+   at Microsoft.AspNetCore.Mvc.ControllerBase.get_Url()&#xD;
+   at Microsoft.AspNetCore.Mvc.ControllerBase.RedirectToAction(String actionName, String controllerName, Object routeValues, String fragment)&#xD;
+   at Microsoft.AspNetCore.Mvc.ControllerBase.RedirectToAction(String actionName, String controllerName, Object routeValues)&#xD;
+   at YoutubeMusicPlayer.Controllers.PlaylistController.Create(String title, String description) in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer\Controllers\PlaylistController.cs:line 63&#xD;
+   at YoutubeMusicPlayer.Tests.ExtendedControllerTests.Playlist_Create_RedirectsToIndex() in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\ExtendedControllerTests.cs:line 119&#xD;
+   at NUnit.Framework.Internal.TaskAwaitAdapter.GenericAdapter`1.GetResult()&#xD;
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await[TResult](TestExecutionContext context, Func`1 invoke)&#xD;
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await(TestExecutionContext context, Func`1 invoke)&#xD;
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.RunTestMethod(TestExecutionContext context)&#xD;
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.Execute(TestExecutionContext context)&#xD;
+   at NUnit.Framework.Internal.Commands.BeforeAndAfterTestCommand.&lt;&gt;c__DisplayClass1_0.&lt;Execute&gt;b__0()&#xD;
+   at NUnit.Framework.Internal.Commands.DelegatingTestCommand.RunTestMethodInThreadAbortSafeZone(TestExecutionContext context, Action action)
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="003e49c0-8a5d-4426-b9f8-86f0f31c92c2" testId="e04963b9-c0d6-3805-dde9-f3a258105bb1" testName="Comment_AddComment_ReturnsJson" computerName="DESKTOP-GDE40BI" duration="00:00:00.1769630" startTime="2026-04-01T00:49:50.9216382+07:00" endTime="2026-04-01T00:49:51.0985101+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="003e49c0-8a5d-4426-b9f8-86f0f31c92c2" />
+    <UnitTestResult executionId="42538cd4-2bc9-4a81-9897-d004fd75f1be" testId="359596a7-ddbb-88d6-59ef-057b8c4e51ca" testName="Subscription_Index_ReturnsViewWithPlans" computerName="DESKTOP-GDE40BI" duration="00:00:00.0813510" startTime="2026-04-01T00:49:51.1407391+07:00" endTime="2026-04-01T00:49:51.2220887+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="42538cd4-2bc9-4a81-9897-d004fd75f1be">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : No service for type 'Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataDictionaryFactory' has been registered.</Message>
+          <StackTrace>   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)&#xD;
+   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)&#xD;
+   at Microsoft.AspNetCore.Mvc.Controller.get_TempData()&#xD;
+   at Microsoft.AspNetCore.Mvc.Controller.View(String viewName, Object model)&#xD;
+   at YoutubeMusicPlayer.Controllers.SubscriptionController.Index() in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer\Controllers\SubscriptionController.cs:line 29&#xD;
+   at YoutubeMusicPlayer.Tests.ExtendedControllerTests.Subscription_Index_ReturnsViewWithPlans() in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\ExtendedControllerTests.cs:line 83&#xD;
+   at NUnit.Framework.Internal.TaskAwaitAdapter.GenericAdapter`1.GetResult()&#xD;
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await[TResult](TestExecutionContext context, Func`1 invoke)&#xD;
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await(TestExecutionContext context, Func`1 invoke)&#xD;
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.RunTestMethod(TestExecutionContext context)&#xD;
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.Execute(TestExecutionContext context)&#xD;
+   at NUnit.Framework.Internal.Commands.BeforeAndAfterTestCommand.&lt;&gt;c__DisplayClass1_0.&lt;Execute&gt;b__0()&#xD;
+   at NUnit.Framework.Internal.Commands.DelegatingTestCommand.RunTestMethodInThreadAbortSafeZone(TestExecutionContext context, Action action)
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Playlist_Create_RedirectsToIndex" storage="c:\users\maiti\onedrive\desktop\asm.net\youtubemusicplayer.tests\bin\debug\net10.0\youtubemusicplayer.tests.dll" id="29c9a31a-e5f8-ad90-125c-c7685cf301cc">
+      <Execution id="36704e16-f094-4099-a28e-4df5687bb1e6" />
+      <TestMethod codeBase="C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="YoutubeMusicPlayer.Tests.ExtendedControllerTests" name="Playlist_Create_RedirectsToIndex" />
+    </UnitTest>
+    <UnitTest name="Subscription_Download_ReturnsForbid_IfNotPremium" storage="c:\users\maiti\onedrive\desktop\asm.net\youtubemusicplayer.tests\bin\debug\net10.0\youtubemusicplayer.tests.dll" id="2adbeaee-f65e-3d1f-5d9a-faa4bcf9aa63">
+      <Execution id="df258e39-6365-4a5c-9f2d-eceee7fc95e3" />
+      <TestMethod codeBase="C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="YoutubeMusicPlayer.Tests.ExtendedControllerTests" name="Subscription_Download_ReturnsForbid_IfNotPremium" />
+    </UnitTest>
+    <UnitTest name="Interaction_ToggleLike_ReturnsJson" storage="c:\users\maiti\onedrive\desktop\asm.net\youtubemusicplayer.tests\bin\debug\net10.0\youtubemusicplayer.tests.dll" id="eed55342-02ea-dd38-c192-4961035a1836">
+      <Execution id="ee6d8afb-14de-4d3f-8e0e-b6e8b2eb2ff9" />
+      <TestMethod codeBase="C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="YoutubeMusicPlayer.Tests.ExtendedControllerTests" name="Interaction_ToggleLike_ReturnsJson" />
+    </UnitTest>
+    <UnitTest name="Subscription_Index_ReturnsViewWithPlans" storage="c:\users\maiti\onedrive\desktop\asm.net\youtubemusicplayer.tests\bin\debug\net10.0\youtubemusicplayer.tests.dll" id="359596a7-ddbb-88d6-59ef-057b8c4e51ca">
+      <Execution id="42538cd4-2bc9-4a81-9897-d004fd75f1be" />
+      <TestMethod codeBase="C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="YoutubeMusicPlayer.Tests.ExtendedControllerTests" name="Subscription_Index_ReturnsViewWithPlans" />
+    </UnitTest>
+    <UnitTest name="Comment_AddComment_ReturnsJson" storage="c:\users\maiti\onedrive\desktop\asm.net\youtubemusicplayer.tests\bin\debug\net10.0\youtubemusicplayer.tests.dll" id="e04963b9-c0d6-3805-dde9-f3a258105bb1">
+      <Execution id="003e49c0-8a5d-4426-b9f8-86f0f31c92c2" />
+      <TestMethod codeBase="C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="YoutubeMusicPlayer.Tests.ExtendedControllerTests" name="Comment_AddComment_ReturnsJson" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="2adbeaee-f65e-3d1f-5d9a-faa4bcf9aa63" executionId="df258e39-6365-4a5c-9f2d-eceee7fc95e3" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="eed55342-02ea-dd38-c192-4961035a1836" executionId="ee6d8afb-14de-4d3f-8e0e-b6e8b2eb2ff9" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="29c9a31a-e5f8-ad90-125c-c7685cf301cc" executionId="36704e16-f094-4099-a28e-4df5687bb1e6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e04963b9-c0d6-3805-dde9-f3a258105bb1" executionId="003e49c0-8a5d-4426-b9f8-86f0f31c92c2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="359596a7-ddbb-88d6-59ef-057b8c4e51ca" executionId="42538cd4-2bc9-4a81-9897-d004fd75f1be" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="5" executed="5" passed="3" failed="2" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 5.0.0.0: Test execution started&#xD;
+Running selected tests in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll&#xD;
+   NUnit3TestExecutor discovered 5 of 5 NUnit test cases using Current Discovery mode, Non-Explicit run&#xD;
+NUnit Adapter 5.0.0.0: Test execution complete&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

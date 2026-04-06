@@ -1,0 +1,125 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.ReportDto>
+@{
+    ViewData["Title"] = "Reports Management";
+}
+
+<div class="container-fluid py-4 animate-fade-in">
+    <div class="mb-4 d-flex justify-content-between align-items-center px-lg-4">
+        <div>
+            <h2 class="text-white fw-bold"><i class="bi bi-flag-fill me-2 text-danger"></i> User Reports</h2>
+            <p class="text-muted small mb-0">Manage reports of content or user misconduct.</p>
+        </div>
+        <div class="text-end">
+             <form asp-controller="AdminSupport" asp-action="Reports" method="get" class="glass-panel p-2 d-flex" style="width: 350px;">
+                <input type="text" name="searchTerm" value="" class="form-control bg-transparent border-0 text-white" placeholder="Search reports..." />
+                <button type="submit" class="btn btn-warning btn-sm rounded-circle ms-2"><i class="bi bi-search"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <div class="glass-panel p-0 overflow-hidden shadow-2xl mx-lg-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="text-white-50 border-bottom border-secondary border-opacity-10">
+                        <th class="ps-4">Reporter</th>
+                        <th>Target</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Reported At</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        <tr class="border-bottom border-secondary border-opacity-10 @(r.Status == "Pending" ? "bg-danger bg-opacity-5" : "opacity-75")">
+                            <td class="ps-4">
+                                <div class="fw-bold text-white">@r.UserName</div>
+                                <div class="text-muted extra-small">ID: @r.UserId</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary mb-1">@r.TargetType</span>
+                                <div class="fw-bold text-white">@r.TargetName</div>
+                                <div class="text-muted extra-small">Target ID: @r.TargetId</div>
+                            </td>
+                            <td>
+                                <div class="text-white">@r.Reason</div>
+                                <div class="text-muted small">@r.Details</div>
+                            </td>
+                            <td>
+                                <span class="badge @(r.Status == "Pending" ? "bg-danger" : "bg-success") rounded-pill px-3">
+                                    @r.Status
+                                </span>
+                            </td>
+                            <td class="small text-muted">@r.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="text-end pe-4">
+                                @if (r.Status == "Pending")
+                                {
+                                    <div class="btn-group gap-2">
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-danger rounded-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                Resolve
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-dark shadow-lg border-0 glass-panel">
+                                                <li>
+                                                    <form asp-controller="AdminSupport" asp-action="ResolveReport" method="post">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@r.ReportId" />
+                                                        <input type="hidden" name="takeAction" value="true" />
+                                                        <button type="submit" class="dropdown-item px-3 py-2">
+                                                            <i class="bi bi-trash-fill me-2 text-danger"></i> Take Action
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li>
+                                                    <form asp-controller="AdminSupport" asp-action="ResolveReport" method="post">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@r.ReportId" />
+                                                        <input type="hidden" name="takeAction" value="false" />
+                                                        <button type="submit" class="dropdown-item px-3 py-2">
+                                                            <i class="bi bi-check-circle-fill me-2 text-success"></i> Fixed Manually
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li><hr class="dropdown-divider opacity-10"></li>
+                                                <li>
+                                                    <form asp-controller="AdminSupport" asp-action="DismissReport" method="post">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@r.ReportId" />
+                                                        <button type="submit" class="dropdown-item px-3 py-2">
+                                                            <i class="bi bi-x-circle me-2 text-muted"></i> Dismiss Report
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted extra-small">Resolved on @r.ResolvedAt?.ToString("dd/MM/yyyy")</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        @if (!Model.Any())
+        {
+            <div class="p-5 text-center">
+                <i class="bi bi-flag display-1 text-white opacity-10 mb-3"></i>
+                <h4 class="text-muted">No reports found.</h4>
+            </div>
+        }
+
+
+    </div>
+</div>
+
+<style>
+    .x-small { font-size: 0.75rem; }
+    .bg-dark-glass { background: rgba(30,30,30,0.85); backdrop-filter: blur(10px); }
+</style>

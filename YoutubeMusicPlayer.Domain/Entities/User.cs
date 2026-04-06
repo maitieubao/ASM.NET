@@ -51,5 +51,14 @@ public class User
     [Column("total_listen_seconds")]
     public double TotalListenSeconds { get; set; } = 0;
 
+    [Column("resettoken")]
+    public string? ResetToken { get; set; }
+
+    [Column("resettokenexpiry")]
+    public DateTime? ResetTokenExpiry { get; set; }
+
+    [Column("is_deleted")]
+    public bool IsDeleted { get; set; } = false;
+
     public ICollection<UserSession> UserSessions { get; set; } = new List<UserSession>();
 }

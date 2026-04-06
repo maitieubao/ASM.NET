@@ -1,0 +1,66 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.PaymentDto>
+@{
+    ViewData["Title"] = "Lịch sử giao dịch";
+}
+
+<div class="container py-5 animate-fade-in">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="text-white fw-black m-0">Lịch sử giao dịch</h1>
+            <p class="text-dim">Quản lý các hóa đơn và gói hội viên của bạn</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-light rounded-pill px-4 fw-bold">Xem gói cước</a>
+    </div>
+
+    <div class="glass-card overflow-hidden">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th class="ps-4">Mã đơn</th>
+                    <th>Gói sử dụng</th>
+                    <th>Số tiền</th>
+                    <th>Ngày thanh toán</th>
+                    <th class="text-end pe-4">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model)
+                {
+                    <tr>
+                        <td class="ps-4 text-dim small">#@p.OrderCode</td>
+                        <td>
+                            <div class="fw-bold text-main">@p.PlanName</div>
+                            <div class="text-dim extra-small">PayOS Transaction</div>
+                        </td>
+                        <td class="text-accent fw-bold">@String.Format("{0:N0} VNĐ", p.Amount)</td>
+                        <td class="text-dim small">@p.PaymentDate.ToString("HH:mm dd/MM/yyyy")</td>
+                        <td class="text-end pe-4">
+                            <span class="badge @(p.Status == "Success" ? "bg-success" : (p.Status == "Pending" ? "bg-warning" : "bg-danger")) bg-opacity-20 text-@(p.Status == "Success" ? "success" : (p.Status == "Pending" ? "warning" : "danger")) px-3 py-2 rounded-pill small fw-bold">
+                                @p.Status
+                            </span>
+                        </td>
+                    </tr>
+                }
+
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-dim">
+                            <i class="fa-solid fa-receipt display-4 mb-3 opacity-10"></i>
+                            <p>Bạn chưa có giao dịch nào.</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .glass-card {
+        background: rgba(40, 40, 40, 0.4);
+        backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 24px;
+    }
+</style>

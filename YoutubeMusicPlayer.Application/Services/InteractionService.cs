@@ -20,8 +20,10 @@ public class InteractionService : IInteractionService
 
     public async Task<IEnumerable<int>> GetRecentListeningHistoryAsync(int userId, int count = 20)
     {
-        return await _unitOfWork.Repository<ListeningHistory>()
-            .Find(lh => lh.UserId == userId)
+        // Optimized: SQL-level processing to avoid loading all history into RAM
+        return await _unitOfWork.Repository<ListeningHistory>().Query()
+            .AsNoTracking()
+            .Where(lh => lh.UserId == userId)
             .OrderByDescending(lh => lh.ListenedAt)
             .Select(lh => lh.SongId)
             .Distinct()
@@ -31,8 +33,10 @@ public class InteractionService : IInteractionService
 
     public async Task<IEnumerable<string>> GetRecentSearchHistoryAsync(int userId, int count = 10)
     {
-        return await _unitOfWork.Repository<UserSearchHistory>()
-            .Find(sh => sh.UserId == userId)
+        // Optimized: SQL-level processing to avoid loading all searches into RAM
+        return await _unitOfWork.Repository<UserSearchHistory>().Query()
+            .AsNoTracking()
+            .Where(sh => sh.UserId == userId)
             .OrderByDescending(sh => sh.SearchedAt)
             .Select(sh => sh.SearchQuery)
             .Distinct()
@@ -54,48 +58,49 @@ public class InteractionService : IInteractionService
             _unitOfWork.Repository<User>().Update(user);
         }
 
-        // 2. Update Song PlayCount (Only if play is > 1 min - A+ Quality filter)
-        if (durationSeconds > 60)
+        // 2. Fetch all necessary song, artist, and genre data in ONE query
+        var song = await _unitOfWork.Repository<Song>().Query()
+            .Include(s => s.SongArtists).ThenInclude(sa => sa.Artist)
+            .Include(s => s.SongGenres).ThenInclude(sg => sg.Genre)
+            .FirstOrDefaultAsync(s => s.SongId == songId);
+
+        if (song == null) return;
+
+        // 3. Update Song PlayCount (Only if play is > 30s)
+        if (durationSeconds > 30)
         {
-            var song = await _unitOfWork.Repository<Song>().GetByIdAsync(songId);
-            if (song != null)
-            {
-                song.PlayCount += 1;
-                _unitOfWork.Repository<Song>().Update(song);
-            }
+            song.PlayCount += 1;
+            _unitOfWork.Repository<Song>().Update(song);
+
+            // 3.1 Update Artist Popularity (Implicitly if logic needed later, but removed redundant Update check)
+            // Artist updates removed as it was a "dead update" - no fields were being modified.
         }
 
-        // 3. Update Genre-specific Stats (De-aggregate genres from the song)
-        var songData = _unitOfWork.Repository<Song>().Query()
-            .Include(s => s.SongGenres)
-            .ThenInclude(sg => sg.Genre)
-            .FirstOrDefault(s => s.SongId == songId);
-        if (songData != null)
+        // 4. Update Genre-specific Stats (Using optimized lookup)
+        foreach (var sg in song.SongGenres)
         {
-            foreach (var sg in songData.SongGenres)
-            {
-                var genreName = sg.Genre.Name;
-                var stat = _unitOfWork.Repository<UserGenreStat>()
-                    .Find(s => s.UserId == userId && s.GenreName == genreName)
-                    .FirstOrDefault();
+            var genreName = sg.Genre.Name;
+            
+            // Optimized: Database lookup instead of loading full list or using Find (IEnumerable)
+            var stat = await _unitOfWork.Repository<UserGenreStat>().Query()
+                .FirstOrDefaultAsync(s => s.UserId == userId && s.GenreName == genreName);
 
-                if (stat == null)
+            if (stat == null)
+            {
+                stat = new UserGenreStat
                 {
-                    stat = new UserGenreStat
-                    {
-                        UserId = userId,
-                        GenreName = genreName,
-                        ListenSeconds = durationSeconds,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    await _unitOfWork.Repository<UserGenreStat>().AddAsync(stat);
-                }
-                else
-                {
-                    stat.ListenSeconds += durationSeconds;
-                    stat.UpdatedAt = DateTime.UtcNow;
-                    _unitOfWork.Repository<UserGenreStat>().Update(stat);
-                }
+                    UserId = userId,
+                    GenreName = genreName,
+                    ListenSeconds = durationSeconds,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Repository<UserGenreStat>().AddAsync(stat);
+            }
+            else
+            {
+                stat.ListenSeconds += durationSeconds;
+                stat.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Repository<UserGenreStat>().Update(stat);
             }
         }
 
@@ -104,25 +109,41 @@ public class InteractionService : IInteractionService
 
     public async Task<IEnumerable<string>> GetTopPreferredGenresAsync(int userId, int count = 5)
     {
-        var stats = _unitOfWork.Repository<UserGenreStat>()
-            .Find(s => s.UserId == userId)
+        // Optimized: SQL-level Take and Select instead of RAM processing
+        return await _unitOfWork.Repository<UserGenreStat>().Query()
+            .AsNoTracking()
+            .Where(s => s.UserId == userId)
             .OrderByDescending(s => s.ListenSeconds)
             .Take(count)
             .Select(s => s.GenreName)
-            .ToList();
-
-        return await Task.FromResult(stats);
+            .ToListAsync();
     }
 
     public async Task<Dictionary<string, double>> GetTopPreferredGenresWithWeightsAsync(int userId, int count = 5)
     {
-        var stats = _unitOfWork.Repository<UserGenreStat>()
-            .Find(s => s.UserId == userId)
+        // Optimized: SQL-level sorting and taking
+        var stats = await _unitOfWork.Repository<UserGenreStat>().Query()
+            .AsNoTracking()
+            .Where(s => s.UserId == userId)
             .OrderByDescending(s => s.ListenSeconds)
             .Take(count)
-            .ToDictionary(s => s.GenreName, s => s.ListenSeconds);
+            .ToListAsync();
 
-        return await Task.FromResult(stats);
+        return stats.ToDictionary(s => s.GenreName, s => s.ListenSeconds);
+    }
+
+    public async Task<IEnumerable<string>> GetTopPreferredArtistsAsync(int userId, int count = 10)
+    {
+        // Optimized: SQL-level grouping and counting to avoid RAM bloat
+        return await _unitOfWork.Repository<ListeningHistory>().Query()
+            .AsNoTracking()
+            .Where(lh => lh.UserId == userId)
+            .SelectMany(lh => lh.Song.SongArtists)
+            .GroupBy(sa => sa.Artist.Name)
+            .OrderByDescending(g => g.Count())
+            .Take(count)
+            .Select(g => g.Key)
+            .ToListAsync();
     }
 
     public async Task RecordListeningHistoryAsync(int userId, int songId)
@@ -153,14 +174,15 @@ public class InteractionService : IInteractionService
 
     public async Task<List<string>> GetHistoryVideoIdsAsync(int userId, int count = 50)
     {
-        var history = await _unitOfWork.Repository<ListeningHistory>().Query()
-            .Include(h => h.Song)
+        // Optimized: SQL projection (.Select) to fetch only strings, not full Song entities
+        return await _unitOfWork.Repository<ListeningHistory>().Query()
+            .AsNoTracking()
             .Where(h => h.UserId == userId)
             .OrderByDescending(h => h.ListenedAt)
+            .Select(h => h.Song.YoutubeVideoId)
+            .Distinct()
             .Take(count)
             .ToListAsync();
-
-        return history.Select(h => h.Song.YoutubeVideoId).Distinct().ToList();
     }
 
     public async Task<bool> ToggleLikeAsync(int userId, int songId)
@@ -185,14 +207,40 @@ public class InteractionService : IInteractionService
 
     public async Task<bool> IsSongLikedAsync(int userId, int songId)
     {
-        var like = await _unitOfWork.Repository<SongLike>()
-            .FirstOrDefaultAsync(l => l.UserId == userId && l.SongId == songId);
-        return like != null;
+        return await _unitOfWork.Repository<SongLike>().Query()
+            .AnyAsync(l => l.UserId == userId && l.SongId == songId);
     }
 
     public async Task<IEnumerable<int>> GetLikedSongIdsAsync(int userId)
     {
-        var likes = await _unitOfWork.Repository<SongLike>().FindAsync(l => l.UserId == userId);
-        return likes.Select(l => l.SongId);
+        // Optimized: Query to avoid loading list into RAM before projecting
+        return await _unitOfWork.Repository<SongLike>().Query()
+            .AsNoTracking()
+            .Where(l => l.UserId == userId)
+            .OrderByDescending(l => l.LikedAt)
+            .Select(l => l.SongId)
+            .ToListAsync();
+    }
+
+    public async Task<(IEnumerable<int> Ids, int TotalCount)> GetLikedSongIdsPaginatedAsync(int userId, int page, int pageSize, CancellationToken ct = default)
+    {
+        var query = _unitOfWork.Repository<SongLike>().Query()
+            .AsNoTracking()
+            .Where(l => l.UserId == userId);
+
+        int totalCount = await query.CountAsync(ct);
+        var ids = await query.OrderByDescending(l => l.LikedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(l => l.SongId)
+            .ToListAsync(ct);
+
+        return (ids, totalCount);
+    }
+
+    public async Task<int> GetLikeCountAsync(int songId)
+    {
+        return await _unitOfWork.Repository<SongLike>().Query()
+            .CountAsync(l => l.SongId == songId);
     }
 }

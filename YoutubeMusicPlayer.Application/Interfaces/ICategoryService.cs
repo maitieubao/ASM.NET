@@ -8,6 +8,7 @@ public interface ICategoryService
 {
     Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync();
     Task<CategoryDto?> GetCategoryByIdAsync(int id);
+    Task<(IEnumerable<CategoryDto> Categories, int TotalCount)> GetPaginatedCategoriesAsync(int page, int pageSize);
     Task CreateCategoryAsync(CategoryDto categoryDto);
     Task UpdateCategoryAsync(CategoryDto categoryDto);
     Task DeleteCategoryAsync(int id);

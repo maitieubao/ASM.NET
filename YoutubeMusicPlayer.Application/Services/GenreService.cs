@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using YoutubeMusicPlayer.Application.Common;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Domain.Entities;
@@ -21,54 +22,56 @@ public class GenreService : IGenreService
     public async Task<IEnumerable<GenreDto>> GetAllGenresAsync()
     {
         var genres = await _unitOfWork.Repository<Genre>().GetAllAsync();
-        return genres.Select(g => new GenreDto { GenreId = g.GenreId, Name = g.Name, Description = g.Description });
+        return genres.Select(MapToGenreDto);
     }
 
     public async Task<GenreDto?> GetGenreByIdAsync(int id)
     {
         var g = await _unitOfWork.Repository<Genre>().GetByIdAsync(id);
-        if (g == null) return null;
-        return new GenreDto { GenreId = g.GenreId, Name = g.Name, Description = g.Description };
+        return g != null ? MapToGenreDto(g) : null;
     }
 
     public async Task<GenreDetailsDto?> GetGenreByIdWithSongsAsync(int id)
     {
-        var g = await _unitOfWork.Repository<Genre>().GetByIdAsync(id);
-        if (g == null) return null;
-
-        var songIds = await _unitOfWork.Repository<SongGenre>().Query()
-            .Where(sg => sg.GenreId == id)
-            .Select(sg => sg.SongId)
-            .ToListAsync();
-
-        var songs = await _unitOfWork.Repository<Song>().Query()
-            .Where(s => songIds.Contains(s.SongId))
-            .OrderByDescending(s => s.PlayCount)
-            .Take(50)
-            .ToListAsync();
-
-        return new GenreDetailsDto
-        {
-            GenreId = g.GenreId,
-            Name = g.Name,
-            Description = g.Description,
-            Songs = songs.Select(s => new SongDto
+        // Optimized: Single database trip using projection to avoid N+1 and loading full song entities into RAM
+        var genreData = await _unitOfWork.Repository<Genre>().Query()
+            .AsNoTracking()
+            .Where(g => g.GenreId == id)
+            .Select(g => new GenreDetailsDto
             {
-                SongId = s.SongId,
-                Title = s.Title,
-                YoutubeVideoId = s.YoutubeVideoId,
-                ThumbnailUrl = s.ThumbnailUrl,
-                Duration = s.Duration,
-                IsExplicit = s.IsExplicit,
-                IsPremiumOnly = s.IsPremiumOnly,
-                PlayCount = s.PlayCount
-                // AuthorName can be fetched if needed, but for simplicity:
+                GenreId = g.GenreId,
+                Name = g.Name,
+                Description = g.Description,
+                Songs = _unitOfWork.Repository<SongGenre>().Query()
+                    .Where(sg => sg.GenreId == id)
+                    .OrderByDescending(sg => sg.Song.PlayCount)
+                    .Take(50)
+                    .Select(sg => new SongDto
+                    {
+                        SongId = sg.Song.SongId,
+                        Title = sg.Song.Title,
+                        YoutubeVideoId = sg.Song.YoutubeVideoId,
+                        ThumbnailUrl = sg.Song.ThumbnailUrl,
+                        Duration = sg.Song.Duration,
+                        IsExplicit = sg.Song.IsExplicit,
+                        IsPremiumOnly = sg.Song.IsPremiumOnly,
+                        PlayCount = sg.Song.PlayCount
+                    }).ToList()
             })
-        };
+            .FirstOrDefaultAsync();
+
+        return genreData;
     }
 
     public async Task CreateGenreAsync(GenreDto dto)
     {
+        // Optimized: Integrity Check - Prevent duplicate genre names
+        var exists = await _unitOfWork.Repository<Genre>().Query()
+            .AnyAsync(g => g.Name.ToLower() == dto.Name.ToLower());
+        
+        if (exists)
+            throw new AppException($"Genre with name '{dto.Name}' already exists.");
+
         var genre = new Genre { Name = dto.Name, Description = dto.Description };
         await _unitOfWork.Repository<Genre>().AddAsync(genre);
         await _unitOfWork.CompleteAsync();
@@ -88,11 +91,28 @@ public class GenreService : IGenreService
 
     public async Task DeleteGenreAsync(int id)
     {
+        // Optimized: Integrity Guard - Check for associated songs before deletion to avoid DB exceptions
+        var hasSongs = await _unitOfWork.Repository<SongGenre>().Query()
+            .AnyAsync(sg => sg.GenreId == id);
+            
+        if (hasSongs)
+            throw new AppException("Cannot delete genre that contains songs. Please remove all songs from this genre first.");
+
         var genre = await _unitOfWork.Repository<Genre>().GetByIdAsync(id);
         if (genre != null)
         {
             _unitOfWork.Repository<Genre>().Remove(genre);
             await _unitOfWork.CompleteAsync();
         }
+    }
+
+    private GenreDto MapToGenreDto(Genre g)
+    {
+        return new GenreDto
+        {
+            GenreId = g.GenreId,
+            Name = g.Name,
+            Description = g.Description
+        };
     }
 }

@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="0a6e9f64-5dd4-47e2-b439-1b137a671fdc" name="maiti@DESKTOP-GDE40BI 2026-04-01 00:38:27" runUser="DESKTOP-GDE40BI\maiti" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-04-01T00:38:27.8229037+07:00" queuing="2026-04-01T00:38:27.8229041+07:00" start="2026-04-01T00:38:25.0276354+07:00" finish="2026-04-01T00:38:27.8406004+07:00" />
+  <TestSettings name="default" id="28541d56-1600-42ec-b3c9-790f84c013ef">
+    <Deployment runDeploymentRoot="maiti_DESKTOP-GDE40BI_2026-04-01_00_38_27" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="69bedce8-cfc3-4d1f-821d-1c82f5397f52" testId="30def736-3d3f-59e9-64a6-3091b4354a5e" testName="Artist_Details_ReturnsView_IfArtistExists" computerName="DESKTOP-GDE40BI" duration="00:00:00.0699690" startTime="2026-04-01T00:38:27.3046260+07:00" endTime="2026-04-01T00:38:27.3745971+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="69bedce8-cfc3-4d1f-821d-1c82f5397f52" />
+    <UnitTestResult executionId="9ec97d15-dc4f-4ec5-ad3d-e12216553b3f" testId="f367559f-0710-b54c-5c57-0dedc2c01017" testName="Home_Index_ReturnsViewWithModel" computerName="DESKTOP-GDE40BI" duration="00:00:00.0333629" startTime="2026-04-01T00:38:27.5003970+07:00" endTime="2026-04-01T00:38:27.5337600+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9ec97d15-dc4f-4ec5-ad3d-e12216553b3f">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : No service for type 'Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataDictionaryFactory' has been registered.</Message>
+          <StackTrace>   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)&#xD;
+   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)&#xD;
+   at Microsoft.AspNetCore.Mvc.Controller.get_TempData()&#xD;
+   at Microsoft.AspNetCore.Mvc.Controller.View(String viewName, Object model)&#xD;
+   at YoutubeMusicPlayer.Controllers.HomeController.Index() in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer\Controllers\HomeController.cs:line 84&#xD;
+   at YoutubeMusicPlayer.Tests.MainControllerTests.Home_Index_ReturnsViewWithModel() in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\MainControllerTests.cs:line 93&#xD;
+   at NUnit.Framework.Internal.TaskAwaitAdapter.GenericAdapter`1.GetResult()&#xD;
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await[TResult](TestExecutionContext context, Func`1 invoke)&#xD;
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await(TestExecutionContext context, Func`1 invoke)&#xD;
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.RunTestMethod(TestExecutionContext context)&#xD;
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.Execute(TestExecutionContext context)&#xD;
+   at NUnit.Framework.Internal.Commands.BeforeAndAfterTestCommand.&lt;&gt;c__DisplayClass1_0.&lt;Execute&gt;b__0()&#xD;
+   at NUnit.Framework.Internal.Commands.DelegatingTestCommand.RunTestMethodInThreadAbortSafeZone(TestExecutionContext context, Action action)
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="5e06857f-234a-439c-81fb-a1d14c7ff501" testId="434cfc8e-e617-d18c-480c-e8b6a8626976" testName="Home_GetStreamUrl_ReturnsPremiumRequired_IfSongIsPremiumOnly" computerName="DESKTOP-GDE40BI" duration="00:00:00.0957570" startTime="2026-04-01T00:38:27.3842601+07:00" endTime="2026-04-01T00:38:27.4800173+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5e06857f-234a-439c-81fb-a1d14c7ff501">
+      <Output>
+        <ErrorInfo>
+          <Message>  Assert.That(errorValue, Is.EqualTo("PremiumRequired"))&#xD;
+  Expected: "PremiumRequired"&#xD;
+  But was:  null&#xD;
+</Message>
+          <StackTrace>   at YoutubeMusicPlayer.Tests.MainControllerTests.Home_GetStreamUrl_ReturnsPremiumRequired_IfSongIsPremiumOnly() in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\MainControllerTests.cs:line 151&#xD;
+   at NUnit.Framework.Internal.TaskAwaitAdapter.GenericAdapter`1.GetResult()&#xD;
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await[TResult](TestExecutionContext context, Func`1 invoke)&#xD;
+   at NUnit.Framework.Internal.AsyncToSyncAdapter.Await(TestExecutionContext context, Func`1 invoke)&#xD;
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.RunTestMethod(TestExecutionContext context)&#xD;
+   at NUnit.Framework.Internal.Commands.TestMethodCommand.Execute(TestExecutionContext context)&#xD;
+   at NUnit.Framework.Internal.Commands.BeforeAndAfterTestCommand.&lt;&gt;c__DisplayClass1_0.&lt;Execute&gt;b__0()&#xD;
+   at NUnit.Framework.Internal.Commands.DelegatingTestCommand.RunTestMethodInThreadAbortSafeZone(TestExecutionContext context, Action action)&#xD;
+
+1)    at YoutubeMusicPlayer.Tests.MainControllerTests.Home_GetStreamUrl_ReturnsPremiumRequired_IfSongIsPremiumOnly() in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\MainControllerTests.cs:line 151&#xD;
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine&amp; stateMachine)&#xD;
+   at YoutubeMusicPlayer.Tests.MainControllerTests.Home_GetStreamUrl_ReturnsPremiumRequired_IfSongIsPremiumOnly()&#xD;
+
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="6c230966-0b17-4a0f-8486-0bc9b68b339b" testId="e2219547-2f11-56bc-e43d-4ab519fafe2c" testName="Album_Details_ReturnsNotFound_IfAlbumMissing" computerName="DESKTOP-GDE40BI" duration="00:00:00.4125280" startTime="2026-04-01T00:38:26.8695897+07:00" endTime="2026-04-01T00:38:27.2819516+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6c230966-0b17-4a0f-8486-0bc9b68b339b" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Artist_Details_ReturnsView_IfArtistExists" storage="c:\users\maiti\onedrive\desktop\asm.net\youtubemusicplayer.tests\bin\debug\net10.0\youtubemusicplayer.tests.dll" id="30def736-3d3f-59e9-64a6-3091b4354a5e">
+      <Execution id="69bedce8-cfc3-4d1f-821d-1c82f5397f52" />
+      <TestMethod codeBase="C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="YoutubeMusicPlayer.Tests.MainControllerTests" name="Artist_Details_ReturnsView_IfArtistExists" />
+    </UnitTest>
+    <UnitTest name="Home_Index_ReturnsViewWithModel" storage="c:\users\maiti\onedrive\desktop\asm.net\youtubemusicplayer.tests\bin\debug\net10.0\youtubemusicplayer.tests.dll" id="f367559f-0710-b54c-5c57-0dedc2c01017">
+      <Execution id="9ec97d15-dc4f-4ec5-ad3d-e12216553b3f" />
+      <TestMethod codeBase="C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="YoutubeMusicPlayer.Tests.MainControllerTests" name="Home_Index_ReturnsViewWithModel" />
+    </UnitTest>
+    <UnitTest name="Album_Details_ReturnsNotFound_IfAlbumMissing" storage="c:\users\maiti\onedrive\desktop\asm.net\youtubemusicplayer.tests\bin\debug\net10.0\youtubemusicplayer.tests.dll" id="e2219547-2f11-56bc-e43d-4ab519fafe2c">
+      <Execution id="6c230966-0b17-4a0f-8486-0bc9b68b339b" />
+      <TestMethod codeBase="C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="YoutubeMusicPlayer.Tests.MainControllerTests" name="Album_Details_ReturnsNotFound_IfAlbumMissing" />
+    </UnitTest>
+    <UnitTest name="Home_GetStreamUrl_ReturnsPremiumRequired_IfSongIsPremiumOnly" storage="c:\users\maiti\onedrive\desktop\asm.net\youtubemusicplayer.tests\bin\debug\net10.0\youtubemusicplayer.tests.dll" id="434cfc8e-e617-d18c-480c-e8b6a8626976">
+      <Execution id="5e06857f-234a-439c-81fb-a1d14c7ff501" />
+      <TestMethod codeBase="C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="YoutubeMusicPlayer.Tests.MainControllerTests" name="Home_GetStreamUrl_ReturnsPremiumRequired_IfSongIsPremiumOnly" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="30def736-3d3f-59e9-64a6-3091b4354a5e" executionId="69bedce8-cfc3-4d1f-821d-1c82f5397f52" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f367559f-0710-b54c-5c57-0dedc2c01017" executionId="9ec97d15-dc4f-4ec5-ad3d-e12216553b3f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="434cfc8e-e617-d18c-480c-e8b6a8626976" executionId="5e06857f-234a-439c-81fb-a1d14c7ff501" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e2219547-2f11-56bc-e43d-4ab519fafe2c" executionId="6c230966-0b17-4a0f-8486-0bc9b68b339b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="4" executed="4" passed="2" failed="2" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 5.0.0.0: Test execution started&#xD;
+Running selected tests in C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer.Tests\bin\Debug\net10.0\YoutubeMusicPlayer.Tests.dll&#xD;
+   NUnit3TestExecutor discovered 4 of 4 NUnit test cases using Current Discovery mode, Non-Explicit run&#xD;
+NUnit Adapter 5.0.0.0: Test execution complete&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

@@ -29,14 +29,15 @@
                             <td class="ps-4 text-white-50">@i</td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <img src="@h.ThumbnailUrl" class="rounded me-3 shadow-sm" style="width: 50px; height: 50px; object-fit: cover;">
+                                    <img src="@h.ThumbnailUrl" class="rounded me-3 shadow-sm" style="width: 40px; height: 40px; object-fit: cover;">
                                     <div class="fw-bold">@h.SongTitle</div>
                                 </div>
                             </td>
-                            <td class="text-white-50">YouTube Artist</td>
+                            <td class="text-white-50">@h.AuthorName</td>
                             <td class="small opacity-75">@h.ListenedAt.ToString("f")</td>
                             <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-outline-accent rounded-circle" onclick="playSingleTrack('@h.SongTitle', '@h.ThumbnailUrl')">
+                                <button class="btn btn-sm btn-outline-accent rounded-circle" 
+                                        onclick="playSingleTrack('@h.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(h.SongTitle)', '@System.Web.HttpUtility.JavaScriptStringEncode(h.AuthorName)', '@h.ThumbnailUrl')">
                                     <i class="bi bi-play-fill fs-5"></i>
                                 </button>
                             </td>

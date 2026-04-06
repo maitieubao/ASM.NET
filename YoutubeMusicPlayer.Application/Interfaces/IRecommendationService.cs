@@ -15,25 +15,25 @@ public interface IRecommendationService
     /// <summary>
     /// Generates a "Daily Mix" for the user. Supports prefetched weights to avoid DbContext concurrency.
     /// </summary>
-    Task<IEnumerable<YoutubeVideoDetails>> GetDailyMixAsync(int userId, Dictionary<string, double>? prefetchedWeights = null);
+    Task<IEnumerable<YoutubeVideoDetails>> GetDailyMixAsync(int userId, Dictionary<string, double>? prefetchedWeights = null, bool forceRefresh = false);
 
     /// <summary>
     /// Generates a specific variant of the Daily Mix (e.g. Mix 1, Mix 2).
     /// </summary>
-    Task<IEnumerable<YoutubeVideoDetails>> GetDailyMixVariantAsync(int userId, int variantIndex, Dictionary<string, double>? prefetchedWeights = null);
+    Task<IEnumerable<YoutubeVideoDetails>> GetDailyMixVariantAsync(int userId, int variantIndex, Dictionary<string, double>? prefetchedWeights = null, bool forceRefresh = false);
 
     /// <summary>
     /// Generates a "Because you listened to [Artist]" section. Supports prefetched artist name to avoid DbContext concurrency.
     /// </summary>
-    Task<IEnumerable<YoutubeVideoDetails>> GetBecauseYouListenedToAsync(int userId, string? prefetchedArtistName = null);
+    Task<IEnumerable<YoutubeVideoDetails>> GetBecauseYouListenedToAsync(int userId, string? prefetchedArtistName = null, bool forceRefresh = false);
 
     /// <summary>
     /// Generates mood-based music recommendations (e.g., Chill, Focus, Workout).
     /// </summary>
-    Task<IEnumerable<YoutubeVideoDetails>> GetMoodMusicAsync(string moodTag, int limit = 12);
+    Task<IEnumerable<YoutubeVideoDetails>> GetMoodMusicAsync(string moodTag, int limit = 12, bool forceRefresh = false);
 
     /// <summary>
-    /// Fetches Top Charts for a specific region (Vietnam or Global).
+    /// Fetches long music compilations and mixes.
     /// </summary>
-    Task<IEnumerable<YoutubeVideoDetails>> GetTopChartsAsync(string region, int limit = 12);
+    Task<IEnumerable<YoutubeVideoDetails>> GetCompilationsAsync(int limit = 12, bool forceRefresh = false);
 }

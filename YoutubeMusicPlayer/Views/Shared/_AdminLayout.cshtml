@@ -44,6 +44,8 @@
             flex-grow: 1;
             margin-left: var(--admin-sidebar-width);
             padding: 2rem 3rem;
+            overflow-y: auto;
+            max-height: 100vh;
         }
 
         .admin-logo {
@@ -96,6 +98,39 @@
             border-radius: 20px;
             padding: 2rem;
         }
+
+        .bg-dark-glass, .glass-card, .glass-panel {
+            background: rgba(255, 255, 255, 0.03) !important;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 16px;
+            color: #e0e0e0; /* Default light text for the whole panel */
+        }
+
+        .bg-dark-glass h1, .bg-dark-glass h2, .bg-dark-glass h3, .bg-dark-glass h4,
+        .glass-card h1, .glass-card h2, .glass-card h3, .glass-card h4 {
+            color: white !important;
+        }
+
+        .text-dim, .text-white-50 {
+            color: rgba(255,255,255,0.6) !important;
+        }
+
+        /* Fix for potential white background in default Bootstrap cards */
+        .card {
+            background-color: transparent;
+        }
+        
+        /* Ensure tables are readable on dark background */
+        .table {
+            --bs-table-bg: transparent;
+            color: #e0e0e0;
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(255,255,255,0.05) !important;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -107,31 +142,35 @@
             </a>
 
             <div class="admin-nav-label">Management</div>
-            <a href="/Admin" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">
+            <a asp-controller="AdminDashboard" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "AdminDashboard" ? "active" : "")">
                 <i class="fa-solid fa-chart-line"></i>
                 <span>Dashboard</span>
             </a>
-            <a href="/Admin/Songs" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Songs" ? "active" : "")">
+            <a asp-controller="AdminMusic" asp-action="Songs" class="admin-nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "AdminMusic" && ViewContext.RouteData.Values["action"]?.ToString() == "Songs" ? "active" : "")">
                 <i class="fa-solid fa-music"></i>
                 <span>Bài hát</span>
             </a>
-            <a href="/Admin/Artists" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Artists" ? "active" : "")">
+            <a asp-controller="AdminMusic" asp-action="Artists" class="admin-nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "AdminMusic" && ViewContext.RouteData.Values["action"]?.ToString() == "Artists" ? "active" : "")">
                 <i class="fa-solid fa-microphone-lines"></i>
                 <span>Nghệ sĩ</span>
             </a>
-            <a href="/Admin/Users" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Users" ? "active" : "")">
+            <a asp-controller="AdminUser" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "AdminUser" ? "active" : "")">
                 <i class="fa-solid fa-users-gear"></i>
                 <span>Người dùng</span>
             </a>
-            <a href="/Admin/Reports" class="admin-nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Reports" ? "active" : "")">
+            <a asp-controller="AdminPlaylist" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "AdminPlaylist" ? "active" : "")">
+                <i class="fa-solid fa-layer-group"></i>
+                <span>Playlists</span>
+            </a>
+            <a asp-controller="AdminSupport" asp-action="Reports" class="admin-nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "AdminSupport" ? "active" : "")">
                 <i class="fa-solid fa-circle-exclamation"></i>
                 <span>Báo cáo</span>
             </a>
 
             <div class="admin-nav-label">System</div>
-            <a href="/Genre" class="admin-nav-item">
+            <a asp-controller="AdminTaxonomy" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "AdminTaxonomy" ? "active" : "")">
                 <i class="fa-solid fa-tags"></i>
-                <span>Thể loại</span>
+                <span>Taxonomy</span>
             </a>
             
             <div class="mt-auto pt-5">

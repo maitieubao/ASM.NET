@@ -34,4 +34,7 @@ public class Artist
 
     public ICollection<SongArtist> SongArtists { get; set; } = new List<SongArtist>();
     public ICollection<AlbumArtist> AlbumArtists { get; set; } = new List<AlbumArtist>();
+
+    [Column("is_deleted")]
+    public bool IsDeleted { get; set; } = false;
 }

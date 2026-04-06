@@ -12,6 +12,8 @@ public class PlaylistDto
     public bool IsFeatured { get; set; }
     public string? FeaturedType { get; set; }
     public string Visibility { get; set; } = "Public";
+    public bool IsPublic => Visibility == "Public";
+    public int SongsCount => SongIds?.Count() ?? 0;
     public IEnumerable<int> SongIds { get; set; } = new List<int>();
     public IEnumerable<SongDto> Songs { get; set; } = new List<SongDto>();
 }

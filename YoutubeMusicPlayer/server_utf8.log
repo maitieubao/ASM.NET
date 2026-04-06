@@ -1,0 +1,411 @@
+﻿Using launch settings from C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer\Properties\launchSettings.json...
+Building...
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (451ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      TRUNCATE TABLE songartists CASCADE; TRUNCATE TABLE albumartists CASCADE; TRUNCATE TABLE songlikes CASCADE; TRUNCATE TABLE playlistsongs CASCADE; DELETE FROM songs; DELETE FROM albums;
+[DB INIT] Albums and Songs cleared for fresh Deezer sync.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (301ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='songs' AND column_name='lyricstext') THEN
+                    ALTER TABLE songs ADD COLUMN lyricstext text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='artists' AND column_name='bio') THEN
+                    ALTER TABLE artists ADD COLUMN bio text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='total_listen_seconds') THEN
+                    ALTER TABLE users ADD COLUMN total_listen_seconds double precision DEFAULT 0;
+                END IF;
+
+                -- Fix missing columns in reports
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='details') THEN
+                    ALTER TABLE reports ADD COLUMN details text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='status') THEN
+                    ALTER TABLE reports ADD COLUMN status text DEFAULT 'Pending';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='reason') THEN
+                    ALTER TABLE reports ADD COLUMN reason text NOT NULL DEFAULT 'User Report';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='resolvedat') THEN
+                    ALTER TABLE reports ADD COLUMN resolvedat timestamp with time zone;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='targettype') THEN
+                    ALTER TABLE reports ADD COLUMN targettype text NOT NULL DEFAULT 'Song';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='targetid') THEN
+                    ALTER TABLE reports ADD COLUMN targetid text NOT NULL DEFAULT '0';
+                END IF;
+
+                -- Fix missing columns in notifications
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='type') THEN
+                    ALTER TABLE notifications ADD COLUMN type text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='isread') THEN
+                    ALTER TABLE notifications ADD COLUMN isread boolean DEFAULT false;
+                END IF;
+
+                -- Fix missing columns in playlists
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='playlists' AND column_name='featuredtype') THEN
+                    ALTER TABLE playlists ADD COLUMN featuredtype text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='playlists' AND column_name='isfeatured') THEN
+                    ALTER TABLE playlists ADD COLUMN isfeatured boolean DEFAULT false;
+                END IF;
+
+                -- Fix missing columns in genres
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='genres' AND column_name='description') THEN
+                    ALTER TABLE genres ADD COLUMN description TEXT;
+                END IF;
+
+                -- Premium & Content Security
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='dateofbirth') THEN
+                    ALTER TABLE users ADD COLUMN dateofbirth TIMESTAMP WITH TIME ZONE;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='playlists' AND column_name='visibility') THEN
+                    ALTER TABLE playlists ADD COLUMN visibility TEXT DEFAULT 'Public';
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='playlistsongs' AND column_name='position') THEN
+                    ALTER TABLE playlistsongs ADD COLUMN position INTEGER DEFAULT 0;
+                END IF;
+
+                -- Fix missing tables
+                CREATE TABLE IF NOT EXISTS categories (
+                    categoryid SERIAL PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    description TEXT,
+                    createdat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS reports (
+                    reportid SERIAL PRIMARY KEY,
+                    userid INTEGER NOT NULL REFERENCES users(userid),
+                    targettype TEXT NOT NULL,
+                    targetid TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    details TEXT,
+                    status TEXT DEFAULT 'Pending',
+                    createdat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    resolvedat TIMESTAMP WITH TIME ZONE
+                );
+
+                CREATE TABLE IF NOT EXISTS notifications (
+                    notificationid SERIAL PRIMARY KEY,
+                    userid INTEGER REFERENCES users(userid),
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    type TEXT,
+                    isread BOOLEAN DEFAULT FALSE,
+                    createdat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS user_genre_stats (
+                    statid SERIAL PRIMARY KEY,
+                    userid INTEGER NOT NULL,
+                    genre_name VARCHAR(100) NOT NULL,
+                    listen_seconds DOUBLE PRECISION DEFAULT 0,
+                    updatedat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS songlikes (
+                    userid INTEGER NOT NULL REFERENCES users(userid),
+                    songid INTEGER NOT NULL REFERENCES songs(songid),
+                    likedat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (userid, songid)
+                );
+
+                CREATE TABLE IF NOT EXISTS artist_followers (
+                    userid INTEGER NOT NULL REFERENCES users(userid),
+                    artistid INTEGER NOT NULL REFERENCES artists(artistid),
+                    followedat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (userid, artistid)
+                );
+            END $$;
+[BackgroundWorker] Background Music Worker starting...
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5088
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\maiti\OneDrive\Desktop\ASM.NET\YoutubeMusicPlayer
+[MONITOR] Request: GET /
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (236ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT count(*)::int
+      FROM artists AS a
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (348ms) [Parameters=[@p1='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT a.artistid, a.avatarurl, a.bannerurl, a.bio, a.country, a.isverified, a.name, a.subscribercount
+      FROM artists AS a
+      ORDER BY a.artistid DESC
+      LIMIT @p1 OFFSET @p
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (187ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT g.genreid, g.description, g.name
+      FROM genres AS g
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (225ms) [Parameters=[@userId='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT a0.artistid, a0.avatarurl, a0.bannerurl, a0.bio, a0.country, a0.isverified, a0.name, a0.subscribercount
+      FROM artist_followers AS a
+      INNER JOIN artists AS a0 ON a.artistid = a0.artistid
+      WHERE a.userid = @userId
+warn: Microsoft.EntityFrameworkCore.Query[10114]
+      The query uses the 'Distinct' operator after applying an ordering. If there are any row limiting operation used before 'Distinct' and after ordering then ordering will be used for it. Ordering(s) will be erased after 'Distinct' and results afterwards would be unordered.
+warn: Microsoft.EntityFrameworkCore.Query[10102]
+      The query uses a row limiting operator ('Skip'/'Take') without an 'OrderBy' operator. This may lead to unpredictable results. If the 'Distinct' operator is used after 'OrderBy', then make sure to use the 'OrderBy' operator after 'Distinct' as the ordering would otherwise get erased.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (233ms) [Parameters=[@userId='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT l.songid
+      FROM listeninghistory AS l
+      WHERE l.userid = @userId
+      LIMIT @p
+[MONITOR] Request: GET /Home/GetHomeSection?type=mix1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (168ms) [Parameters=[@userId='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT u.statid, u.genre_name, u.listen_seconds, u.updatedat, u.userid
+      FROM user_genre_stats AS u
+      WHERE u.userid = @userId
+      ORDER BY u.listen_seconds DESC
+      LIMIT @p
+[MONITOR] Request: GET /Home/GetHomeSection?type=mix2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (231ms) [Parameters=[@userId='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT u.statid, u.genre_name, u.listen_seconds, u.updatedat, u.userid
+      FROM user_genre_stats AS u
+      WHERE u.userid = @userId
+      ORDER BY u.listen_seconds DESC
+      LIMIT @p
+[MONITOR] Request: GET /Home/GetHomeSection?type=mix3
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (453ms) [Parameters=[@userId='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT u.statid, u.genre_name, u.listen_seconds, u.updatedat, u.userid
+      FROM user_genre_stats AS u
+      WHERE u.userid = @userId
+      ORDER BY u.listen_seconds DESC
+      LIMIT @p
+[MONITOR] Request: GET /Home/GetHomeSection?type=Contextual
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (254ms) [Parameters=[@userId='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT l.songid
+      FROM listeninghistory AS l
+      WHERE l.userid = @userId
+      LIMIT @p
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (528ms) [Parameters=[@userId='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT l.songid
+      FROM listeninghistory AS l
+      WHERE l.userid = @userId
+      LIMIT @p
+[MONITOR] Request: GET /Home/GetHomeSection?type=topcharts_vn
+[MONITOR] Request: GET /Home/GetHomeSection?type=Trending
+[MONITOR] Request: GET /Home/GetHomeSection?type=topcharts_global
+[MONITOR] Request: GET /Home/GetHomeSection?type=Focus
+[MONITOR] Request: GET /Home/GetHomeSection?type=Chill
+[MONITOR] Request: GET /
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (189ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT count(*)::int
+      FROM artists AS a
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (376ms) [Parameters=[@p1='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT a.artistid, a.avatarurl, a.bannerurl, a.bio, a.country, a.isverified, a.name, a.subscribercount
+      FROM artists AS a
+      ORDER BY a.artistid DESC
+      LIMIT @p1 OFFSET @p
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (176ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT g.genreid, g.description, g.name
+      FROM genres AS g
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (298ms) [Parameters=[@userId='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT a0.artistid, a0.avatarurl, a0.bannerurl, a0.bio, a0.country, a0.isverified, a0.name, a0.subscribercount
+      FROM artist_followers AS a
+      INNER JOIN artists AS a0 ON a.artistid = a0.artistid
+      WHERE a.userid = @userId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (248ms) [Parameters=[@userId='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT l.songid
+      FROM listeninghistory AS l
+      WHERE l.userid = @userId
+      LIMIT @p
+[MONITOR] Request: GET /Home/GetHomeSection?type=mix1
+[MONITOR] Request: GET /Home/GetHomeSection?type=mix2
+[MONITOR] Request: GET /Home/GetHomeSection?type=mix3
+[MONITOR] Request: GET /Home/GetHomeSection?type=Contextual
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (339ms) [Parameters=[@userId='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT l.songid
+      FROM listeninghistory AS l
+      WHERE l.userid = @userId
+      LIMIT @p
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1,143ms) [Parameters=[@userId='?' (DbType = Int32), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT l.songid
+      FROM listeninghistory AS l
+      WHERE l.userid = @userId
+      LIMIT @p
+[MONITOR] Request: GET /Home/GetHomeSection?type=topcharts_vn
+[MONITOR] Request: GET /Home/GetHomeSection?type=Trending
+[MONITOR] Request: GET /Home/GetHomeSection?type=topcharts_global
+[MONITOR] Request: GET /Home/GetHomeSection?type=Focus
+[MONITOR] Request: GET /Home/GetHomeSection?type=Chill
+[MONITOR] Request: GET /Home/GetHomeSection?type=Sad
+[MONITOR] Request: GET /Home/GetHomeSection?type=Sad
+[MONITOR] Request: GET /Home/GetHomeSection?type=Albums
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (295ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT setval('artists_artistid_seq', (SELECT MAX(artistid) FROM artists)) WHERE (SELECT last_value FROM artists_artistid_seq) < (SELECT MAX(artistid) FROM artists);
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[100]
+      Start processing HTTP request GET https://api.deezer.com/genre/122/artists?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[100]
+      Sending HTTP request GET https://api.deezer.com/genre/122/artists?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[101]
+      Received HTTP response headers after 1160.8784ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[101]
+      End processing HTTP request after 1207.3189ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[100]
+      Start processing HTTP request GET https://api.deezer.com/artist/271613792/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[100]
+      Sending HTTP request GET https://api.deezer.com/artist/271613792/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[101]
+      Received HTTP response headers after 475.3019ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[101]
+      End processing HTTP request after 475.8368ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[100]
+      Start processing HTTP request GET https://api.deezer.com/artist/5297745/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[100]
+      Sending HTTP request GET https://api.deezer.com/artist/5297745/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[101]
+      Received HTTP response headers after 365.1047ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[101]
+      End processing HTTP request after 365.3222ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[100]
+      Start processing HTTP request GET https://api.deezer.com/artist/168158797/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[100]
+      Sending HTTP request GET https://api.deezer.com/artist/168158797/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[101]
+      Received HTTP response headers after 449.0799ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[101]
+      End processing HTTP request after 449.2351ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[100]
+      Start processing HTTP request GET https://api.deezer.com/artist/166615537/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[100]
+      Sending HTTP request GET https://api.deezer.com/artist/166615537/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[101]
+      Received HTTP response headers after 360.8457ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[101]
+      End processing HTTP request after 361.7091ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[100]
+      Start processing HTTP request GET https://api.deezer.com/artist/7815200/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[100]
+      Sending HTTP request GET https://api.deezer.com/artist/7815200/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[101]
+      Received HTTP response headers after 368.6232ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[101]
+      End processing HTTP request after 368.7696ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[100]
+      Start processing HTTP request GET https://api.deezer.com/artist/12096038/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[100]
+      Sending HTTP request GET https://api.deezer.com/artist/12096038/albums?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[101]
+      Received HTTP response headers after 405.1535ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[101]
+      End processing HTTP request after 405.374ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[100]
+      Start processing HTTP request GET https://api.deezer.com/editorial/0/releases?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[100]
+      Sending HTTP request GET https://api.deezer.com/editorial/0/releases?*
+info: System.Net.Http.HttpClient.ISpotifyService.ClientHandler[101]
+      Received HTTP response headers after 447.6894ms - 200
+info: System.Net.Http.HttpClient.ISpotifyService.LogicalHandler[101]
+      End processing HTTP request after 448.3631ms - 200
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (652ms) [Parameters=[@albumTitles='?' (DbType = Object)], CommandType='Text', CommandTimeout='30']
+      SELECT a.albumid, a.albumtype, a.copyrighttext, a.coverimageurl, a.isexplicit, a.recordlabel, a.releasedate, a.title, a.upc, s.albumid, s.artistid, s.role, s.artistid0, s.avatarurl, s.bannerurl, s.bio, s.country, s.isverified, s.name, s.subscribercount
+      FROM albums AS a
+      LEFT JOIN (
+          SELECT a0.albumid, a0.artistid, a0.role, a1.artistid AS artistid0, a1.avatarurl, a1.bannerurl, a1.bio, a1.country, a1.isverified, a1.name, a1.subscribercount
+          FROM albumartists AS a0
+          INNER JOIN artists AS a1 ON a0.artistid = a1.artistid
+      ) AS s ON a.albumid = s.albumid
+      WHERE btrim(lower(a.title), E' \t\n\r') = ANY (@albumTitles)
+      ORDER BY a.albumid, s.albumid, s.artistid
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (171ms) [Parameters=[@artistNames='?' (DbType = Object)], CommandType='Text', CommandTimeout='30']
+      SELECT a.artistid, a.avatarurl, a.bannerurl, a.bio, a.country, a.isverified, a.name, a.subscribercount
+      FROM artists AS a
+      WHERE btrim(lower(a.name), E' \t\n\r') = ANY (@artistNames)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (300ms) [Parameters=[@p0='?', @p1='?', @p2='?', @p3='?' (DbType = Boolean), @p4='?', @p5='?' (DbType = DateTime), @p6='?', @p7='?', @p8='?', @p9='?', @p10='?', @p11='?' (DbType = Boolean), @p12='?', @p13='?' (DbType = DateTime), @p14='?', @p15='?', @p16='?', @p17='?', @p18='?', @p19='?' (DbType = Boolean), @p20='?', @p21='?' (DbType = DateTime), @p22='?', @p23='?', @p24='?', @p25='?', @p26='?', @p27='?' (DbType = Boolean), @p28='?', @p29='?' (DbType = DateTime), @p30='?', @p31='?', @p32='?', @p33='?', @p34='?', @p35='?' (DbType = Boolean), @p36='?', @p37='?' (DbType = DateTime), @p38='?', @p39='?', @p40='?', @p41='?', @p42='?', @p43='?' (DbType = Boolean), @p44='?', @p45='?' (DbType = DateTime), @p46='?', @p47='?', @p48='?', @p49='?', @p50='?', @p51='?' (DbType = Boolean), @p52='?', @p53='?' (DbType = DateTime), @p54='?', @p55='?', @p56='?', @p57='?', @p58='?', @p59='?' (DbType = Boolean), @p60='?', @p61='?' (DbType = DateTime), @p62='?', @p63='?', @p64='?', @p65='?', @p66='?', @p67='?' (DbType = Boolean), @p68='?', @p69='?' (DbType = DateTime), @p70='?', @p71='?', @p72='?', @p73='?', @p74='?', @p75='?' (DbType = Boolean), @p76='?', @p77='?' (DbType = DateTime), @p78='?', @p79='?', @p80='?', @p81='?', @p82='?', @p83='?' (DbType = Boolean), @p84='?', @p85='?' (DbType = DateTime), @p86='?', @p87='?', @p88='?', @p89='?', @p90='?', @p91='?' (DbType = Boolean), @p92='?', @p93='?' (DbType = DateTime), @p94='?', @p95='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p16, @p17, @p18, @p19, @p20, @p21, @p22, @p23)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p24, @p25, @p26, @p27, @p28, @p29, @p30, @p31)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p32, @p33, @p34, @p35, @p36, @p37, @p38, @p39)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p40, @p41, @p42, @p43, @p44, @p45, @p46, @p47)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p48, @p49, @p50, @p51, @p52, @p53, @p54, @p55)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p56, @p57, @p58, @p59, @p60, @p61, @p62, @p63)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p64, @p65, @p66, @p67, @p68, @p69, @p70, @p71)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p72, @p73, @p74, @p75, @p76, @p77, @p78, @p79)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p80, @p81, @p82, @p83, @p84, @p85, @p86, @p87)
+      RETURNING albumid;
+      INSERT INTO albums (albumtype, copyrighttext, coverimageurl, isexplicit, recordlabel, releasedate, title, upc)
+      VALUES (@p88, @p89, @p90, @p91, @p92, @p93, @p94, @p95)
+      RETURNING albumid;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (184ms) [Parameters=[@p96='?' (DbType = Int32), @p97='?' (DbType = Int32), @p98='?', @p99='?' (DbType = Int32), @p100='?' (DbType = Int32), @p101='?', @p102='?' (DbType = Int32), @p103='?' (DbType = Int32), @p104='?', @p105='?' (DbType = Int32), @p106='?' (DbType = Int32), @p107='?', @p108='?' (DbType = Int32), @p109='?' (DbType = Int32), @p110='?', @p111='?' (DbType = Int32), @p112='?' (DbType = Int32), @p113='?', @p114='?' (DbType = Int32), @p115='?' (DbType = Int32), @p116='?', @p117='?' (DbType = Int32), @p118='?' (DbType = Int32), @p119='?', @p120='?' (DbType = Int32), @p121='?' (DbType = Int32), @p122='?', @p123='?' (DbType = Int32), @p124='?' (DbType = Int32), @p125='?', @p126='?' (DbType = Int32), @p127='?' (DbType = Int32), @p128='?', @p129='?' (DbType = Int32), @p130='?' (DbType = Int32), @p131='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p96, @p97, @p98);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p99, @p100, @p101);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p102, @p103, @p104);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p105, @p106, @p107);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p108, @p109, @p110);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p111, @p112, @p113);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p114, @p115, @p116);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p117, @p118, @p119);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p120, @p121, @p122);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p123, @p124, @p125);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p126, @p127, @p128);
+      INSERT INTO albumartists (albumid, artistid, role)
+      VALUES (@p129, @p130, @p131);
+[MONITOR] Request: GET /Home/GetHomeSection?type=Albums
+[MONITOR] Request: GET /Admin
+[MONITOR] Request: GET /Auth/AccessDenied?ReturnUrl=%2FAdmin
+

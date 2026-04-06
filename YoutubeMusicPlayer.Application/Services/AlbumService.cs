@@ -1,14 +1,16 @@
-using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Domain.Entities;
 using YoutubeMusicPlayer.Domain.Interfaces;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace YoutubeMusicPlayer.Application.Services;
 
@@ -16,49 +18,95 @@ public class AlbumService : IAlbumService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IYoutubeService _youtubeService;
-    private readonly ISpotifyService _spotifyService;
+    private readonly IDeezerService _deezerService;
     private readonly IMemoryCache _cache;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IBackgroundQueue _backgroundQueue;
+    private readonly ILogger<AlbumService> _logger;
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
-    public AlbumService(IUnitOfWork unitOfWork, IYoutubeService youtubeService, ISpotifyService spotifyService, IMemoryCache cache, IServiceScopeFactory scopeFactory)
+    public AlbumService(
+        IUnitOfWork unitOfWork, 
+        IYoutubeService youtubeService, 
+        IDeezerService deezerService, 
+        IMemoryCache cache, 
+        IServiceScopeFactory scopeFactory,
+        IBackgroundQueue backgroundQueue,
+        ILogger<AlbumService> logger)
     {
         _unitOfWork = unitOfWork;
         _youtubeService = youtubeService;
-        _spotifyService = spotifyService;
+        _deezerService = deezerService;
         _cache = cache;
         _scopeFactory = scopeFactory;
+        _backgroundQueue = backgroundQueue;
+        _logger = logger;
     }
 
-    public async Task<IEnumerable<AlbumDto>> GetAllAlbumsAsync()
+    public async Task<IEnumerable<AlbumDto>> GetAllAlbumsAsync(CancellationToken ct = default)
     {
-        var albums = await _unitOfWork.Repository<Album>().Query().OrderByDescending(a => a.ReleaseDate).ToListAsync();
-        return albums.Select(a => MapToDto(a));
+        return await _unitOfWork.Repository<Album>().Query()
+            .AsNoTracking()
+            .Where(a => !a.IsDeleted)
+            .OrderByDescending(a => a.ReleaseDate)
+            .Select(a => new AlbumDto
+            {
+                AlbumId = a.AlbumId,
+                Title = a.Title,
+                AlbumType = a.AlbumType,
+                CoverImageUrl = a.CoverImageUrl,
+                ReleaseDate = a.ReleaseDate,
+                RecordLabel = a.RecordLabel,
+                Upc = a.Upc
+            })
+            .ToListAsync(ct);
     }
 
-    public async Task<AlbumDto?> GetAlbumByIdAsync(int id)
+    public async Task<(IEnumerable<AlbumDto> Albums, int TotalCount)> GetPaginatedAlbumsAsync(int page, int pageSize, string? searchTerm = null, CancellationToken ct = default)
     {
-        // Optimized: Single query with all relations
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _unitOfWork.Repository<Album>().Query()
+            .AsNoTracking()
+            .Where(a => !a.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(a => EF.Functions.Like(a.Title, $"%{searchTerm}%"));
+        }
+
+        int totalCount = await query.CountAsync(ct);
+        var albums = await query
+            .OrderByDescending(a => a.ReleaseDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Include(a => a.AlbumArtists).ThenInclude(aa => aa.Artist)
+            .ToListAsync(ct);
+
+        return (albums.Select(MapToDtoWithArtists), totalCount);
+    }
+
+    public async Task<AlbumDto?> GetAlbumByIdAsync(int id, CancellationToken ct = default)
+    {
         var album = await _unitOfWork.Repository<Album>().Query()
             .Include(a => a.Songs)
             .Include(a => a.AlbumArtists).ThenInclude(aa => aa.Artist)
-            .Where(a => a.AlbumId == id)
-            .FirstOrDefaultAsync();
+            .Where(a => a.AlbumId == id && !a.IsDeleted)
+            .FirstOrDefaultAsync(ct);
 
         if (album == null) return null;
 
         var artists = album.AlbumArtists.Select(aa => aa.Artist).ToList();
         
-        // AUTO-SYNC DISABLED: Fulfilling user request to only store "listened" tracks.
-        /*
-        if (!album.Songs.Any()) {
-             var deezerSearch = await _spotifyService.SearchTracksAsync($"{album.Title} {artists.FirstOrDefault()?.Name}", 1);
-             var deezerAlbumId = deezerSearch.FirstOrDefault()?.SpotifyAlbumId;
-             
-             if (!string.IsNullOrEmpty(deezerAlbumId)) {
-                 // AUTO-SYNC DISABLED: Fulfilling user request to only store "listened" tracks.
-             }
+        if (!album.Songs.Any() || string.IsNullOrEmpty(album.DeezerAlbumId)) 
+        {
+             string? firstArtist = artists.FirstOrDefault()?.Name;
+             await _backgroundQueue.QueueBackgroundWorkItemAsync(async sp => {
+                 var syncService = sp.GetRequiredService<IAlbumService>();
+                 await syncService.EnsureAlbumSyncMetadataBackground(id, firstArtist);
+             });
         }
-        */
 
         var dto = MapToDto(album);
         dto.Songs = album.Songs.OrderBy(s => s.SongId).Select(s => new SongDto
@@ -87,7 +135,7 @@ public class AlbumService : IAlbumService
         return dto;
     }
 
-    public async Task CreateAlbumAsync(AlbumDto dto)
+    public async Task CreateAlbumAsync(AlbumDto dto, CancellationToken ct = default)
     {
         var album = new Album
         {
@@ -98,14 +146,14 @@ public class AlbumService : IAlbumService
             RecordLabel = dto.RecordLabel,
             Upc = dto.Upc
         };
-        await _unitOfWork.Repository<Album>().AddAsync(album);
-        await _unitOfWork.CompleteAsync();
+        await _unitOfWork.Repository<Album>().AddAsync(album, ct);
+        await _unitOfWork.CompleteAsync(ct);
     }
 
-    public async Task UpdateAlbumAsync(AlbumDto dto)
+    public async Task UpdateAlbumAsync(AlbumDto dto, CancellationToken ct = default)
     {
-        var album = await _unitOfWork.Repository<Album>().GetByIdAsync(dto.AlbumId);
-        if (album != null)
+        var album = await _unitOfWork.Repository<Album>().GetByIdAsync(dto.AlbumId, ct);
+        if (album != null && !album.IsDeleted)
         {
             album.Title = dto.Title;
             album.AlbumType = dto.AlbumType;
@@ -114,280 +162,195 @@ public class AlbumService : IAlbumService
             album.RecordLabel = dto.RecordLabel;
             album.Upc = dto.Upc;
             _unitOfWork.Repository<Album>().Update(album);
-            await _unitOfWork.CompleteAsync();
+            await _unitOfWork.CompleteAsync(ct);
         }
     }
 
-    public async Task DeleteAlbumAsync(int id)
+    public async Task DeleteAlbumAsync(int id, CancellationToken ct = default)
     {
-        var album = await _unitOfWork.Repository<Album>().GetByIdAsync(id);
-        if (album != null)
+        var album = await _unitOfWork.Repository<Album>().GetByIdAsync(id, ct);
+        if (album != null && !album.IsDeleted)
         {
-            _unitOfWork.Repository<Album>().Remove(album);
-            await _unitOfWork.CompleteAsync();
+            album.IsDeleted = true;
+            _unitOfWork.Repository<Album>().Update(album);
+            await _unitOfWork.CompleteAsync(ct);
         }
     }
 
-    public async Task<IEnumerable<AlbumDto>> GetRecentAlbumsAsync(int count)
+    public async Task<IEnumerable<AlbumDto>> GetRecentAlbumsAsync(int count, CancellationToken ct = default)
     {
-        var albums = await _unitOfWork.Repository<Album>().Query()
+        return await _unitOfWork.Repository<Album>().Query()
+            .AsNoTracking()
+            .Where(a => !a.IsDeleted)
             .OrderByDescending(a => a.ReleaseDate)
             .Take(count)
-            .ToListAsync();
-        return albums.Select(a => MapToDto(a));
+            .Select(a => new AlbumDto
+            {
+                AlbumId = a.AlbumId,
+                Title = a.Title,
+                CoverImageUrl = a.CoverImageUrl,
+                ReleaseDate = a.ReleaseDate
+            })
+            .ToListAsync(ct);
     }
 
-    public async Task<IEnumerable<AlbumDto>> SearchAlbumsAsync(string query)
+    public async Task<IEnumerable<AlbumDto>> SearchAlbumsAsync(string query, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query)) return Enumerable.Empty<AlbumDto>();
-        var albums = await _unitOfWork.Repository<Album>().Query()
-            .Where(a => a.Title.ToLower().Contains(query.ToLower()))
+        return await _unitOfWork.Repository<Album>().Query()
+            .AsNoTracking()
+            .Where(a => !a.IsDeleted && EF.Functions.Like(a.Title, $"%{query}%"))
             .Take(5)
-            .ToListAsync();
-        return albums.Select(a => MapToDto(a));
+            .Select(a => new AlbumDto
+            {
+                AlbumId = a.AlbumId,
+                Title = a.Title,
+                CoverImageUrl = a.CoverImageUrl,
+                ReleaseDate = a.ReleaseDate
+            })
+            .ToListAsync(ct);
     }
 
-    public async Task<IEnumerable<AlbumDto>> GetTrendingAlbumsAsync(int count)
+    public async Task<IEnumerable<AlbumDto>> GetTrendingAlbumsAsync(int count, CancellationToken ct = default)
     {
-        string cacheKey = $"trending_albums_{count}";
+        count = Math.Clamp(count, 1, 50);
+        string cacheKey = $"trending_albums_v3_{count}";
+        
         if (_cache.TryGetValue(cacheKey, out List<AlbumDto>? cachedResult) && cachedResult != null)
             return cachedResult;
 
-        using var scope = _scopeFactory.CreateScope();
-        var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var dz = scope.ServiceProvider.GetRequiredService<ISpotifyService>();
-
-        var res = new List<AlbumDto>();
+        var myLock = _locks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+        bool acquired = false;
         try
         {
-            var deezerAlbums = await dz.GetNewReleasesAsync(count);
-            if (!deezerAlbums.Any()) return await GetFallbackTrending(count, cacheKey);
+            acquired = await myLock.WaitAsync(TimeSpan.FromSeconds(15), ct);
+            if (!acquired) return await GetFallbackTrending(count, cacheKey, ct);
 
-            var albumTitles = deezerAlbums.Select(a => a.Title.ToLower().Trim()).Distinct().ToList();
-            var artistNames = deezerAlbums.Select(a => a.ArtistName.ToLower().Trim()).Distinct().ToList();
+            // Double-check cache inside lock
+            if (_cache.TryGetValue(cacheKey, out cachedResult) && cachedResult != null)
+                return cachedResult;
+
+            using var scope = _scopeFactory.CreateScope();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var dz = scope.ServiceProvider.GetRequiredService<IDeezerService>();
+
+            var deezerAlbums = await dz.GetNewReleasesAsync(count);
+            if (!deezerAlbums.Any()) return await GetFallbackTrending(count, cacheKey, ct);
+
+            var albumTitles = deezerAlbums.Select(a => a.Title.Trim()).Distinct().Take(50).ToList();
+            var res = new List<AlbumDto>();
 
             var existingAlbums = await uow.Repository<Album>().Query()
                 .AsNoTracking()
                 .Include(a => a.AlbumArtists).ThenInclude(aa => aa.Artist)
-                .Where(a => albumTitles.Contains(a.Title.ToLower()))
-                .ToListAsync();
+                .Where(a => !a.IsDeleted && albumTitles.Contains(a.Title))
+                .ToListAsync(ct);
 
-            var existingArtists = await uow.Repository<Artist>().Query()
-                .AsNoTracking()
-                .Where(a => artistNames.Contains(a.Name.ToLower()))
-                .ToListAsync();
+            var albumDict = existingAlbums
+                .GroupBy(a => a.Title.Trim())
+                .ToDictionary(g => g.Key, g => g.First());
 
-            var albumDict = existingAlbums.GroupBy(a => a.Title.ToLower()).ToDictionary(g => g.Key, g => g.First());
-            var artistDict = existingArtists.ToDictionary(a => a.Name.ToLower(), a => a);
-
-            var newAlbumsToSave = new List<Album>();
             foreach (var sa in deezerAlbums)
             {
                 if (res.Count >= count) break;
-
-                var titleLow = sa.Title.ToLower().Trim();
-                var artistLow = sa.ArtistName.ToLower().Trim();
-
-                if (albumDict.TryGetValue(titleLow, out var existingAlbum))
+                if (albumDict.TryGetValue(sa.Title.Trim(), out var existingAlbum))
                 {
                     res.Add(MapToDtoWithArtists(existingAlbum));
-                    continue;
-                }
-
-                // New Album
-                var newAlbum = new Album {
-                    Title = sa.Title,
-                    AlbumType = sa.AlbumType ?? "album",
-                    CoverImageUrl = sa.CoverImageUrl,
-                    ReleaseDate = sa.ReleaseDate != null && DateTime.TryParse(sa.ReleaseDate, out var dt) ? DateTime.SpecifyKind(dt, DateTimeKind.Utc) : DateTime.UtcNow,
-                    RecordLabel = "Deezer Charts"
-                };
-                
-                if (!artistDict.TryGetValue(artistLow, out var artist))
-                {
-                    artist = new Artist { Name = sa.ArtistName, AvatarUrl = sa.CoverImageUrl, IsVerified = true };
-                    await uow.Repository<Artist>().AddAsync(artist);
-                    artistDict[artistLow] = artist;
-                }
-                
-                newAlbum.AlbumArtists.Add(new AlbumArtist { Album = newAlbum, Artist = artist });
-                await uow.Repository<Album>().AddAsync(newAlbum);
-                newAlbumsToSave.Add(newAlbum);
-            }
-
-            if (newAlbumsToSave.Any())
-            {
-                await uow.CompleteAsync(); 
-                foreach (var na in newAlbumsToSave)
-                {
-                    res.Add(MapToDtoWithArtists(na));
                 }
             }
 
             if (res.Any())
             {
-                _cache.Set(cacheKey, res.Take(count).ToList(), TimeSpan.FromHours(2));
-                return res.Take(count);
+                _cache.Set(cacheKey, res, new MemoryCacheEntryOptions {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(4),
+                    SlidingExpiration = TimeSpan.FromHours(1),
+                    Size = 1 
+                });
+                return res;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[AlbumService] Parallel Trending Error: {ex.Message}");
+            _logger.LogError(ex, "Error syncing trending albums from Deezer");
+        }
+        finally
+        {
+            if (acquired) myLock.Release();
         }
 
-        return await GetFallbackTrending(count, cacheKey);
+        return await GetFallbackTrending(count, cacheKey, ct);
     }
 
-    private async Task<IEnumerable<AlbumDto>> GetFallbackTrending(int count, string cacheKey)
+    private async Task<IEnumerable<AlbumDto>> GetFallbackTrending(int count, string cacheKey, CancellationToken ct)
     {
         var dbAlbums = await _unitOfWork.Repository<Album>().Query()
             .AsNoTracking()
             .Include(a => a.AlbumArtists).ThenInclude(aa => aa.Artist)
-            .Where(a => !string.IsNullOrEmpty(a.CoverImageUrl))
+            .Where(a => !a.IsDeleted && !string.IsNullOrEmpty(a.CoverImageUrl))
             .OrderByDescending(a => a.ReleaseDate)
             .Take(count)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         var fallback = dbAlbums.Select(MapToDtoWithArtists).ToList();
-        if (fallback.Any()) _cache.Set(cacheKey, fallback, TimeSpan.FromMinutes(15));
+        if (fallback.Any())
+        {
+            _cache.Set(cacheKey, fallback, new MemoryCacheEntryOptions {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
+                Size = 1
+            });
+        }
         return fallback;
     }
 
-    private async Task ImportSongsFromPlaylist(int albumId, string playlistId)
+    private AlbumDto MapToDto(Album a) => new AlbumDto
     {
-        try {
-            var videos = await _youtubeService.GetPlaylistVideosAsync(playlistId);
-            
-            // Try to identify the main artist of the playlist
-            var artistsInAlbum = new HashSet<int>();
-            
-            foreach(var v in videos.Take(12)) 
-            {
-                // Find or create artist
-                var artist = await _unitOfWork.Repository<Artist>().Query()
-                    .FirstOrDefaultAsync(a => a.Name.ToLower() == v.AuthorName.ToLower());
-                
-                if (artist == null)
-                {
-                    artist = new Artist { 
-                        Name = v.AuthorName, 
-                        AvatarUrl = $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(v.AuthorName)}&background=random",
-                        IsVerified = true,
-                        SubscriberCount = new Random().Next(10000, 1000000)
-                    };
-                    await _unitOfWork.Repository<Artist>().AddAsync(artist);
-                    await _unitOfWork.CompleteAsync();
-                }
-
-                artistsInAlbum.Add(artist.ArtistId);
-
-                if (await _unitOfWork.Repository<Song>().Query().AnyAsync(s => s.YoutubeVideoId == v.YoutubeVideoId)) continue;
-
-                var song = new Song {
-                    Title = v.Title,
-                    YoutubeVideoId = v.YoutubeVideoId,
-                    ThumbnailUrl = v.ThumbnailUrl,
-                    Duration = (int?)(v.Duration?.TotalSeconds ?? 0),
-                    AlbumId = albumId,
-                    PlayCount = (long)new Random().Next(10000, 2000000)
-                };
-                await _unitOfWork.Repository<Song>().AddAsync(song);
-                await _unitOfWork.CompleteAsync();
-
-                // Link song to artist
-                if (!await _unitOfWork.Repository<SongArtist>().AnyAsync(sa => sa.SongId == song.SongId && sa.ArtistId == artist.ArtistId))
-                {
-                    await _unitOfWork.Repository<SongArtist>().AddAsync(new SongArtist { SongId = song.SongId, ArtistId = artist.ArtistId });
-                }
-            }
-
-            // Link album to artists identified in it
-            foreach(var aid in artistsInAlbum)
-            {
-                if (!await _unitOfWork.Repository<AlbumArtist>().AnyAsync(aa => aa.AlbumId == albumId && aa.ArtistId == aid))
-                {
-                    await _unitOfWork.Repository<AlbumArtist>().AddAsync(new AlbumArtist { AlbumId = albumId, ArtistId = aid });
-                }
-            }
-
-            await _unitOfWork.CompleteAsync();
-        } catch (Exception ex) {
-            Console.WriteLine($"[AlbumService] Album auto-import error: {ex.Message}");
-        }
-    }
-
-    private AlbumDto MapToDto(Album a)
-    {
-        return new AlbumDto
-        {
-            AlbumId = a.AlbumId,
-            Title = a.Title,
-            AlbumType = a.AlbumType,
-            CoverImageUrl = a.CoverImageUrl,
-            ReleaseDate = a.ReleaseDate,
-            RecordLabel = a.RecordLabel,
-            Upc = a.Upc
-        };
-    }
+        AlbumId = a.AlbumId,
+        Title = a.Title,
+        AlbumType = a.AlbumType,
+        CoverImageUrl = a.CoverImageUrl,
+        ReleaseDate = a.ReleaseDate,
+        RecordLabel = a.RecordLabel,
+        Upc = a.Upc
+    };
 
     private AlbumDto MapToDtoWithArtists(Album a)
     {
         var dto = MapToDto(a);
-        if (a.AlbumArtists != null) {
-            dto.Artists = a.AlbumArtists.Select(aa => new ArtistDto {
-                ArtistId = aa.ArtistId,
-                Name = aa.Artist.Name,
-                AvatarUrl = aa.Artist.AvatarUrl,
-                IsVerified = aa.Artist.IsVerified
-            });
-        }
+        dto.Artists = a.AlbumArtists?.Select(aa => new ArtistDto {
+            ArtistId = aa.ArtistId,
+            Name = aa.Artist.Name,
+            AvatarUrl = aa.Artist.AvatarUrl,
+            IsVerified = aa.Artist.IsVerified
+        }) ?? Enumerable.Empty<ArtistDto>();
         return dto;
     }
 
-    private async Task SyncWithScope(int albumId, string deezerAlbumId, int? artistId = null, string? albumImageUrl = null)
+    public async Task EnsureAlbumSyncMetadataBackground(int albumId, string? artistName, CancellationToken ct)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var yt = scope.ServiceProvider.GetRequiredService<IYoutubeService>();
-        var dz = scope.ServiceProvider.GetRequiredService<ISpotifyService>();
+        try 
+        {
+             using var scope = _scopeFactory.CreateScope();
+             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+             var dz = scope.ServiceProvider.GetRequiredService<IDeezerService>();
 
-        try {
-            var tracks = await dz.GetAlbumTracksAsync(deezerAlbumId);
-            foreach (var st in tracks) {
-                if (await uow.Repository<Song>().Query().AnyAsync(s => s.Title == st.TrackName && s.AlbumId == albumId)) continue;
+             var album = await uow.Repository<Album>().GetByIdAsync(albumId, ct);
+             if (album == null || album.IsDeleted) return;
 
-                // Match with YouTube
-                var ytResults = await yt.SearchVideosAsync($"{st.ArtistName} {st.TrackName} official audio", 1);
-                var v = ytResults.FirstOrDefault();
-
-                if (v != null) {
-                    if (await uow.Repository<Song>().Query().AnyAsync(s => s.YoutubeVideoId == v.YoutubeVideoId)) continue;
-
-                    var song = new Song {
-                        Title = st.TrackName,
-                        AlbumId = albumId,
-                        YoutubeVideoId = v.YoutubeVideoId,
-                        ThumbnailUrl = !string.IsNullOrEmpty(st.AlbumImageUrl) ? st.AlbumImageUrl : (albumImageUrl ?? v.ThumbnailUrl),
-                        Duration = (int?)(v.Duration?.TotalSeconds ?? (st.DurationMs / 1000)),
-                        PlayCount = (int)(v.ViewCount / 1000),
-                        ReleaseDate = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
-                    };
-                    await uow.Repository<Song>().AddAsync(song);
-                    await uow.CompleteAsync();
-
-                    if (artistId.HasValue) {
-                         await uow.Repository<SongArtist>().AddAsync(new SongArtist { SongId = song.SongId, ArtistId = artistId.Value });
-                         await uow.CompleteAsync();
-                    }
+             if (string.IsNullOrEmpty(album.DeezerAlbumId)) 
+             {
+                string query = string.IsNullOrWhiteSpace(artistName) ? album.Title : $"{artistName} {album.Title}";
+                var searchResults = await dz.SearchAlbumsAsync(query, 1);
+                var res = searchResults.FirstOrDefault();
+                if (res != null) {
+                    album.DeezerAlbumId = res.DeezerId;
+                    uow.Repository<Album>().Update(album);
+                    await uow.CompleteAsync(ct);
                 }
-            }
-        } catch (Exception ex) {
-            Console.WriteLine($"[Deezer Sync] Error syncing tracks for album {albumId}: {ex.Message}");
+             }
+        } 
+        catch (Exception ex) 
+        {
+            _logger.LogError(ex, "Metadata Sync Error for Album {AlbumId}", albumId);
         }
-    }
-
-    private async Task SyncSongsFromDeezerAlbum(int albumId, string deezerAlbumId, int? artistId = null, string? albumImageUrl = null)
-    {
-        await SyncWithScope(albumId, deezerAlbumId, artistId, albumImageUrl);
     }
 }

@@ -5,7 +5,7 @@ using YoutubeMusicPlayer.Application.Interfaces;
 
 namespace YoutubeMusicPlayer.Controllers;
 
-public class ArtistController : Controller
+public class ArtistController : BaseController
 {
     private readonly IArtistService _artistService;
 
@@ -27,13 +27,7 @@ public class ArtistController : Controller
 
     public async Task<IActionResult> Details(int id, int page = 1)
     {
-        int? userId = null;
-        if (User.Identity?.IsAuthenticated == true && int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out int uid))
-        {
-            userId = uid;
-        }
-
-        var artist = await _artistService.GetArtistByIdAsync(id, userId, page, 10);
+        var artist = await _artistService.GetArtistByIdAsync(id, CurrentUserId, page, 10);
         if (artist == null) return NotFound();
         return View(artist);
     }
@@ -41,12 +35,10 @@ public class ArtistController : Controller
     [HttpPost]
     public async Task<IActionResult> ToggleFollow(int id)
     {
-        if (User.Identity?.IsAuthenticated == true && int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out int uid))
-        {
-            var isFollowing = await _artistService.ToggleFollowAsync(uid, id);
-            return Json(new { success = true, isFollowing = isFollowing });
-        }
-        return Unauthorized();
+        if (CurrentUserId == null) return Unauthorized();
+        
+        var isFollowing = await _artistService.ToggleFollowAsync(CurrentUserId.Value, id);
+        return SuccessResponse(new { success = true, isFollowing = isFollowing });
     }
 
     [HttpPost]

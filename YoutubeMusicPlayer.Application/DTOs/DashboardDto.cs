@@ -10,10 +10,12 @@ public class DashboardDto
     public int TotalPlaylists { get; set; }
     public long TotalPlays { get; set; }
     public int PendingReports { get; set; }
+    public decimal TotalRevenue { get; set; }
     
     public IEnumerable<TopSongDto> TopSongs { get; set; } = new List<TopSongDto>();
     public IEnumerable<TopArtistDto> TopArtists { get; set; } = new List<TopArtistDto>();
     public IEnumerable<DailyPlayCountDto> PlayHistory { get; set; } = new List<DailyPlayCountDto>();
+    public IEnumerable<PaymentDto> RecentPayments { get; set; } = new List<PaymentDto>();
 }
 
 public class TopSongDto

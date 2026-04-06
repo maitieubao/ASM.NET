@@ -26,6 +26,12 @@ public class Comment
     [Column("createdat")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("updatedat")]
+    public DateTime? UpdatedAt { get; set; }
+
+    [Column("parentcommentid")]
+    public int? ParentCommentId { get; set; }
+
     [ForeignKey("UserId")]
     public User User { get; set; } = null!;
 

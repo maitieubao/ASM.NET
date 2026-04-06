@@ -14,10 +14,13 @@ public interface IInteractionService
     Task UpdateListeningStatsAsync(int userId, int songId, double durationSeconds);
     Task<IEnumerable<string>> GetTopPreferredGenresAsync(int userId, int count = 5);
     Task<Dictionary<string, double>> GetTopPreferredGenresWithWeightsAsync(int userId, int count = 5);
+    Task<IEnumerable<string>> GetTopPreferredArtistsAsync(int userId, int count = 10);
     Task<List<string>> GetHistoryVideoIdsAsync(int userId, int count = 50);
     
     // Song Likes / Favorites
     Task<bool> ToggleLikeAsync(int userId, int songId);
     Task<bool> IsSongLikedAsync(int userId, int songId);
     Task<IEnumerable<int>> GetLikedSongIdsAsync(int userId);
+    Task<(IEnumerable<int> Ids, int TotalCount)> GetLikedSongIdsPaginatedAsync(int userId, int page, int pageSize, CancellationToken ct = default);
+    Task<int> GetLikeCountAsync(int songId);
 }

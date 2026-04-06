@@ -5,6 +5,6 @@ namespace YoutubeMusicPlayer.Application.Interfaces;
 
 public interface IBackgroundQueue
 {
-    void QueueBackgroundWorkItem(Func<IServiceProvider, Task> workItem);
+    ValueTask QueueBackgroundWorkItemAsync(Func<IServiceProvider, Task> workItem);
     Task<Func<IServiceProvider, Task>> DequeueAsync(System.Threading.CancellationToken cancellationToken);
 }

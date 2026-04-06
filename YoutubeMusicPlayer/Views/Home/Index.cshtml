@@ -1,4 +1,4 @@
-@model YoutubeMusicPlayer.Models.HomeViewModel
+@model YoutubeMusicPlayer.Application.DTOs.HomeViewModel
 @{
     ViewData["Title"] = "Khám phá - Música";
 }
@@ -56,11 +56,10 @@
             <div class="section-placeholder" data-type="mix1"></div>
         }
         
-        <div class="section-placeholder" data-type="topcharts_vn"></div>
         <div class="section-placeholder" data-type="Trending"></div>
-        <div class="section-placeholder" data-type="topcharts_global"></div>
         <div class="section-placeholder" data-type="Focus"></div>
         <div class="section-placeholder" data-type="Chill"></div>
+        <div class="section-placeholder" data-type="compilations"></div>
         <div class="section-placeholder" data-type="Sad"></div>
         <div class="section-placeholder" data-type="Albums"></div>
     </div>
@@ -108,33 +107,58 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const placeholders = document.querySelectorAll('.section-placeholder');
-            
-            async function loadSections() {
-                for (const el of placeholders) {
-                    const type = el.getAttribute('data-type');
-                    try {
-                        const response = await fetch(`/Home/GetHomeSection?type=${type}`);
-                        const html = await response.text();
-                        if (html && html.trim().length > 0) {
-                            el.innerHTML = html;
-                            el.classList.add('loaded');
-                            if (window.ScrollReveal) window.ScrollReveal().reveal(el.querySelector('.section-reveal'));
-                        } else {
-                            el.remove();
-                        }
-                    } catch (err) {
-                        console.error('Error loading section:', type, err);
-                        el.remove();
-                    }
+            // Activate static reveal sections (like Top Artists)
+            document.querySelectorAll('.section-reveal').forEach(el => {
+                if (!el.closest('.section-placeholder')) {
+                    setTimeout(() => el.classList.add('active'), 200);
                 }
-            }
+            });
             
-            loadSections();
+            loadAllSections();
         });
 
+        async function loadAllSections() {
+            const placeholders = document.querySelectorAll('.section-placeholder');
+            for (const el of placeholders) {
+                await loadSection(el);
+            }
+        }
+
+        async function loadSection(el, forceRefresh = false) {
+            const type = el.getAttribute('data-type');
+            try {
+                const response = await fetch(`/Home/GetHomeSection?type=${type}&refresh=${forceRefresh}`);
+                const html = await response.text();
+                if (html && html.trim().length > 0) {
+                    el.innerHTML = html;
+                    el.classList.add('loaded');
+                    // Add active class for reveal animation
+                    const reveal = el.querySelector('.section-reveal');
+                    if (reveal) setTimeout(() => reveal.classList.add('active'), 100);
+                } else if (!forceRefresh) {
+                    el.remove();
+                }
+            } catch (err) {
+                console.error('Error loading section:', type, err);
+                if (!forceRefresh) el.remove();
+            }
+        }
+
+        async function refreshSection(btn) {
+            const placeholder = btn.closest('.section-placeholder');
+            if (!placeholder) return;
+            
+            btn.classList.add('fa-spin');
+            btn.disabled = true;
+            
+            await loadSection(placeholder, true);
+            
+            // Animation is reset because innerHTML was replaced, btn is gone
+        }
+
         function scrollCarousel(btn, direction) {
-            const container = btn.closest('.mb-5').querySelector('.horizontal-carousel') || btn.closest('.mb-5').querySelector('.song-list-grid');
+            // Updated to handle complex nesting in _HomeSection
+            const container = btn.closest('.carousel-wrapper').querySelector('.horizontal-carousel') || btn.closest('.carousel-wrapper').querySelector('.song-list-grid');
             if (container) {
                 container.scrollBy({ left: direction * 500, behavior: 'smooth' });
             }

@@ -1,0 +1,201 @@
+@model YoutubeMusicPlayer.Application.DTOs.PlaylistDto
+@{
+    ViewData["Title"] = "Bài hát đã thích";
+}
+
+<div class="playlist-details-container animate-fade-in">
+    <!-- HEADER -->
+    <div class="playlist-hero mb-5">
+        <div class="playlist-hero-bg" style="background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%);"></div>
+        <div class="playlist-hero-content d-flex align-items-end p-4 p-md-5">
+            <div class="playlist-thumb shadow-2xl me-4">
+                <div class="liked-songs-cover rounded-4 d-flex align-items-center justify-content-center" style="width: 280px; height: 280px; background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%);">
+                    <i class="fa-solid fa-heart text-white display-1"></i>
+                </div>
+            </div>
+            <div class="playlist-info">
+                <span class="badge bg-white bg-opacity-10 text-white px-3 py-2 rounded-pill small fw-bold tracking-wider uppercase mb-3">PLAYLIST TỰ ĐỘNG</span>
+                <h1 class="display-2 fw-black mb-1">Bài hát đã thích</h1>
+                <p class="text-dim mb-3">Những giai điệu bạn đã thả tim</p>
+                <div class="d-flex align-items-center gap-3 text-white-50 small">
+                    <span class="fw-bold text-main">@((User.Identity?.Name) ?? "User")</span>
+                    <span>•</span>
+                    <span>@Model.Songs.Count() bài hát</span>
+                </div>
+                <div class="mt-4 d-flex align-items-center gap-3">
+                    <button class="btn btn-accent rounded-circle p-3 shadow-lg" style="width: 56px; height: 56px;" onclick="playLikedSongs()">
+                        <i class="fa-solid fa-play fs-4 ps-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SONGS LIST -->
+    <div class="glass-card overflow-hidden">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th class="ps-4">#</th>
+                    <th>Tiêu đề bài hát</th>
+                    <th class="d-none d-md-table-cell">Nghệ sĩ</th>
+                    <th class="text-end pe-4">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int i = 1; }
+                @foreach (var s in Model.Songs)
+                {
+                    <tr class="song-row" onclick="playSingleTrack('@s.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(s.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(s.AuthorName ?? "Unknown")', '@s.ThumbnailUrl')">
+                        <td class="ps-4 text-dim fw-bold">@i</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="@s.ThumbnailUrl" class="rounded me-3" style="width: 44px; height: 44px; object-fit: cover;">
+                                <div>
+                                    <div class="fw-bold text-main">@s.Title</div>
+                                    <div class="text-dim extra-small">YouTube Track</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="d-none d-md-table-cell text-dim small">@s.AuthorName</td>
+                        <td class="text-end pe-4">
+                            <div class="d-flex align-items-center justify-content-end gap-2 action-group">
+                                <button class="btn btn-icon btn-like liked" onclick="event.stopPropagation(); toggleLike(@s.SongId, this)">
+                                    <i class="fa-solid fa-heart"></i>
+                                </button>
+                                <a asp-controller="Subscription" asp-action="Download" asp-route-youtubeId="@s.YoutubeVideoId" asp-route-title="@s.Title" class="btn btn-icon text-dim hover-text-accent" title="Tải xuống">
+                                    <i class="fa-solid fa-download"></i>
+                                </a>
+                                <button class="btn btn-icon" onclick="event.stopPropagation(); openAddToPlaylist(@s.SongId, '@s.YoutubeVideoId')">
+                                    <i class="fa-solid fa-ellipsis-v"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    i++;
+                }
+
+                @if (!Model.Songs.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-dim">
+                            <i class="fa-solid fa-heart-crack display-4 mb-3 opacity-10"></i>
+                            <p>Bạn chưa yêu thích bài hát nào.<br/>Hãy thả tim để lưu vào bộ sưu tập nhé!</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .playlist-details-container { padding-bottom: 50px; }
+    
+    .playlist-hero {
+        position: relative;
+        height: 420px;
+        border-radius: 24px;
+        overflow: hidden;
+        margin-top: -16px; 
+    }
+    
+    .playlist-hero-bg {
+        position: absolute;
+        inset: 0;
+        filter: blur(80px) brightness(0.4);
+        transform: scale(1.2);
+    }
+    
+    .playlist-hero-content {
+        position: relative;
+        height: 100%;
+        background: linear-gradient(to top, rgba(15, 15, 15, 0.95) 0%, transparent 100%);
+        z-index: 1;
+    }
+    
+    .liked-songs-cover {
+        box-shadow: 0 20px 50px rgba(108, 92, 231, 0.4);
+    }
+
+    .song-row {
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    
+    .song-row:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+    
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-dim);
+        border: none;
+        background: transparent;
+        transition: 0.2s;
+    }
+    
+    .btn-icon:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: white;
+    }
+    
+    .btn-like.liked {
+        color: #ff4757;
+    }
+    
+    .action-group {
+        opacity: 0;
+        transition: 0.2s;
+    }
+    
+    .song-row:hover .action-group {
+        opacity: 1;
+    }
+</style>
+
+<script>
+    async function toggleLike(songId, btn) {
+        try {
+            const formData = new FormData();
+            formData.append('songId', songId);
+            const res = await fetch('/Interaction/ToggleLike', { method: 'POST', body: formData });
+            const data = await res.json();
+            if(data.success) {
+                if(data.isLiked) btn.classList.add('liked');
+                else btn.classList.remove('liked');
+            }
+        } catch(e) {}
+    }
+
+    function playLikedSongs() {
+        const rows = document.querySelectorAll('.song-row');
+        if (rows.length === 0) return;
+        
+        const songs = [];
+        rows.forEach(row => {
+            const onclick = row.getAttribute('onclick');
+            const match = onclick.match(/playSingleTrack\('(.*?)', '(.*?)', '(.*?)', '(.*?)'\)/);
+            if (match) {
+                songs.push({
+                    videoId: match[1],
+                    title: match[2],
+                    author: match[3],
+                    thumbnail: match[4]
+                });
+            }
+        });
+
+        if (songs.length > 0) {
+            playQueue = songs;
+            currentIndex = 0;
+            loadAndPlay(playQueue[0]);
+            renderQueue();
+        }
+    }
+</script>

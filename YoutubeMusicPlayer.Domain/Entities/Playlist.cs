@@ -42,4 +42,7 @@ public class Playlist
     public User? User { get; set; }
 
     public ICollection<PlaylistSong> PlaylistSongs { get; set; } = new List<PlaylistSong>();
+
+    [Column("is_deleted")]
+    public bool IsDeleted { get; set; } = false;
 }

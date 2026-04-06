@@ -6,7 +6,34 @@
 <div class="container py-5">
     <div class="text-center mb-5">
         <h1 class="display-4 fw-bold text-white mb-3">Nâng cấp trải nghiệm âm nhạc</h1>
-        <p class="text-white-50 fs-5">Chọn gói phù hợp với bạn để tận hưởng âm nhạc không giới hạn.</p>
+        <p class="text-white-50 fs-5 mb-4">Chọn gói phù hợp với bạn để tận hưởng âm nhạc không giới hạn.</p>
+        
+        <div class="d-flex justify-content-center gap-3">
+            <a asp-action="Transactions" class="btn btn-outline-light rounded-pill px-4 fw-bold">
+                <i class="fa-solid fa-receipt me-2"></i>Lịch sử giao dịch
+            </a>
+            @if (ViewBag.IsPremium == true)
+            {
+                <form asp-action="CancelSubscription" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn hủy gói Premium?')">
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-4 fw-bold">
+                        <i class="fa-solid fa-ban me-2"></i>Hủy gói hiện tại
+                    </button>
+                </form>
+            }
+        </div>
+        
+        @if (TempData["Message"] != null)
+        {
+            <div class="alert alert-success bg-opacity-25 border-success text-success rounded-4 mt-4 mx-auto" style="max-width: 600px;">
+                <i class="fa-solid fa-circle-check me-2"></i>@TempData["Message"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger bg-opacity-25 border-danger text-danger rounded-4 mt-4 mx-auto" style="max-width: 600px;">
+                <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["Error"]
+            </div>
+        }
     </div>
 
     <div class="row row-cols-1 row-cols-md-3 g-4 justify-content-center">

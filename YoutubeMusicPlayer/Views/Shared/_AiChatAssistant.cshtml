@@ -1,0 +1,308 @@
+<!-- AI Chat Assistant UI -->
+<div id="ai-chat-wrapper" class="ai-chat-closed">
+    <!-- Floating Toggle Button -->
+    <button id="ai-chat-toggle" class="btn-ai-toggle" title="Trợ lý AI Antigravity">
+        <i class="fa-solid fa-sparkles ai-sparkle-icon"></i>
+        <span class="ai-label">Trợ lý AI</span>
+    </button>
+
+    <!-- Chat Window -->
+    <div id="ai-chat-window" class="glass-card ai-window-hidden">
+        <div class="ai-window-header d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <div class="ai-status-dot pulse-animation"></div>
+                <span class="fw-bold fs-6">Antigravity AI</span>
+            </div>
+            <button id="ai-chat-close" class="btn-close btn-close-white small"></button>
+        </div>
+
+        <div id="ai-chat-messages" class="ai-messages-container scrollbar-hide">
+            <div class="ai-message ai-message-bot">
+                Xin chào! Tôi là trợ lý AI. Tôi có thể giúp bạn tìm nhạc, tạo playlist hoặc điều khiển trình phát. Bạn muốn nghe gì hôm nay?
+            </div>
+        </div>
+
+        <div class="ai-chat-input-area">
+            <div class="ai-input-wrapper">
+                <input type="text" id="ai-chat-input" placeholder="Nhập yêu cầu của bạn..." autocomplete="off" />
+                <button id="ai-chat-send" class="btn-ai-send">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #ai-chat-wrapper {
+        position: fixed;
+        bottom: 110px; /* Above player bar */
+        right: 30px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        pointer-events: none;
+    }
+
+    #ai-chat-wrapper * {
+        pointer-events: auto;
+    }
+
+    .btn-ai-toggle {
+        width: auto;
+        height: 50px;
+        padding: 0 20px;
+        border-radius: 25px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: white;
+        box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+    }
+
+    .btn-ai-toggle:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 12px 30px rgba(108, 92, 231, 0.6);
+    }
+
+    .ai-sparkle-icon {
+        font-size: 1.2rem;
+        animation: ai-pulse 2s infinite;
+    }
+
+    @@keyframes ai-pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.2); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+
+    #ai-chat-window {
+        width: 350px;
+        height: 500px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: bottom right;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .ai-window-hidden {
+        opacity: 0;
+        transform: scale(0.8) translateY(20px);
+        pointer-events: none !important;
+        height: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    .ai-window-header {
+        padding: 15px 20px;
+        background: rgba(255,255,255,0.05);
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .ai-status-dot {
+        width: 10px;
+        height: 10px;
+        background: #10b981;
+        border-radius: 50%;
+        box-shadow: 0 0 12px #10b981;
+    }
+
+    .pulse-animation {
+        animation: ai-dot-pulse 2s infinite;
+    }
+
+    @@keyframes ai-dot-pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .ai-messages-container {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .ai-message {
+        max-width: 85%;
+        padding: 10px 15px;
+        border-radius: 18px;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        animation: ai-msg-slide 0.3s ease-out;
+    }
+
+    @@keyframes ai-msg-slide {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ai-message-bot {
+        align-self: flex-start;
+        background: rgba(255,255,255,0.1);
+        color: #eee;
+        border-bottom-left-radius: 4px;
+    }
+
+    .ai-message-user {
+        align-self: flex-end;
+        background: #6C5CE7;
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .ai-chat-input-area {
+        padding: 15px;
+        background: rgba(0,0,0,0.2);
+    }
+
+    .ai-input-wrapper {
+        display: flex;
+        background: rgba(255,255,255,0.05);
+        border-radius: 25px;
+        padding: 5px 5px 5px 15px;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    #ai-chat-input {
+        flex: 1;
+        background: none;
+        border: none;
+        color: white;
+        outline: none;
+        font-size: 0.9rem;
+    }
+
+    .btn-ai-send {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        background: #6C5CE7;
+        border: none;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+    }
+
+    .btn-ai-send:hover {
+        transform: scale(1.1);
+    }
+
+    .ai-typing-indicator {
+        font-style: italic;
+        color: #888;
+        font-size: 0.8rem;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleBtn = document.getElementById('ai-chat-toggle');
+        const closeBtn = document.getElementById('ai-chat-close');
+        const chatWindow = document.getElementById('ai-chat-window');
+        const chatInput = document.getElementById('ai-chat-input');
+        const sendBtn = document.getElementById('ai-chat-send');
+        const messagesContainer = document.getElementById('ai-chat-messages');
+
+        let chatHistory = [];
+
+        toggleBtn.onclick = () => {
+            chatWindow.classList.toggle('ai-window-hidden');
+            if(!chatWindow.classList.contains('ai-window-hidden')) {
+                chatInput.focus();
+            }
+        };
+
+        closeBtn.onclick = () => chatWindow.classList.add('ai-window-hidden');
+
+        async function sendMessage() {
+            const msg = chatInput.value.trim();
+            if(!msg) return;
+
+            // Add user message to UI
+            appendMessage(msg, 'user');
+            chatInput.value = '';
+
+            // Add typing indicator
+            const typingId = 'typing-' + Date.now();
+            const typingHtml = `<div id="${typingId}" class="ai-message ai-message-bot ai-typing-indicator">Antigravity đang xử lý...</div>`;
+            messagesContainer.insertAdjacentHTML('beforeend', typingHtml);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            try {
+                const response = await fetch('/api/AiAgent/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg, history: chatHistory })
+                });
+
+                const data = await response.json();
+                
+                // Remove typing indicator
+                document.getElementById(typingId)?.remove();
+
+                // Robust property check (handle both CamelCase and PascalCase)
+                const resMsg = data.message || data.Message || 'Tôi xin lỗi, có lỗi khi xử lý tin nhắn.';
+                const resAction = data.suggestedAction || data.SuggestedAction;
+
+                // Add to history
+                chatHistory.push({ role: 'user', content: msg });
+                chatHistory.push({ role: 'assistant', content: resMsg });
+                
+                if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+
+                // Add bot response
+                appendMessage(resMsg, 'bot');
+
+                // Handle suggested actions
+                if (resAction) {
+                    handleAiAction(resAction);
+                }
+
+            } catch (err) {
+                document.getElementById(typingId)?.remove();
+                appendMessage('Có lỗi xảy ra khi kết nối với AI.', 'bot');
+            }
+        }
+
+        function appendMessage(text, side) {
+            const msgHtml = `<div class="ai-message ai-message-${side}">${text}</div>`;
+            messagesContainer.insertAdjacentHTML('beforeend', msgHtml);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function handleAiAction(action) {
+            console.log("[AI Action]", action);
+            const [type, payload, extra] = action.split(':');
+            
+            if (type === 'play') {
+                // Find and click the play button or use global play function
+                if (window.playSingleTrack) {
+                    // Try to extract title/artist if possible, otherwise use placeholder
+                    window.playSingleTrack(payload, "Phát từ AI", "Trợ lý ảo", "");
+                }
+            } else if (type === 'navigate' && payload === 'playlist') {
+                window.location.href = '/Playlist/Details/' + extra;
+            }
+        }
+
+        sendBtn.onclick = sendMessage;
+        chatInput.onkeypress = (e) => {
+            if(e.key === 'Enter') sendMessage();
+        };
+    });
+</script>

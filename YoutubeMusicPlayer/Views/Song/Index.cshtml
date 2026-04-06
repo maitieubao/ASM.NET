@@ -1,10 +1,18 @@
-@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.SongDto>
+@model YoutubeMusicPlayer.Models.ViewModels.SongIndexViewModel
 
 @{
     ViewData["Title"] = "Quản lý bài hát";
 }
 
 <div class="auth-card p-5 animate__animated animate__fadeIn">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show premium-glass border-0 text-white mb-4" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
             <h1 class="fw-bold mb-2">Thư viện bài hát</h1>
@@ -20,6 +28,21 @@
         </div>
     </div>
 
+    <!-- Search Form -->
+    <div class="mb-4">
+        <form asp-action="Index" method="get" class="d-flex gap-2">
+            <div class="input-group" style="max-width: 400px;">
+                <span class="input-group-text bg-dark border-secondary text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control form-control-prem" placeholder="Tìm kiếm bài hát...">
+            </div>
+            <button type="submit" class="btn btn-secondary rounded-pill px-4">Tìm</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm))
+            {
+                <a asp-action="Index" class="btn btn-link text-muted extra-small d-flex align-items-center">Xóa lọc</a>
+            }
+        </form>
+    </div>
+
     <div class="table-responsive">
         <table class="modern-table">
             <thead>
@@ -32,7 +55,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var item in Model) {
+                @foreach (var item in Model.Songs) {
                 <tr>
                     <td>
                         <div class="fw-bold">@item.Title @(item.IsExplicit ? "🔞" : "")</div>
@@ -70,4 +93,33 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination Controls -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-5">
+            <nav>
+                <ul class="pagination pagination-prem">
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.SearchTerm">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-searchTerm="@Model.SearchTerm">@i</a>
+                        </li>
+                    }
+
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.SearchTerm">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
 </div>

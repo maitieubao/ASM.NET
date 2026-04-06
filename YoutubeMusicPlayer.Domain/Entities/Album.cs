@@ -36,6 +36,12 @@ public class Album
     [Column("isexplicit")]
     public bool IsExplicit { get; set; }
 
+    [Column("deezer_album_id")]
+    public string? DeezerAlbumId { get; set; }
+
     public ICollection<Song> Songs { get; set; } = new List<Song>();
     public ICollection<AlbumArtist> AlbumArtists { get; set; } = new List<AlbumArtist>();
+
+    [Column("is_deleted")]
+    public bool IsDeleted { get; set; } = false;
 }

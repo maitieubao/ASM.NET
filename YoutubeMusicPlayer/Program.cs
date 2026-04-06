@@ -5,6 +5,7 @@ using YoutubeMusicPlayer.Domain.Interfaces;
 using YoutubeMusicPlayer.Infrastructure;
 using YoutubeMusicPlayer.Infrastructure.Persistence;
 using YoutubeMusicPlayer.Infrastructure.External;
+using YoutubeMusicPlayer.Domain.Entities;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -58,15 +59,25 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+// Facades (Refinement)
+builder.Services.AddScoped<IHomeFacade, HomeFacade>();
+builder.Services.AddScoped<IPlaybackFacade, PlaybackFacade>();
+builder.Services.AddScoped<IProfileFacade, ProfileFacade>();
+
+// Swagger/OpenAPI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 // --- NEW REFINED ARCHITECTURE (Background Processing) ---
 builder.Services.AddSingleton<IBackgroundQueue, BackgroundQueue>();
-builder.Services.AddHostedService<MusicBackgroundWorker>();
+builder.Services.AddHostedService<QueuedHostedService>();
 
 // External Services
 builder.Services.AddScoped<IYoutubeService, YoutubeService>();
 builder.Services.AddHttpClient<ILyricsService, LyricsService>();
-builder.Services.AddHttpClient<ISpotifyService, DeezerService>();
+builder.Services.AddHttpClient<IDeezerService, DeezerService>();
 builder.Services.AddScoped<IWikipediaService, WikipediaService>();
+builder.Services.AddScoped<IAiAgentService, SemanticKernelAgentService>();
 
 var app = builder.Build();
 
@@ -149,7 +160,33 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE playlistsongs ADD COLUMN position INTEGER DEFAULT 0;
                 END IF;
 
-                -- Fix missing tables
+                -- Social & System Features
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='resettoken') THEN
+                    ALTER TABLE users ADD COLUMN resettoken text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='resettokenexpiry') THEN
+                    ALTER TABLE users ADD COLUMN resettokenexpiry timestamp with time zone;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='comments' AND column_name='parentcommentid') THEN
+                    ALTER TABLE comments ADD COLUMN parentcommentid integer;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='comments' AND column_name='updatedat') THEN
+                    ALTER TABLE comments ADD COLUMN updatedat timestamp with time zone;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscription_plans' AND column_name='is_active') THEN
+                    ALTER TABLE subscription_plans ADD COLUMN is_active boolean DEFAULT true;
+                END IF;
+
+                -- New Tables
+                CREATE TABLE IF NOT EXISTS comment_likes (
+                    likeid SERIAL PRIMARY KEY,
+                    userid INTEGER NOT NULL REFERENCES users(userid),
+                    commentid INTEGER NOT NULL REFERENCES comments(commentid),
+                    createdat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
                 CREATE TABLE IF NOT EXISTS categories (
                     categoryid SERIAL PRIMARY KEY,
                     name VARCHAR(100) NOT NULL,
@@ -201,6 +238,19 @@ using (var scope = app.Services.CreateScope())
                     PRIMARY KEY (userid, artistid)
                 );
             END $$;");
+
+        // --- NEW: SEED SUBSCRIPTION PLANS ---
+        if (!context.Set<SubscriptionPlan>().Any())
+        {
+            context.Set<SubscriptionPlan>().AddRange(new List<SubscriptionPlan>
+            {
+                new SubscriptionPlan { Name = "Gói 1 Tháng", Price = 59000, DurationDays = 30, Description = "Sử dụng đầy đủ mọi tính năng trong 30 ngày." },
+                new SubscriptionPlan { Name = "Gói 3 Tháng", Price = 159000, DurationDays = 90, Description = "Tiết kiệm hơn với gói 3 tháng cao cấp." },
+                new SubscriptionPlan { Name = "Gói 1 Năm", Price = 499000, DurationDays = 365, Description = "Trải nghiệm âm nhạc đỉnh cao cả năm." }
+            });
+            await context.SaveChangesAsync();
+            Console.WriteLine("[DB INIT] Default Subscription Plans seeded.");
+        }
     }
     catch (Exception ex)
     {
@@ -208,12 +258,25 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+else
+{
+    // Enable HSTS in development too if using HTTPS for Google Login
+    app.UseHsts();
+}
+
+// Enable Swagger in all environments for testing (as requested by USER)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Youtube Music Player API v1");
+    // To serve the Swagger UI at the app's root (http://localhost:<port>/swagger), uncomment below
+    // c.RoutePrefix = string.Empty;
+});
 
 // Thêm hệ thống giám sát Request
 app.Use(async (context, next) =>
@@ -222,13 +285,14 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// app.UseHttpsRedirection(); // Tạm tắt để tránh lỗi chuyển hướng sai port
+app.UseHttpsRedirection(); 
 app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapControllers();
 app.MapStaticAssets();
 
 app.MapControllerRoute(

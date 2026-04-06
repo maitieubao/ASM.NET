@@ -6,6 +6,7 @@ using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Domain.Entities;
 using YoutubeMusicPlayer.Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace YoutubeMusicPlayer.Application.Services;
 
@@ -22,8 +23,7 @@ public class SubscriptionService : ISubscriptionService
     {
         try
         {
-            await SeedPlansIfEmptyAsync();
-            var plans = await _unitOfWork.Repository<SubscriptionPlan>().GetAllAsync();
+            var plans = await _unitOfWork.Repository<SubscriptionPlan>().FindAsync(p => p.IsActive);
             return plans.Select(p => new SubscriptionPlanDto
             {
                 PlanId = p.PlanId,
@@ -35,9 +35,7 @@ public class SubscriptionService : ISubscriptionService
         }
         catch (Exception ex)
         {
-            // Log the error for diagnosing. Returns empty if DB table is missing but caught by controller.
-            // If the table doesn't exist yet, SeedPlansIfEmptyAsync will throw.
-            throw new Exception("Lỗi khi tải gói hội viên. Đảm bảo bạn đã chạy Migration hoặc File SQL trên Supabase. Chi tiết: " + ex.Message);
+            throw new Exception("Lỗi khi tải gói hội viên. Chi tiết: " + ex.Message);
         }
     }
 
@@ -60,21 +58,13 @@ public class SubscriptionService : ISubscriptionService
         var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
         if (user == null) return false;
         
-        // If flag is true, also check if subscription is still valid
         if (user.IsPremium)
         {
+            // Just check validity, don't update DB here (Side effect removal)
             var activeSub = await _unitOfWork.Repository<UserSubscription>()
                 .FirstOrDefaultAsync(s => s.UserId == userId && s.IsActive && s.EndDate > DateTime.UtcNow);
             
-            if (activeSub == null)
-            {
-                // Expired
-                user.IsPremium = false;
-                _unitOfWork.Repository<User>().Update(user);
-                await _unitOfWork.CompleteAsync();
-                return false;
-            }
-            return true;
+            return activeSub != null;
         }
         return false;
     }
@@ -120,54 +110,155 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task ProcessPaymentSuccessAsync(long orderCode, string transactionId)
     {
-        var payment = await _unitOfWork.Repository<Payment>()
-            .FirstOrDefaultAsync(p => p.OrderCode == orderCode && p.Status == "Pending");
-        
-        if (payment == null) return;
-
-        payment.Status = "Success";
-        payment.PayosTransactionId = transactionId;
-        _unitOfWork.Repository<Payment>().Update(payment);
-
-        // Activate Subscription
-        var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(payment.PlanId);
-        if (plan != null)
+        using var transaction = await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            // Update User
-            var user = await _unitOfWork.Repository<User>().GetByIdAsync(payment.UserId);
-            if (user != null)
-            {
-                user.IsPremium = true;
-                _unitOfWork.Repository<User>().Update(user);
-            }
+            var payment = await _unitOfWork.Repository<Payment>()
+                .FirstOrDefaultAsync(p => p.OrderCode == orderCode && p.Status == "Pending");
+            
+            if (payment == null) return;
 
-            // Create or Update UserSubscription
-            var existingSub = await _unitOfWork.Repository<UserSubscription>()
-                .FirstOrDefaultAsync(s => s.UserId == payment.UserId && s.IsActive);
+            // 1. Update Payment
+            payment.Status = "Success";
+            payment.PayosTransactionId = transactionId;
+            _unitOfWork.Repository<Payment>().Update(payment);
 
-            if (existingSub != null)
+            var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(payment.PlanId);
+            if (plan != null)
             {
-                // EXTEND existing
-                if (existingSub.EndDate < DateTime.UtcNow) existingSub.EndDate = DateTime.UtcNow;
-                existingSub.EndDate = existingSub.EndDate.AddDays(plan.DurationDays);
-                existingSub.PlanId = plan.PlanId;
-                _unitOfWork.Repository<UserSubscription>().Update(existingSub);
-            }
-            else
-            {
-                // NEW
-                var newSub = new UserSubscription
+                // 2. Update User
+                var user = await _unitOfWork.Repository<User>().GetByIdAsync(payment.UserId);
+                if (user != null)
                 {
-                    UserId = payment.UserId,
-                    PlanId = plan.PlanId,
-                    StartDate = DateTime.UtcNow,
-                    EndDate = DateTime.UtcNow.AddDays(plan.DurationDays),
-                    IsActive = true
-                };
-                await _unitOfWork.Repository<UserSubscription>().AddAsync(newSub);
+                    user.IsPremium = true;
+                    _unitOfWork.Repository<User>().Update(user);
+                }
+
+                // 3. Create or Update UserSubscription
+                var existingSub = await _unitOfWork.Repository<UserSubscription>()
+                    .FirstOrDefaultAsync(s => s.UserId == payment.UserId && s.IsActive);
+
+                if (existingSub != null)
+                {
+                    if (existingSub.EndDate < DateTime.UtcNow) existingSub.EndDate = DateTime.UtcNow;
+                    existingSub.EndDate = existingSub.EndDate.AddDays(plan.DurationDays);
+                    existingSub.PlanId = plan.PlanId;
+                    _unitOfWork.Repository<UserSubscription>().Update(existingSub);
+                }
+                else
+                {
+                    var newSub = new UserSubscription
+                    {
+                        UserId = payment.UserId,
+                        PlanId = plan.PlanId,
+                        StartDate = DateTime.UtcNow,
+                        EndDate = DateTime.UtcNow.AddDays(plan.DurationDays),
+                        IsActive = true
+                    };
+                    await _unitOfWork.Repository<UserSubscription>().AddAsync(newSub);
+                }
             }
+
+            await _unitOfWork.CompleteAsync();
+            await transaction.CommitAsync();
         }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<PaymentDto>> GetUserPaymentsAsync(int userId)
+    {
+        // Fix N+1: Use Join to fetch Plan data in one query
+        var payments = await _unitOfWork.Repository<Payment>()
+            .Query()
+            .Include(p => p.Plan)
+            .Where(p => p.UserId == userId)
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync();
+        
+        return payments.Select(p => new PaymentDto
+        {
+            PaymentId = p.PaymentId,
+            UserId = p.UserId,
+            PlanId = p.PlanId,
+            PlanName = p.Plan?.Name ?? "Gói đã xóa",
+            Amount = p.Amount,
+            Status = p.Status,
+            PaymentDate = p.PaymentDate,
+            OrderCode = p.OrderCode
+        });
+    }
+
+    public async Task<bool> CancelSubscriptionAsync(int userId)
+    {
+        var existingSub = await _unitOfWork.Repository<UserSubscription>()
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.IsActive);
+        
+        if (existingSub == null) return false;
+
+        // Graceful Cancellation: Just mark as inactive (auto-renewal disabled)
+        // User remains Premium until EndDate is passed (checked in IsUserPremiumAsync)
+        existingSub.IsActive = false;
+        _unitOfWork.Repository<UserSubscription>().Update(existingSub);
 
         await _unitOfWork.CompleteAsync();
+        return true;
+    }
+
+    public async Task<IEnumerable<SubscriptionPlanDto>> GetAllPlansAsync()
+    {
+        var plans = await _unitOfWork.Repository<SubscriptionPlan>().GetAllAsync();
+        return plans.Select(p => new SubscriptionPlanDto
+        {
+            PlanId = p.PlanId,
+            Name = p.Name,
+            Price = p.Price,
+            DurationDays = p.DurationDays,
+            Description = p.Description,
+            IsActive = p.IsActive
+        });
+    }
+
+    public async Task CreatePlanAsync(SubscriptionPlanDto dto)
+    {
+        var plan = new SubscriptionPlan
+        {
+            Name = dto.Name,
+            Price = dto.Price,
+            DurationDays = dto.DurationDays,
+            Description = dto.Description,
+            IsActive = true
+        };
+        await _unitOfWork.Repository<SubscriptionPlan>().AddAsync(plan);
+        await _unitOfWork.CompleteAsync();
+    }
+
+    public async Task UpdatePlanAsync(SubscriptionPlanDto dto)
+    {
+        var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(dto.PlanId);
+        if (plan != null)
+        {
+            plan.Name = dto.Name;
+            plan.Price = dto.Price;
+            plan.DurationDays = dto.DurationDays;
+            plan.Description = dto.Description;
+            plan.IsActive = dto.IsActive;
+            _unitOfWork.Repository<SubscriptionPlan>().Update(plan);
+            await _unitOfWork.CompleteAsync();
+        }
+    }
+
+    public async Task DeletePlanAsync(int id)
+    {
+        var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(id);
+        if (plan != null)
+        {
+            plan.IsActive = false; // Soft delete usually better for billing
+            _unitOfWork.Repository<SubscriptionPlan>().Update(plan);
+            await _unitOfWork.CompleteAsync();
+        }
     }
 }

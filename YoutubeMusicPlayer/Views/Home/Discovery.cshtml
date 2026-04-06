@@ -3,7 +3,7 @@
     ViewData["Title"] = "Khám phá: " + ViewBag.Tag;
 }
 
-<div class="discovery-container animate-fade-in">
+<div class="discovery-container animate-fade-in" id="discoveryContainer" data-tag="@ViewBag.Tag" data-current-page="@(ViewBag.CurrentPage ?? 1)">
     <div class="d-flex justify-content-between align-items-end mb-4 pt-3">
         <div>
             <nav aria-label="breadcrumb">
@@ -19,10 +19,15 @@
         </button>
     </div>
 
-    <div class="discovery-grid">
+    <div class="discovery-grid" id="discoveryGrid">
         @foreach (var item in Model)
         {
-            <div class="ytm-card-discovery" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
+            <div class="ytm-card-discovery" 
+                 data-video-id="@item.YoutubeVideoId" 
+                 data-title="@item.Title" 
+                 data-author="@item.AuthorName" 
+                 data-thumbnail="@item.ThumbnailUrl"
+                 onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
                 <div class="ytm-card-thumb">
                     <img src="@item.ThumbnailUrl" alt="@item.Title" loading="lazy">
                     <div class="ytm-card-play"><i class="fa-solid fa-play"></i></div>
@@ -34,17 +39,19 @@
             </div>
         }
     </div>
+
+    <div class="text-center mt-5 mb-5 pb-5">
+        <button id="loadMoreBtn" class="btn btn-outline-accent rounded-pill px-5 py-2 fw-bold" onclick="loadMoreDiscovery()">
+            Xem thêm
+        </button>
+        <div id="loadMoreSpinner" class="spinner-border text-accent d-none" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-    <script>
-        function playAllDiscovery() {
-            const cards = document.querySelectorAll('.ytm-card-discovery');
-            if (cards.length === 0) return;
-            // logic to load all these into the queue...
-            // Implementation depends on global player script
-        }
-    </script>
+    <script src="~/js/discovery.js" asp-append-version="true"></script>
 }
 
 <style>

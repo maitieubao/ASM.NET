@@ -30,9 +30,16 @@ public class AppDbContext : DbContext
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<SongLike> SongLikes => Set<SongLike>();
     public DbSet<ArtistFollower> ArtistFollowers => Set<ArtistFollower>();
+    public DbSet<CommentLike> CommentLikes => Set<CommentLike>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // CommentLike Mapping
+        modelBuilder.Entity<CommentLike>()
+            .ToTable("comment_likes")
+            .HasKey(cl => cl.LikeId);
 
         // PlaylistSong Many-to-Many
         modelBuilder.Entity<PlaylistSong>()

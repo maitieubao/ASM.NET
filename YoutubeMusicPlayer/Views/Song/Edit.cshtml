@@ -1,8 +1,7 @@
-@model YoutubeMusicPlayer.Application.DTOs.SongDto
+@model YoutubeMusicPlayer.Models.ViewModels.SongFormViewModel
 
 @{
     ViewData["Title"] = "Edit Song";
-    var albums = (IEnumerable<YoutubeMusicPlayer.Application.DTOs.AlbumDto>)ViewBag.Albums;
 }
 
 <div class="container py-5">
@@ -10,64 +9,66 @@
         <h2 class="fw-bold mb-4 text-center">Edit Song Details</h2>
         
         <form asp-action="Edit">
-            <input type="hidden" asp-for="SongId" />
+            <input type="hidden" asp-for="Song.SongId" />
             
             <div class="row">
                 <div class="col-md-9 mb-4">
-                    <label asp-for="Title" class="form-label text-muted small fw-bold text-uppercase">Song Title</label>
-                    <input asp-for="Title" class="form-control form-control-prem" required />
+                    <label asp-for="Song.Title" class="form-label text-muted small fw-bold text-uppercase">Song Title</label>
+                    <input asp-for="Song.Title" class="form-control form-control-prem" required />
+                    <span asp-validation-for="Song.Title" class="text-danger extra-small"></span>
                 </div>
                 <div class="col-md-3 mb-4 d-flex align-items-end">
                     <div class="form-check mb-2">
-                        <input asp-for="IsExplicit" class="form-check-input" type="checkbox">
-                        <label class="form-check-label text-danger small fw-bold" asp-for="IsExplicit">EXPLICIT</label>
+                        <input asp-for="Song.IsExplicit" class="form-check-input" type="checkbox">
+                        <label class="form-check-label text-danger small fw-bold" asp-for="Song.IsExplicit">EXPLICIT</label>
                     </div>
                 </div>
             </div>
 
             <div class="row">
                 <div class="col-md-6 mb-4">
-                    <label asp-for="YoutubeVideoId" class="form-label text-muted small fw-bold text-uppercase">YouTube Video ID</label>
-                    <input asp-for="YoutubeVideoId" class="form-control form-control-prem" required />
+                    <label asp-for="Song.YoutubeVideoId" class="form-label text-muted small fw-bold text-uppercase">YouTube Video ID</label>
+                    <input asp-for="Song.YoutubeVideoId" class="form-control form-control-prem" required />
+                    <span asp-validation-for="Song.YoutubeVideoId" class="text-danger extra-small"></span>
                 </div>
                 <div class="col-md-6 mb-4">
-                    <label asp-for="Isrc" class="form-label text-muted small fw-bold text-uppercase">ISRC Code</label>
-                    <input asp-for="Isrc" class="form-control form-control-prem" />
+                    <label asp-for="Song.Isrc" class="form-label text-muted small fw-bold text-uppercase">ISRC Code</label>
+                    <input asp-for="Song.Isrc" class="form-control form-control-prem" />
                 </div>
             </div>
 
             <div class="row">
                 <div class="col-md-6 mb-4">
-                    <label asp-for="AlbumId" class="form-label text-muted small fw-bold text-uppercase">Album</label>
-                    <select asp-for="AlbumId" class="form-select form-control-prem">
+                    <label asp-for="Song.AlbumId" class="form-label text-muted small fw-bold text-uppercase">Album</label>
+                    <select asp-for="Song.AlbumId" class="form-select form-control-prem" asp-items="@(new SelectList(Model.Albums, "AlbumId", "Title"))">
                         <option value="">-- Single --</option>
-                        @if (albums != null) {
-                            @foreach (var album in albums) {
-                                <option value="@album.AlbumId">@album.Title</option>
-                            }
-                        }
                     </select>
                 </div>
                  <div class="col-md-6 mb-4">
                     <label class="form-label text-muted small fw-bold text-uppercase">Genre Selection</label>
                     <div class="d-flex flex-wrap gap-2 mt-2">
-                        @if (ViewBag.Genres != null) {
-                            @foreach (var genre in (IEnumerable<YoutubeMusicPlayer.Application.DTOs.GenreDto>)ViewBag.Genres) {
-                                <div class="genre-checkbox-item">
-                                    <input type="checkbox" name="GenreIds" value="@genre.GenreId" id="genre_@genre.GenreId" class="btn-check" @(Model.GenreIds.Contains(genre.GenreId) ? "checked" : "")>
-                                    <label class="btn btn-outline-secondary btn-sm rounded-pill px-3" for="genre_@genre.GenreId">@genre.Name</label>
-                                </div>
-                            }
-                        } else {
-                            <p class="text-muted small">No genres defined yet.</p>
+                        @foreach (var genre in Model.Genres)
+                        {
+                            <div class="genre-checkbox-item">
+                                <input type="checkbox" name="Song.GenreIds" value="@genre.GenreId" id="genre_@genre.GenreId" class="btn-check" @(Model.Song.GenreIds != null && Model.Song.GenreIds.Contains(genre.GenreId) ? "checked" : "")>
+                                <label class="btn btn-outline-secondary btn-sm rounded-pill px-3" for="genre_@genre.GenreId">@genre.Name</label>
+                            </div>
                         }
                     </div>
                 </div>
             </div>
 
+            <div class="mb-4">
+                <label class="form-label text-muted small fw-bold text-uppercase">Premium Access</label>
+                <div class="form-check mt-1">
+                    <input asp-for="Song.IsPremiumOnly" class="form-check-input" type="checkbox">
+                    <label class="form-check-label small" asp-for="Song.IsPremiumOnly">Premium Subscription Only</label>
+                </div>
+            </div>
+
             <div class="mb-5">
-                <label asp-for="LyricsText" class="form-label text-muted small fw-bold text-uppercase">Lyrics</label>
-                <textarea asp-for="LyricsText" class="form-control form-control-prem fs-6" rows="6" placeholder="Paste lyrics here..."></textarea>
+                <label asp-for="Song.LyricsText" class="form-label text-muted small fw-bold text-uppercase">Lyrics</label>
+                <textarea asp-for="Song.LyricsText" class="form-control form-control-prem fs-6" rows="6" placeholder="Paste lyrics here..."></textarea>
             </div>
 
             <div class="d-flex justify-content-between align-items-center">

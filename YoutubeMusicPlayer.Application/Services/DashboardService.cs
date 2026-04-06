@@ -1,7 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using YoutubeMusicPlayer.Application.Common;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Domain.Entities;
@@ -20,53 +20,76 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardDto> GetStatsAsync()
     {
-        var users = await _unitOfWork.Repository<User>().GetAllAsync();
-        var songs = await _unitOfWork.Repository<Song>().GetAllAsync();
-        var playlists = await _unitOfWork.Repository<Playlist>().GetAllAsync();
-        var history = await _unitOfWork.Repository<ListeningHistory>().GetAllAsync();
-        var pendingReports = await _unitOfWork.Repository<Report>().FindAsync(r => r.Status == "Pending");
+        // Optimized: Database level counts/sums instead of loading full lists into RAM
+        var repoUser = _unitOfWork.Repository<User>().Query().AsNoTracking();
+        var repoSong = _unitOfWork.Repository<Song>().Query().AsNoTracking();
+        var repoPlaylist = _unitOfWork.Repository<Playlist>().Query().AsNoTracking();
+        var repoHistory = _unitOfWork.Repository<ListeningHistory>().Query().AsNoTracking();
+        var repoReport = _unitOfWork.Repository<Report>().Query().AsNoTracking();
+        var repoPayment = _unitOfWork.Repository<Payment>().Query().AsNoTracking();
+        var repoArtist = _unitOfWork.Repository<Artist>().Query().AsNoTracking();
+        var repoSongArtist = _unitOfWork.Repository<SongArtist>().Query().AsNoTracking();
+
+        int totalUsers = await repoUser.CountAsync();
+        int totalSongs = await repoSong.Where(s => !s.IsDeleted).CountAsync();
+        int totalPlaylists = await repoPlaylist.Where(p => !p.IsDeleted).CountAsync();
+        int totalPlays = await repoHistory.CountAsync();
+        int pendingReportsCount = await repoReport.CountAsync(r => r.Status == ReportStatus.Pending);
         
-        var allArtists = await _unitOfWork.Repository<Artist>().GetAllAsync();
-        var songArtists = await _unitOfWork.Repository<SongArtist>().GetAllAsync();
+        decimal totalRevenue = await repoPayment
+            .Where(p => p.Status == PaymentStatus.Success)
+            .SumAsync(p => p.Amount);
+        
+        // Optimized: Database side OrderBy and Take for Recent Payments
+        var recentPayments = await repoPayment
+            .Where(p => p.Status == PaymentStatus.Success)
+            .OrderByDescending(p => p.PaymentDate)
+            .Take(10)
+            .Include(p => p.Plan)
+            .Select(p => new PaymentDto
+            {
+                Amount = p.Amount,
+                PaymentDate = p.PaymentDate,
+                Status = p.Status,
+                OrderCode = p.OrderCode,
+                PlanName = p.Plan != null ? p.Plan.Name : "Gói đã xóa"
+            })
+            .ToListAsync();
 
-        // Helper to get artist name
-        string GetMainArtistName(int songId) {
-            var sa = songArtists.FirstOrDefault(x => x.SongId == songId);
-            if (sa == null) return "Unknown";
-            var a = allArtists.FirstOrDefault(x => x.ArtistId == sa.ArtistId);
-            return a?.Name ?? "Unknown";
-        }
+        // Optimized: Database side ranking for Top Songs
+        var topSongs = await repoSong
+            .Where(s => !s.IsDeleted)
+            .OrderByDescending(s => s.PlayCount)
+            .Take(10)
+            .Include(s => s.SongArtists).ThenInclude(sa => sa.Artist)
+            .Select(s => new TopSongDto
+            {
+                SongId = s.SongId,
+                Title = s.Title,
+                Artist = s.SongArtists.Any() ? s.SongArtists.FirstOrDefault().Artist.Name : "Unknown",
+                PlayCount = s.PlayCount
+            })
+            .ToListAsync();
 
-        // Top Songs
-        var topSongs = songs.OrderByDescending(s => s.PlayCount).Take(10).Select(s => new TopSongDto
-        {
-            SongId = s.SongId,
-            Title = s.Title,
-            Artist = GetMainArtistName(s.SongId),
-            PlayCount = s.PlayCount
-        }).ToList();
-
-        // Top Artists
-        var topArtists = songArtists
-            .GroupBy(sa => sa.ArtistId)
-            .Select(g => {
-                var artist = allArtists.FirstOrDefault(a => a.ArtistId == g.Key);
-                var artistSongs = g.Select(x => x.SongId).Distinct();
-                var plays = songs.Where(s => artistSongs.Contains(s.SongId)).Sum(s => (long)s.PlayCount);
-                return new TopArtistDto
-                {
-                    Name = artist?.Name ?? "Unknown",
-                    SongCount = artistSongs.Count(),
-                    TotalPlays = plays
-                };
+        // Optimized: Complex GroupBy in SQL for Top Artists
+        var topArtistsData = await repoSongArtist
+            .Include(sa => sa.Song)
+            .Include(sa => sa.Artist)
+            .GroupBy(sa => new { sa.ArtistId, sa.Artist.Name })
+            .Select(g => new TopArtistDto
+            {
+                Name = g.Key.Name,
+                SongCount = g.Count(),
+                TotalPlays = g.Sum(sa => (long)sa.Song.PlayCount)
             })
             .OrderByDescending(a => a.TotalPlays)
             .Take(10)
-            .ToList();
+            .ToListAsync();
 
-        // Play History (Last 7 days)
+        // Optimized: Database side GroupBy for Play History (Last 7 days)
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7).Date;
-        var playHistory = history.Where(h => h.ListenedAt.Date >= sevenDaysAgo)
+        var playHistory = await repoHistory
+            .Where(h => h.ListenedAt >= sevenDaysAgo)
             .GroupBy(h => h.ListenedAt.Date)
             .Select(g => new DailyPlayCountDto
             {
@@ -74,47 +97,63 @@ public class DashboardService : IDashboardService
                 Count = g.Count()
             })
             .OrderBy(h => h.Date)
-            .ToList();
+            .ToListAsync();
 
         return new DashboardDto
         {
-            TotalUsers = users.Count(),
-            TotalSongs = songs.Count(),
-            TotalPlaylists = playlists.Count(),
-            TotalPlays = history.Count(),
-            PendingReports = pendingReports.Count(),
+            TotalUsers = totalUsers,
+            TotalSongs = totalSongs,
+            TotalPlaylists = totalPlaylists,
+            TotalPlays = totalPlays,
+            PendingReports = pendingReportsCount,
+            TotalRevenue = totalRevenue,
             TopSongs = topSongs,
-            TopArtists = topArtists,
-            PlayHistory = playHistory
+            TopArtists = topArtistsData,
+            PlayHistory = playHistory,
+            RecentPayments = recentPayments
         };
     }
 
     public async Task<IEnumerable<ReportDto>> GetAllReportsAsync()
     {
-        var reports = await _unitOfWork.Repository<Report>().GetAllAsync();
-        var result = new List<ReportDto>();
+        // Optimized: Single SQL join for reporting users to avoid N+1
+        var reports = await _unitOfWork.Repository<Report>().Query()
+            .AsNoTracking()
+            .Include(r => r.User)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
 
-        foreach (var r in reports)
+        // Optimized: Batch fetch target names to reduce query count from ~400 to 4
+        var songIds = reports.Where(r => r.TargetType == TargetTypes.Song).Select(r => int.Parse(r.TargetId)).Distinct().ToList();
+        var playlistIds = reports.Where(r => r.TargetType == TargetTypes.Playlist).Select(r => int.Parse(r.TargetId)).Distinct().ToList();
+        var userIds = reports.Where(r => r.TargetType == TargetTypes.User).Select(r => int.Parse(r.TargetId)).Distinct().ToList();
+
+        var songNames = await _unitOfWork.Repository<Song>().Query()
+            .Where(s => songIds.Contains(s.SongId)).ToDictionaryAsync(s => s.SongId.ToString(), s => s.Title);
+        var playlistNames = await _unitOfWork.Repository<Playlist>().Query()
+            .Where(p => playlistIds.Contains(p.PlaylistId)).ToDictionaryAsync(p => p.PlaylistId.ToString(), p => p.Title);
+        var userNames = await _unitOfWork.Repository<User>().Query()
+            .Where(u => userIds.Contains(u.UserId)).ToDictionaryAsync(u => u.UserId.ToString(), u => u.Username);
+
+        return reports.Select(r => new ReportDto
         {
-            var user = await _unitOfWork.Repository<User>().GetByIdAsync(r.UserId);
-            var targetName = await GetTargetName(r.TargetType, r.TargetId);
-            
-            result.Add(new ReportDto
-            {
-                ReportId = r.ReportId,
-                UserId = r.UserId,
-                UserName = user?.Username ?? "Unknown",
-                TargetType = r.TargetType,
-                TargetId = r.TargetId,
-                TargetName = targetName,
-                Reason = r.Reason,
-                Details = r.Details,
-                Status = r.Status,
-                CreatedAt = r.CreatedAt,
-                ResolvedAt = r.ResolvedAt
-            });
-        }
-        return result.OrderByDescending(r => r.CreatedAt);
+            ReportId = r.ReportId,
+            UserId = r.UserId,
+            UserName = r.User?.Username ?? "Unknown",
+            TargetType = r.TargetType,
+            TargetId = r.TargetId,
+            TargetName = r.TargetType switch {
+                TargetTypes.Song => songNames.GetValueOrDefault(r.TargetId, "Deleted Song"),
+                TargetTypes.Playlist => playlistNames.GetValueOrDefault(r.TargetId, "Deleted Playlist"),
+                TargetTypes.User => userNames.GetValueOrDefault(r.TargetId, "Deleted User"),
+                _ => "Unknown [" + r.TargetId + "]"
+            },
+            Reason = r.Reason,
+            Details = r.Details,
+            Status = r.Status,
+            CreatedAt = r.CreatedAt,
+            ResolvedAt = r.ResolvedAt
+        });
     }
 
     private async Task<string> GetTargetName(string type, string id)
@@ -123,13 +162,13 @@ public class DashboardService : IDashboardService
         
         switch (type)
         {
-            case "Song":
+            case TargetTypes.Song:
                 var s = await _unitOfWork.Repository<Song>().GetByIdAsync(intId);
                 return s?.Title ?? "Deleted Song";
-            case "Playlist":
+            case TargetTypes.Playlist:
                 var p = await _unitOfWork.Repository<Playlist>().GetByIdAsync(intId);
                 return p?.Title ?? "Deleted Playlist";
-            case "User":
+            case TargetTypes.User:
                 var u = await _unitOfWork.Repository<User>().GetByIdAsync(intId);
                 return u?.Username ?? "Deleted User";
             default:
@@ -139,17 +178,20 @@ public class DashboardService : IDashboardService
 
     public async Task<ReportDto?> GetReportByIdAsync(int id)
     {
-        var r = await _unitOfWork.Repository<Report>().GetByIdAsync(id);
+        var r = await _unitOfWork.Repository<Report>().Query()
+            .AsNoTracking()
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(x => x.ReportId == id);
+            
         if (r == null) return null;
         
-        var user = await _unitOfWork.Repository<User>().GetByIdAsync(r.UserId);
         var targetName = await GetTargetName(r.TargetType, r.TargetId);
 
         return new ReportDto
         {
             ReportId = r.ReportId,
             UserId = r.UserId,
-            UserName = user?.Username ?? "Unknown",
+            UserName = r.User?.Username ?? "Unknown",
             TargetType = r.TargetType,
             TargetId = r.TargetId,
             TargetName = targetName,
@@ -172,15 +214,21 @@ public class DashboardService : IDashboardService
             {
                 switch (report.TargetType)
                 {
-                    case "Song":
+                    case TargetTypes.Song:
                         var s = await _unitOfWork.Repository<Song>().GetByIdAsync(intId);
-                        if (s != null) _unitOfWork.Repository<Song>().Remove(s);
+                        if (s != null) {
+                            s.IsDeleted = true; // Optimized: Soft Delete
+                            _unitOfWork.Repository<Song>().Update(s);
+                        }
                         break;
-                    case "Playlist":
+                    case TargetTypes.Playlist:
                         var p = await _unitOfWork.Repository<Playlist>().GetByIdAsync(intId);
-                        if (p != null) _unitOfWork.Repository<Playlist>().Remove(p);
+                        if (p != null) {
+                            p.IsDeleted = true; // Optimized: Soft Delete
+                            _unitOfWork.Repository<Playlist>().Update(p);
+                        }
                         break;
-                    case "User":
+                    case TargetTypes.User:
                         var u = await _unitOfWork.Repository<User>().GetByIdAsync(intId);
                         if (u != null)
                         {
@@ -192,7 +240,7 @@ public class DashboardService : IDashboardService
             }
         }
 
-        report.Status = "Resolved";
+        report.Status = ReportStatus.Resolved;
         report.ResolvedAt = DateTime.UtcNow;
         _unitOfWork.Repository<Report>().Update(report);
         await _unitOfWork.CompleteAsync();
@@ -203,7 +251,7 @@ public class DashboardService : IDashboardService
         var report = await _unitOfWork.Repository<Report>().GetByIdAsync(reportId);
         if (report != null)
         {
-            report.Status = "Dismissed";
+            report.Status = ReportStatus.Dismissed;
             report.ResolvedAt = DateTime.UtcNow;
             _unitOfWork.Repository<Report>().Update(report);
             await _unitOfWork.CompleteAsync();

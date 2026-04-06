@@ -1,0 +1,103 @@
+@model YoutubeMusicPlayer.Models.Admin.AdminTaxonomyViewModel
+@{
+    ViewData["Title"] = "Taxonomy Managament";
+}
+
+<div class="container-fluid py-4 animate-fade-in">
+    <div class="mb-5 px-lg-4">
+        <h2 class="text-white fw-bold"><i class="bi bi-tag-fill me-2 text-warning"></i> Taxonomy & Content Organization</h2>
+        <p class="text-muted">Manage genres and categories to help users discover music.</p>
+    </div>
+
+    <div class="row g-4 px-lg-4">
+        <!-- Genres Section -->
+        <div class="col-lg-6">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="text-white mb-0"><i class="bi bi-music-note-list me-2 text-info"></i> Music Genres</h4>
+                <a asp-controller="AdminTaxonomy" asp-action="CreateGenre" class="btn btn-sm btn-info rounded-pill px-3 fw-bold">
+                    <i class="bi bi-plus-lg me-1"></i> Add Genre
+                </a>
+            </div>
+            <div class="glass-panel p-0 overflow-hidden shadow-2xl">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="text-white-50 border-bottom border-secondary border-opacity-10 extra-small uppercase">
+                                <th class="ps-4 py-3">ID</th>
+                                <th>Name</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in Model.Genres)
+                            {
+                                <tr class="border-bottom border-secondary border-opacity-10">
+                                    <td class="ps-4 text-muted small">#@g.GenreId</td>
+                                    <td><span class="fw-bold text-white">@g.Name</span></td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group gap-2">
+                                            <a asp-controller="AdminTaxonomy" asp-action="EditGenre" asp-route-id="@g.GenreId" class="btn btn-sm btn-outline-info border-0 rounded-circle" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <form asp-controller="AdminTaxonomy" asp-action="DeleteGenre" asp-route-id="@g.GenreId" method="post" onsubmit="return confirm('Delete this genre?')" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Categories Section -->
+        <div class="col-lg-6">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="text-white mb-0"><i class="bi bi-folder-fill me-2 text-warning"></i> Content Categories</h4>
+                <a asp-controller="AdminTaxonomy" asp-action="CreateCategory" class="btn btn-sm btn-warning rounded-pill px-3 fw-bold">
+                    <i class="bi bi-plus-lg me-1"></i> Add Category
+                </a>
+            </div>
+            <div class="glass-panel p-0 overflow-hidden shadow-2xl">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="text-white-50 border-bottom border-secondary border-opacity-10 extra-small uppercase">
+                                <th class="ps-4 py-3">ID</th>
+                                <th>Name</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in Model.Categories)
+                            {
+                                <tr class="border-bottom border-secondary border-opacity-10">
+                                    <td class="ps-4 text-muted small">#@c.CategoryId</td>
+                                    <td><span class="fw-bold text-white">@c.Name</span></td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group gap-2">
+                                            <a asp-controller="AdminTaxonomy" asp-action="EditCategory" asp-route-id="@c.CategoryId" class="btn btn-sm btn-outline-warning border-0 rounded-circle" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <form asp-controller="AdminTaxonomy" asp-action="DeleteCategory" asp-route-id="@c.CategoryId" method="post" onsubmit="return confirm('Delete this category?')" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

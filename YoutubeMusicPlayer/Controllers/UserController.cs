@@ -5,63 +5,53 @@ using System.Threading.Tasks;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
+using YoutubeMusicPlayer.Application.DTOs;
+using YoutubeMusicPlayer.Application.Interfaces;
+
 namespace YoutubeMusicPlayer.Controllers;
 
 [Authorize]
-public class UserController : Controller
+public class UserController : BaseController
 {
     private readonly IUserService _userService;
-    private readonly ICommentService _commentService;
+    private readonly IProfileFacade _profileFacade;
     private readonly INotificationService _notificationService;
-    private readonly IPlaylistService _playlistService;
-    private readonly IInteractionService _interactionService;
 
     public UserController(IUserService userService, 
-                          ICommentService commentService, 
-                          INotificationService notificationService,
-                          IPlaylistService playlistService,
-                          IInteractionService interactionService)
+                          IProfileFacade profileFacade, 
+                          INotificationService notificationService)
     {
         _userService = userService;
-        _commentService = commentService;
+        _profileFacade = profileFacade;
         _notificationService = notificationService;
-        _playlistService = playlistService;
-        _interactionService = interactionService;
-    }
-
-    private int GetCurrentUserId()
-    {
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier);
-        return claim != null && int.TryParse(claim.Value, out int userId) ? userId : 0;
     }
 
     public async Task<IActionResult> Profile()
     {
-        var userId = GetCurrentUserId();
-        var user = await _userService.GetUserByIdAsync(userId);
-        if (user == null) return NotFound();
-
-        ViewBag.ListeningHistory = await _userService.GetUserListeningHistoryAsync(userId);
-        ViewBag.Notifications = await _notificationService.GetUserNotificationsAsync(userId);
-        ViewBag.Playlists = await _playlistService.GetUserPlaylistsAsync(userId);
-        ViewBag.TopGenres = await _interactionService.GetTopPreferredGenresAsync(userId);
+        if (CurrentUserId == null) return Unauthorized();
+        var viewModel = await _profileFacade.BuildUserProfileAsync(CurrentUserId.Value);
         
-        return View(user);
+        if (viewModel == null) return NotFound();
+        
+        return View(viewModel);
     }
 
     public async Task<IActionResult> Edit()
     {
-        var userId = GetCurrentUserId();
-        var user = await _userService.GetUserByIdAsync(userId);
+        if (CurrentUserId == null) return Unauthorized();
+        var user = await _userService.GetUserByIdAsync(CurrentUserId.Value);
         if (user == null) return NotFound();
         return View(user);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Edit(UserDto model)
+    public async Task<IActionResult> Edit(UpdateUserRequest model)
     {
-        var userId = GetCurrentUserId();
-        if (model.UserId != userId) return Forbid();
+        if (CurrentUserId == null) return Unauthorized();
+        if (model.UserId != CurrentUserId) return Forbid();
 
         if (ModelState.IsValid)
         {
@@ -79,13 +69,13 @@ public class UserController : Controller
     public async Task<IActionResult> MarkNotificationRead(int id)
     {
         await _notificationService.MarkAsReadAsync(id);
-        return Ok();
+        return SuccessResponse(new { success = true });
     }
 
     public async Task<IActionResult> History()
     {
-        var userId = GetCurrentUserId();
-        var history = await _userService.GetUserListeningHistoryAsync(userId);
+        if (CurrentUserId == null) return Unauthorized();
+        var history = await _userService.GetUserListeningHistoryAsync(CurrentUserId.Value);
         return View(history);
     }
 }

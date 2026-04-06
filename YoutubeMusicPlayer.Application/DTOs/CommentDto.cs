@@ -12,4 +12,10 @@ public class CommentDto
     public string SongTitle { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public int? ParentCommentId { get; set; }
+    public int LikeCount { get; set; }
+    public bool IsLiked { get; set; }
+    
+    public IEnumerable<CommentDto> Replies { get; set; } = new List<CommentDto>();
 }

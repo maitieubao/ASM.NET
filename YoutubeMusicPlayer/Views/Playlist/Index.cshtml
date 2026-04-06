@@ -41,12 +41,17 @@
                         <h6 class="card-title text-main fw-bold mb-1">@p.Title</h6>
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="text-dim extra-small">@p.SongIds.Count() bài hát</span>
-                            <form asp-action="Delete" method="post" onsubmit="event.stopPropagation(); return confirm('Xóa playlist này?')">
-                                <input type="hidden" name="playlistId" value="@p.PlaylistId" />
-                                <button type="submit" class="btn btn-link text-dim hover-text-danger p-0 border-0 extra-small">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                </button>
-                            </form>
+                            <div class="d-flex align-items-center gap-2">
+                                <a asp-action="Edit" asp-route-id="@p.PlaylistId" onclick="event.stopPropagation();" class="btn btn-link text-dim hover-text-accent p-0 border-0 extra-small" title="Sửa">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <form asp-action="Delete" method="post" onsubmit="event.stopPropagation(); return confirm('Xóa playlist này?')" class="d-inline">
+                                    <input type="hidden" name="playlistId" value="@p.PlaylistId" />
+                                    <button type="submit" class="btn btn-link text-dim hover-text-danger p-0 border-0 extra-small" title="Xóa">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>

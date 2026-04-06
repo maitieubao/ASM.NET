@@ -2,58 +2,61 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Linq;
+using System;
+using YoutubeMusicPlayer.Application.DTOs;
+using YoutubeMusicPlayer.Application.Interfaces;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 
 namespace YoutubeMusicPlayer.Controllers;
 
 [Authorize]
-public class PlaylistController : Controller
+public class PlaylistController : BaseController
 {
     private readonly IPlaylistService _playlistService;
     private readonly ISongService _songService;
-    private readonly YoutubeMusicPlayer.Domain.Interfaces.IUnitOfWork _unitOfWork;
+    private readonly IInteractionService _interactionService;
 
-    public PlaylistController(IPlaylistService playlistService, ISongService songService, YoutubeMusicPlayer.Domain.Interfaces.IUnitOfWork unitOfWork)
+    public PlaylistController(IPlaylistService playlistService, 
+                              ISongService songService, 
+                              IInteractionService interactionService)
     {
         _playlistService = playlistService;
         _songService = songService;
-        _unitOfWork = unitOfWork;
-    }
-
-    private int GetCurrentUserId()
-    {
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier);
-        return claim != null && int.TryParse(claim.Value, out int userId) ? userId : 0;
+        _interactionService = interactionService;
     }
 
     public async Task<IActionResult> Index()
     {
-        var userId = GetCurrentUserId();
-        if (userId == 0) return RedirectToAction("Login", "Auth");
+        if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
 
-        var playlists = await _playlistService.GetUserPlaylistsAsync(userId);
+        var playlists = await _playlistService.GetUserPlaylistsAsync(CurrentUserId.Value);
         return View(playlists);
     }
 
     [HttpGet]
     public async Task<IActionResult> GetPlaylistsJson()
     {
-        var userId = GetCurrentUserId();
-        if (userId == 0) return Unauthorized();
+        if (CurrentUserId == null) return Unauthorized();
 
-        var playlists = await _playlistService.GetUserPlaylistsAsync(userId);
-        return Json(playlists);
+        var playlists = await _playlistService.GetUserPlaylistsAsync(CurrentUserId.Value);
+        return SuccessResponse(playlists);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(string title, string? description)
     {
-        var userId = GetCurrentUserId();
-        if (userId != 0 && !string.IsNullOrWhiteSpace(title))
+        if (CurrentUserId != null && !string.IsNullOrWhiteSpace(title))
         {
-            await _playlistService.CreatePlaylistAsync(userId, title, description);
+            await _playlistService.CreatePlaylistAsync(CurrentUserId.Value, title, description);
         }
         return RedirectToAction(nameof(Index));
     }
@@ -62,80 +65,168 @@ public class PlaylistController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int playlistId)
     {
-        var userId = GetCurrentUserId();
-        if (userId != 0)
+        if (CurrentUserId == null) return Unauthorized();
+        try
         {
-            await _playlistService.DeletePlaylistAsync(playlistId, userId);
+            await _playlistService.DeletePlaylistAsync(playlistId, CurrentUserId.Value, IsAdmin);
+            return SuccessResponse(new { success = true });
         }
-        return RedirectToAction(nameof(Index));
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            return BadRequestResponse("An error occurred while deleting the playlist.");
+        }
     }
 
     [HttpPost]
     public async Task<IActionResult> AddSong(int playlistId, int songId)
     {
-        var userId = GetCurrentUserId();
-        if (userId == 0) return Unauthorized();
+        if (CurrentUserId == null) return Unauthorized();
 
-        await _playlistService.AddSongToPlaylistAsync(playlistId, songId, userId);
-        return Ok();
+        try
+        {
+            await _playlistService.AddSongToPlaylistAsync(playlistId, songId, CurrentUserId.Value, IsAdmin);
+            return SuccessResponse(new { success = true });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpPost]
     public async Task<IActionResult> AddSongByYoutubeId(int playlistId, string youtubeId)
     {
-        var userId = GetCurrentUserId();
-        if (userId == 0) return Unauthorized();
+        if (CurrentUserId == null) return Unauthorized();
 
         try
         {
-            await _songService.ImportFromYoutubeAsync($"https://youtube.com/watch?v={youtubeId}");
-            var song = await _unitOfWork.Repository<YoutubeMusicPlayer.Domain.Entities.Song>()
-                .FirstOrDefaultAsync(s => s.YoutubeVideoId == youtubeId);
+            var song = await _songService.GetOrCreateByYoutubeIdAsync(youtubeId);
 
             if (song != null)
             {
-                await _playlistService.AddSongToPlaylistAsync(playlistId, song.SongId, userId);
-                return Ok(new { success = true });
+                await _playlistService.AddSongToPlaylistAsync(playlistId, song.SongId, CurrentUserId.Value, IsAdmin);
+                return SuccessResponse(new { success = true, songTitle = song.Title });
             }
-            return BadRequest(new { success = false, message = "Could not find imported song." });
+            return BadRequestResponse("Không thể xử lý bài hát từ YouTube.");
         }
-        catch (System.Exception ex)
+        catch (UnauthorizedAccessException)
         {
-            return BadRequest(new { success = false, message = ex.Message });
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            return BadRequestResponse("Lỗi hệ thống khi thêm bài hát.");
         }
     }
 
     [HttpPost]
     public async Task<IActionResult> RemoveSong(int playlistId, int songId)
     {
-        var userId = GetCurrentUserId();
-        if (userId == 0) return Unauthorized();
-
-        await _playlistService.RemoveSongFromPlaylistAsync(playlistId, songId, userId);
-        return RedirectToAction(nameof(Details), new { id = playlistId });
+        if (CurrentUserId == null) return Unauthorized();
+        try
+        {
+            await _playlistService.RemoveSongFromPlaylistAsync(playlistId, songId, CurrentUserId.Value, IsAdmin);
+            return SuccessResponse(new { success = true });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpGet]
     public async Task<IActionResult> GetPlaylistSongs(int id)
     {
-        var userId = GetCurrentUserId();
-        var playlist = await _playlistService.GetPlaylistByIdAsync(id, userId);
-        if (playlist == null) return NotFound();
-        return Json(playlist.Songs.Select(s => new {
-            YoutubeVideoId = s.YoutubeVideoId,
-            Title = s.Title,
-            AuthorName = "Playlist: " + playlist.Title,
-            ThumbnailUrl = s.ThumbnailUrl
-        }));
+        try
+        {
+            var playlist = await _playlistService.GetPlaylistByIdAsync(id, CurrentUserId, IsAdmin);
+            if (playlist == null) return NotFound();
+            return SuccessResponse(playlist.Songs.Select(s => new {
+                YoutubeVideoId = s.YoutubeVideoId,
+                Title = s.Title,
+                AuthorName = "Playlist: " + playlist.Title,
+                ThumbnailUrl = s.ThumbnailUrl
+            }));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     public async Task<IActionResult> Details(int id)
     {
-        var userId = GetCurrentUserId();
-        var playlist = await _playlistService.GetPlaylistByIdAsync(id, userId);
-        if (playlist == null) return NotFound();
-        if (playlist.UserId != userId && !User.IsInRole("Admin")) return Forbid();
+        try
+        {
+            var playlist = await _playlistService.GetPlaylistByIdAsync(id, CurrentUserId, IsAdmin);
+            if (playlist == null) return NotFound();
+            return View(playlist);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
 
-        return View(playlist);
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id)
+    {
+        try
+        {
+            var playlist = await _playlistService.GetPlaylistByIdAsync(id, CurrentUserId, IsAdmin);
+            if (playlist == null) return NotFound();
+            return View(playlist);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(PlaylistDto dto)
+    {
+        if (ModelState.IsValid)
+        {
+            try
+            {
+                if (CurrentUserId == null) return Unauthorized();
+                await _playlistService.UpdatePlaylistAsync(dto, CurrentUserId.Value, IsAdmin);
+                return RedirectToAction(nameof(Details), new { id = dto.PlaylistId });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+        return View(dto);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> LikedSongs(int page = 1)
+    {
+        if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+        const int pageSize = 20;
+        
+        var (likedSongIds, totalCount) = await _interactionService.GetLikedSongIdsPaginatedAsync(CurrentUserId.Value, page, pageSize);
+        var (songs, _) = await _songService.GetSongsByIdsPaginatedAsync(likedSongIds, 1, pageSize);
+
+        var viewModel = new PlaylistDto
+        {
+            Title = "Bài hát đã thích",
+            Description = "Tất cả bài hát bạn đã yêu thích",
+            Songs = songs.ToList()
+        };
+        
+        ViewBag.CurrentPage = page;
+        ViewBag.TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        return View(viewModel);
     }
 }

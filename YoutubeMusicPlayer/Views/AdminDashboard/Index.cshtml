@@ -1,0 +1,282 @@
+@model YoutubeMusicPlayer.Application.DTOs.DashboardDto
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    var playDates = Model.PlayHistory.Select(h => h.Date.ToString("dd/MM"));
+    var playCounts = Model.PlayHistory.Select(h => h.Count);
+}
+
+<div class="container-fluid mt-4 pb-5 px-lg-5 animate-fade-in">
+    <div class="mb-5 d-flex justify-content-between align-items-end">
+        <div>
+            <h1 class="text-white fw-bold mb-1">System Overview</h1>
+            <p class="text-white-50">Real-time statistics and platform health.</p>
+        </div>
+        <div class="text-end text-white-50 small">
+            Last updated: @DateTime.Now.ToString("HH:mm:ss")
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3 col-sm-6">
+            <div class="glass-panel border-warning border-opacity-25 shadow p-4 text-center h-100">
+                <div class="text-warning-emphasis small text-uppercase fw-bold mb-2">Total Revenue</div>
+                <div class="text-warning fs-1 fw-black">@Model.TotalRevenue.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</div>
+                <div class="text-muted small mt-2"><i class="bi bi-cash-stack"></i> Premium Subscriptions</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="glass-panel border-primary border-opacity-25 shadow p-4 text-center h-100">
+                <div class="text-primary-emphasis small text-uppercase fw-bold mb-2">Total Users</div>
+                <div class="text-primary fs-1 fw-black">@Model.TotalUsers.ToString("N0")</div>
+                <div class="text-muted small mt-2"><i class="bi bi-people-fill"></i> Community</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="glass-panel border-info border-opacity-25 shadow p-4 text-center h-100">
+                <div class="text-info-emphasis small text-uppercase fw-bold mb-2">Total Songs</div>
+                <div class="text-info fs-1 fw-black">@Model.TotalSongs.ToString("N0")</div>
+                <div class="text-muted small mt-2"><i class="bi bi-music-note"></i> Library</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a asp-controller="AdminSupport" asp-action="Reports" class="text-decoration-none h-100 d-block">
+                <div class="glass-panel @(Model.PendingReports > 0 ? "border-danger border-opacity-50" : "border-success border-opacity-25") shadow p-4 text-center h-100 transition-hover">
+                    <div class="text-dim small text-uppercase fw-bold mb-2">Pending Reports</div>
+                    <div class="@(Model.PendingReports > 0 ? "text-danger" : "text-success") fs-1 fw-black">@Model.PendingReports</div>
+                    <div class="text-muted small mt-2">@(Model.PendingReports > 0 ? "Action required!" : "Clean platform")</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Analytics Chart -->
+        <div class="col-lg-8">
+            <div class="glass-panel border-secondary border-opacity-10 shadow-lg p-4 h-100">
+                <h4 class="text-white fw-bold mb-4">Playback Analytics</h4>
+                <div style="height: 350px;">
+                    <canvas id="playHistoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation / Actions -->
+        <div class="col-lg-4">
+            <div class="glass-panel border-secondary border-opacity-10 shadow-lg p-4 mb-4">
+                <h4 class="text-white fw-bold mb-4">Quick Navigation</h4>
+                <div class="d-grid gap-2">
+                    <a asp-controller="AdminUser" asp-action="Index" class="btn btn-outline-primary border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-people me-2"></i> User Directory</a>
+                    <a asp-controller="AdminMusic" asp-action="Songs" class="btn btn-outline-info border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-music-note-beamed me-2"></i> Song Library</a>
+                    <a asp-controller="AdminMusic" asp-action="Artists" class="btn btn-outline-warning border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-person-badge me-2"></i> Artist Management</a>
+                    <a asp-controller="AdminMusic" asp-action="Albums" class="btn btn-outline-info border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-journal-album me-2"></i> Albums & Discography</a>
+                    <a asp-controller="AdminPlaylist" asp-action="Index" class="btn btn-outline-warning border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-star me-2"></i> Featured Playlists</a>
+                    <a asp-controller="AdminTaxonomy" asp-action="Index" class="btn btn-outline-success border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-tag me-2"></i> Taxonomy & Genres</a>
+                    <a asp-controller="AdminSupport" asp-action="Notifications" class="btn btn-outline-danger border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-megaphone me-2"></i> System Alerts</a>
+                </div>
+            </div>
+            
+            <div class="glass-panel border-secondary border-opacity-10 shadow-lg p-4">
+                <h4 class="text-white fw-bold mb-4">Platform Health</h4>
+                <ul class="list-unstyled mb-0">
+                    <li class="d-flex justify-content-between mb-3">
+                        <span class="text-white-50">DB Status</span>
+                        <span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i> Connected</span>
+                    </li>
+                    <li class="d-flex justify-content-between mb-3">
+                        <span class="text-white-50">Storage Bucket</span>
+                        <span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i> Synchronized</span>
+                    </li>
+                    <li class="d-flex justify-content-between">
+                        <span class="text-white-50">Security Protocols</span>
+                        <span class="text-info fw-bold">Active</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Top Charts -->
+        <div class="col-md-6">
+            <div class="glass-panel border-secondary border-opacity-10 shadow-lg h-100 overflow-hidden">
+                <div class="p-4 border-bottom border-white border-opacity-5">
+                    <h4 class="text-white fw-bold mb-0">Most Played Tracks</h4>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <tbody>
+                            @foreach (var s in Model.TopSongs)
+                            {
+                                <tr class="border-bottom border-white border-opacity-5">
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-white">@s.Title</div>
+                                        <div class="text-muted extra-small">@s.Artist</div>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill">@s.PlayCount.ToString("N0") plays</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="glass-panel border-secondary border-opacity-10 shadow-lg h-100 overflow-hidden">
+                <div class="p-4 border-bottom border-white border-opacity-5">
+                    <h4 class="text-white fw-bold mb-0">Popular Artists</h4>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <tbody>
+                            @foreach (var a in Model.TopArtists)
+                            {
+                                <tr class="border-bottom border-white border-opacity-5">
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-white">@a.Name</div>
+                                        <div class="text-muted extra-small">@a.SongCount Tracks</div>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill">@a.TotalPlays.ToString("N0") streams</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-12 mt-4 pb-5">
+            <div class="glass-panel border-secondary border-opacity-10 shadow-lg">
+                <div class="p-4 border-bottom border-white border-opacity-5 d-flex justify-content-between">
+                    <h4 class="text-white fw-bold mb-0">Recent Transactions</h4>
+                    <span class="text-dim extra-small">Last 10 successful payments</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <thead>
+                            <tr class="text-dim extra-small uppercase border-bottom border-white border-opacity-5">
+                                <th class="ps-4">Order Code</th>
+                                <th>Plan</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                                <th class="text-end pe-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.RecentPayments)
+                            {
+                                <tr class="border-bottom border-white border-opacity-5">
+                                    <td class="ps-4 text-muted small">#@p.OrderCode</td>
+                                    <td class="fw-bold text-white">@p.PlanName</td>
+                                    <td class="text-warning fw-bold">@p.Amount.ToString("N0") VNĐ</td>
+                                    <td class="text-muted small">@p.PaymentDate.ToString("HH:mm dd/MM/yyyy")</td>
+                                    <td class="text-end pe-4">
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">@p.Status</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('playHistoryChart').getContext('2d');
+        const playHistoryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(playDates)),
+                datasets: [{
+                    label: 'Songs Played',
+                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(playCounts)),
+                    fill: true,
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    borderColor: '#ffc107',
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#ffc107',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#ffffff80', font: { size: 10 } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#ffffff80', font: { size: 10 } }
+                    }
+                }
+            }
+        });
+    </script>
+}
+
+<style>
+    .transition-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .transition-hover:hover { transform: translateY(-4px); background: rgba(255,255,255,0.05) !important; }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('playHistoryChart').getContext('2d');
+        const playHistoryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(playDates)),
+                datasets: [{
+                    label: 'Songs Played',
+                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(playCounts)),
+                    fill: true,
+                    backgroundColor: 'rgba(30, 215, 96, 0.1)',
+                    borderColor: '#1ed760',
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#1ed760'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#ffffff80' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#ffffff80' }
+                    }
+                }
+            }
+        });
+    </script>
+}
+
+<style>
+    .transition-hover { transition: all 0.3s ease; }
+    .transition-hover:hover { transform: translateY(-3px); }
+    .bg-accent { background-color: #1ed760 !important; }
+    .text-accent { color: #1ed760 !important; }
+</style>

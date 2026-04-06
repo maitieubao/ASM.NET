@@ -1,419 +1,335 @@
-@model YoutubeMusicPlayer.Application.DTOs.UserDto
+@model YoutubeMusicPlayer.Application.DTOs.UserProfileViewModel
 @{
-    ViewData["Title"] = "Hồ sơ của tôi";
-    var history = ViewBag.ListeningHistory as IEnumerable<YoutubeMusicPlayer.Application.DTOs.ListeningHistoryDto> ?? new List<YoutubeMusicPlayer.Application.DTOs.ListeningHistoryDto>();
-    var notifications = ViewBag.Notifications as IEnumerable<YoutubeMusicPlayer.Application.DTOs.NotificationDto> ?? new List<YoutubeMusicPlayer.Application.DTOs.NotificationDto>();
-    var playlists = ViewBag.Playlists as IEnumerable<YoutubeMusicPlayer.Application.DTOs.PlaylistDto> ?? new List<YoutubeMusicPlayer.Application.DTOs.PlaylistDto>();
-    var topGenres = ViewBag.TopGenres as IEnumerable<string> ?? new List<string>();
+    ViewData["Title"] = "Trang cá nhân - " + Model.User.Username;
+    var history = Model.ListeningHistory;
+    var notifications = Model.Notifications;
+    var playlists = Model.Playlists;
+    var topGenres = Model.TopGenres;
     int unreadCount = notifications.Count(n => !n.IsRead);
 }
 
-<div class="profile-container animate-fade-in">
-    <!-- HERO HEADER -->
-    <div class="profile-hero mb-5">
-        <div class="profile-hero-bg" style="background-image: url('@(string.IsNullOrEmpty(Model.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + Model.Username + "&background=6C5CE7&color=fff&size=512" : Model.AvatarUrl)')"></div>
-        <div class="profile-hero-content d-flex align-items-end p-4 p-md-5">
-            <div class="profile-avatar-wrapper me-4">
-                <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + Model.Username + "&background=6C5CE7&color=fff&size=200" : Model.AvatarUrl)" 
-                     alt="@Model.Username" class="profile-avatar shadow-2xl">
-                @if(Model.IsPremium)
-                {
-                    <div class="premium-badge-float" title="Premium Member">
-                        <i class="fa-solid fa-gem"></i>
-                    </div>
-                }
-            </div>
-            <div class="profile-info">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <span class="badge bg-accent bg-opacity-20 text-accent px-3 py-2 rounded-pill small fw-bold tracking-wider uppercase">
-                        @Model.Role
-                    </span>
-                    @if(Model.IsPremium)
-                    {
-                        <span class="badge bg-warning bg-opacity-20 text-warning px-3 py-2 rounded-pill small fw-bold tracking-wider uppercase">
-                            Premium
-                        </span>
-                    }
+<div class="user-profile-page animate-fade-in scrollbar-hide">
+    <!-- 1. PROFILE HEADER -->
+    <div class="profile-header relative overflow-hidden py-5 mb-5">
+        <div class="profile-bg-blur" style="background-image: url('@(Model.User.AvatarUrl ?? "https://ui-avatars.com/api/?name=" + Model.User.Username + "&background=6C5CE7&color=fff&size=512")')"></div>
+        
+        <div class="container relative z-10">
+            <div class="d-flex align-items-center gap-md-5 gap-3 flex-wrap flex-md-nowrap">
+                <div class="profile-avatar-wrapper shadow-2xl">
+                    <img src="@(Model.User.AvatarUrl ?? "https://ui-avatars.com/api/?name=" + Model.User.Username + "&size=300")" alt="@Model.User.Username" class="profile-avatar-main border border-white border-opacity-10">
+                    <div class="avatar-edit-overlay"><i class="fa-solid fa-camera"></i></div>
                 </div>
-                <h1 class="display-2 fw-black mb-1">@Model.Username</h1>
-                <div class="d-flex flex-wrap align-items-center gap-4 text-dim">
-                    <span><i class="fa-solid fa-envelope me-2"></i>@Model.Email</span>
-                    <span><i class="fa-solid fa-calendar-days me-2"></i>Tham gia @Model.CreatedAt.ToString("MMMM yyyy")</span>
-                    @if(Model.DateOfBirth.HasValue)
-                    {
-                        <span><i class="fa-solid fa-cake-candles me-2"></i>@Model.DateOfBirth.Value.ToString("dd/MM/yyyy")</span>
-                    }
-                </div>
-                <div class="mt-4 d-flex gap-3">
-                    <a asp-action="Edit" class="btn btn-light rounded-pill px-4 fw-bold">
-                        <i class="fa-solid fa-pen-to-square me-2"></i>Chỉnh sửa hồ sơ
-                    </a>
-                    <a href="#notifications" class="btn btn-outline-light border-opacity-25 rounded-pill px-4 fw-bold position-relative">
-                        <i class="fa-solid fa-bell me-2"></i>Thông báo
-                        @if(unreadCount > 0)
+                <div class="profile-info-main text-center text-md-start w-100">
+                    <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-2 mb-3">
+                        <span class="badge bg-accent text-white rounded-pill px-3 py-1 small fw-bold uppercase tracking-widest">@Model.User.Role</span>
+                        @if(Model.User.IsPremium)
                         {
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-2 border-dark">
-                                @unreadCount
-                            </span>
+                            <span class="badge bg-warning text-dark rounded-pill px-3 py-1 small fw-bold uppercase tracking-widest">Premium Member</span>
                         }
-                    </a>
+                    </div>
+                    <h1 class="profile-username fw-black text-white m-0">@Model.User.Username</h1>
+                    <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-4 mt-3 text-white-50 fw-bold">
+                        <span><i class="fa-solid fa-layer-group me-2 text-accent"></i> @playlists.Count() Playlist</span>
+                        <div class="dot-separator d-none d-md-block"></div>
+                        <span><i class="fa-solid fa-clock me-2 text-warning"></i> Tham gia @Model.User.CreatedAt.ToString("MM/yyyy")</span>
+                    </div>
+                    <div class="mt-4 d-flex justify-content-center justify-content-md-start gap-3">
+                        <a asp-action="Edit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-accent">
+                            <i class="fa-solid fa-pen-to-square me-2"></i> Chỉnh sửa hồ sơ
+                        </a>
+                        <button class="btn btn-outline-light btn-icon-circle" title="Cài đặt"><i class="fa-solid fa-gear"></i></button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-4">
-        <!-- LEFT COLUMN: STATS & GENRES -->
-        <div class="col-lg-4">
-            <div class="glass-card p-4 mb-4">
-                <h5 class="fw-bold mb-4"><i class="fa-solid fa-chart-simple text-accent me-2"></i>Thống kê âm nhạc</h5>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-value">@history.Count()</div>
-                        <div class="stat-label">Bài hát đã nghe</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">@playlists.Count()</div>
-                        <div class="stat-label">Playlists</div>
-                    </div>
+    <div class="container py-4">
+        <!-- 2. QUICK STATS -->
+        <div class="row g-4 mb-5 section-reveal">
+            <div class="col-6 col-md-3">
+                <div class="stat-card glass-card p-4 rounded-5 border-white border-opacity-5 text-center transition-all hover-translate-y">
+                    <div class="stat-icon mb-2 text-accent"><i class="fa-solid fa-play fs-3"></i></div>
+                    <div class="stat-value fw-black text-white fs-3">@history.Count().ToString("N0")</div>
+                    <div class="stat-label text-white-50 extra-small uppercase">Bài hát đã nghe</div>
                 </div>
-                
-                @if(topGenres.Any())
-                {
-                    <hr class="border-white border-opacity-10 my-4">
-                    <h6 class="fw-bold mb-3 text-dim small uppercase tracking-wider">Thể loại yêu thích</h6>
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach(var genre in topGenres)
-                        {
-                            <span class="tag-badge bg-white bg-opacity-5 border-white border-opacity-10 text-white">@genre</span>
-                        }
-                    </div>
-                }
             </div>
-
-            @if(!Model.IsPremium)
-            {
-                <div class="premium-promo-card p-4">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="promo-icon">
-                            <i class="fa-solid fa-crown"></i>
-                        </div>
-                        <h5 class="fw-bold m-0">Nâng cấp Premium</h5>
-                    </div>
-                    <p class="text-white-50 small mb-4">Trải nghiệm âm nhạc không quảng cáo, chất lượng cao và nhiều tính năng độc quyền khác.</p>
-                    <a asp-controller="Subscription" asp-action="Index" class="btn btn-light w-100 rounded-pill fw-bold">Tìm hiểu thêm</a>
+            <div class="col-6 col-md-3">
+                <div class="stat-card glass-card p-4 rounded-5 border-white border-opacity-5 text-center transition-all hover-translate-y">
+                    <div class="stat-icon mb-2 text-danger"><i class="fa-solid fa-heart fs-3"></i></div>
+                    <div class="stat-value fw-black text-white fs-3">--</div>
+                    <div class="stat-label text-white-50 extra-small uppercase">Yêu thích</div>
                 </div>
-            }
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card glass-card p-4 rounded-5 border-white border-opacity-5 text-center transition-all hover-translate-y">
+                    <div class="stat-icon mb-2 text-accent"><i class="fa-solid fa-compact-disc fs-3"></i></div>
+                    <div class="stat-value fw-black text-white fs-3">@playlists.Count()</div>
+                    <div class="stat-label text-white-50 extra-small uppercase">Danh sách phát</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card glass-card p-4 rounded-5 border-white border-opacity-5 text-center transition-all hover-translate-y">
+                    <div class="stat-icon mb-2 text-info"><i class="fa-solid fa-bolt fs-3"></i></div>
+                    <div class="stat-value fw-black text-white fs-3">@topGenres.Count()</div>
+                    <div class="stat-label text-white-50 extra-small uppercase">Thể loại quan tâm</div>
+                </div>
+            </div>
         </div>
 
-        <!-- RIGHT COLUMN: PLAYLISTS & HISTORY -->
-        <div class="col-lg-8">
-            <!-- My Playlists -->
-            <div class="mb-5">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="fw-bold m-0"><i class="fa-solid fa-list-ul text-accent me-3"></i>Playlists của tôi</h4>
-                    <a asp-controller="Playlist" asp-action="Index" class="text-accent small fw-bold">Xem tất cả</a>
-                </div>
-                
-                @if(playlists.Any())
-                {
-                    <div class="carousel-wrapper">
-                        <div class="horizontal-carousel">
-                            @foreach(var p in playlists)
+        <div class="row g-5">
+            <!-- LEFT: Playlists & History -->
+            <div class="col-lg-8">
+                <!-- A. MY PLAYLISTS -->
+                <section class="mb-5 section-reveal">
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <h3 class="section-title">Playlist của tôi</h3>
+                        <a asp-controller="Playlist" asp-action="Index" class="btn btn-accent btn-sm rounded-pill px-3 fw-bold">
+                            <i class="fa-solid fa-plus me-1"></i> Quản lý
+                        </a>
+                    </div>
+                    @if (playlists.Any())
+                    {
+                        <div class="row row-cols-2 row-cols-md-3 g-4">
+                            @foreach (var pl in playlists)
                             {
-                                <div class="music-card" onclick="window.location.href='/Playlist/Details/@p.PlaylistId'">
-                                    <div class="card-thumb-wrapper">
-                                        <img src="@(string.IsNullOrEmpty(p.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + p.Title + "&background=282828&color=fff&size=200" : p.CoverImageUrl)" alt="@p.Title">
-                                        <div class="card-play-btn" onclick="event.stopPropagation(); playPlaylist(@p.PlaylistId)">
-                                            <i class="fa-solid fa-play"></i>
+                                <div class="col">
+                                    <div class="music-card group shadow-lg" onclick="window.location.href='/Playlist/Details/@pl.PlaylistId'">
+                                        <div class="card-thumb-wrapper mb-3">
+                                            <img src="@(string.IsNullOrEmpty(pl.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + pl.Title + "&background=282828&color=fff&size=400" : pl.CoverImageUrl)" class="playlist-thumb" loading="lazy">
+                                            <div class="card-play-btn shadow-accent" onclick="event.stopPropagation(); playPlaylist(@pl.PlaylistId)"><i class="fa-solid fa-play"></i></div>
                                         </div>
+                                        <div class="card-title text-truncate">@pl.Title</div>
+                                        <div class="card-subtitle mt-1">@pl.SongsCount bài hát • @(pl.IsPublic ? "Công khai" : "Riêng tư")</div>
                                     </div>
-                                    <h6 class="card-title">@p.Title</h6>
-                                    <p class="card-subtitle">@(p.Description ?? "Playlist cá nhân")</p>
                                 </div>
                             }
                         </div>
-                        <button class="carousel-nav carousel-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
-                        <button class="carousel-nav carousel-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
-                    </div>
-                }
-                else
-                {
-                    <div class="glass-card p-5 text-center">
-                        <i class="fa-solid fa-folder-plus text-dim display-4 mb-3"></i>
-                        <p class="text-dim">Bạn chưa có playlist nào. Hãy tạo một cái ngay!</p>
-                        <a asp-controller="Playlist" asp-action="Index" class="btn btn-outline-accent rounded-pill px-4 mt-2">Tạo Playlist</a>
-                    </div>
-                }
-            </div>
-
-            <!-- Recent History -->
-            <div id="history" class="mb-5">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="fw-bold m-0"><i class="fa-solid fa-clock-history text-accent me-3"></i>Hoạt động gần đây</h4>
-                    <a asp-action="History" class="text-dim small">Lịch sử nghe</a>
-                </div>
-                
-                <div class="glass-card overflow-hidden">
-                    <div class="table-responsive">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th>Bài hát</th>
-                                    <th>Thời gian</th>
-                                    <th class="text-end">Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach(var h in history.Take(5))
-                                {
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center gap-3">
-                                                <img src="@h.ThumbnailUrl" class="rounded" style="width: 44px; height: 44px; object-fit: cover;">
-                                                <div>
-                                                    <div class="fw-bold text-main">@h.SongTitle</div>
-                                                    <div class="text-dim extra-small">YouTube Track</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="text-dim small">@h.ListenedAt.ToString("g")</td>
-                                        <td class="text-end">
-                                            <button class="btn btn-icon-circle" onclick="playSingleTrack('@h.SongId', '@h.SongTitle.Replace("'", "\\'")', 'Youtube', '@h.ThumbnailUrl')">
-                                                <i class="fa-solid fa-play"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }
-                                @if(!history.Any())
-                                {
-                                    <tr>
-                                        <td colspan="3" class="text-center py-5 text-dim">
-                                            Bắt đầu nghe nhạc để xem lịch sử của bạn tại đây!
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Notifications Section -->
-    <div id="notifications" class="mt-5 mb-5">
-        <h4 class="fw-bold mb-4"><i class="fa-solid fa-bullhorn text-warning me-3"></i>Thông báo hệ thống</h4>
-        <div class="glass-card p-0 overflow-hidden">
-            @if(notifications.Any())
-            {
-                <div class="list-group list-group-flush">
-                    @foreach(var n in notifications)
+                    }
+                    else
                     {
-                        <div class="list-group-item bg-transparent border-white border-opacity-5 p-4 @(!n.IsRead ? "unread-notif" : "")" id="notif-@n.NotificationId">
-                            <div class="d-flex justify-content-between align-items-start gap-3">
-                                <div class="d-flex gap-3">
-                                    <div class="notification-icon @(n.Type == "System" ? "bg-primary" : "bg-info") text-white">
-                                        <i class="fa-solid @(n.Type == "System" ? "fa-info-circle" : "fa-star")"></i>
+                        <div class="glass-card p-5 rounded-5 text-center border-dashed border-white border-opacity-10">
+                            <i class="fa-solid fa-music text-white-10 display-3 mb-4"></i>
+                            <h5 class="text-white">Bạn chưa có playlist nào</h5>
+                            <p class="text-dim small mb-4">Lưu những bài hát yêu thích vào playlist cá nhân.</p>
+                            <a asp-controller="Playlist" asp-action="Index" class="btn btn-outline-accent rounded-pill px-4">Tạo ngay</a>
+                        </div>
+                    }
+                </section>
+
+                <!-- B. RECENTLY PLAYED -->
+                @if (history.Any())
+                {
+                    <section class="mb-5 section-reveal">
+                        <div class="d-flex align-items-center justify-content-between mb-4">
+                            <h3 class="section-title">Nghe gần đây</h3>
+                            <a asp-action="History" class="text-accent small fw-bold text-decoration-none">Xem tất cả</a>
+                        </div>
+                        <div class="popular-list">
+                            @foreach (var h in history.Take(5))
+                            {
+                                <div class="song-row-premium group" 
+                                     onclick="playSingleTrack('@h.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(h.SongTitle)', '@System.Web.HttpUtility.JavaScriptStringEncode(h.AuthorName)', '@h.ThumbnailUrl')">
+                                    <div class="thumb-wrapper">
+                                        <img src="@h.ThumbnailUrl" loading="lazy">
+                                        <div class="play-icon"><i class="fa-solid fa-play text-white"></i></div>
                                     </div>
-                                    <div>
-                                        <div class="d-flex align-items-center gap-2 mb-1">
-                                            <h6 class="fw-bold m-0 text-main">@n.Title</h6>
-                                            <span class="text-dim extra-small">@n.CreatedAt.ToString("MMM dd, yyyy")</span>
-                                        </div>
-                                        <p class="text-dim small mb-0">@n.Message</p>
+                                    <div class="title-meta flex-grow-1">
+                                        <div class="song-title text-truncate">@h.SongTitle</div>
+                                        <div class="text-dim extra-small text-truncate">@h.AuthorName</div>
+                                    </div>
+                                    <div class="text-dim extra-small me-4 d-none d-md-block">@h.ListenedAt.ToString("g")</div>
+                                    <div class="actions">
+                                        <button class="btn-icon" onclick="event.stopPropagation();"><i class="fa-solid fa-ellipsis"></i></button>
                                     </div>
                                 </div>
-                                @if(!n.IsRead)
+                            }
+                        </div>
+                    </section>
+                }
+            </div>
+
+            <!-- RIGHT SIDEBAR -->
+            <div class="col-lg-4">
+                <div class="sticky-sidebar">
+                    <!-- GENRES -->
+                    @if (topGenres.Any())
+                    {
+                        <div class="mb-5 section-reveal">
+                            <h4 class="fw-bold text-white mb-4">Gu âm nhạc</h4>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var genre in topGenres)
                                 {
-                                    <button onclick="markRead(@n.NotificationId)" class="btn btn-sm btn-accent bg-opacity-10 text-accent border-accent border-opacity-25 rounded-pill px-3 fw-bold">Đã xem</button>
+                                    <span class="tag-badge py-2 px-3 border-white border-opacity-10 bg-white bg-opacity-5 text-white-50">@genre</span>
                                 }
                             </div>
                         </div>
                     }
+
+                    <!-- NOTIFICATIONS PREVIEW -->
+                    <div class="section-reveal">
+                        <div class="glass-card p-4 rounded-5 border-0 shadow-2xl bg-gradient-notif mt-4">
+                            <div class="d-flex justify-content-between align-items-start mb-4">
+                                <div>
+                                    <h4 class="fw-black text-white m-0">Thông báo</h4>
+                                    <p class="text-white-50 small m-0">@unreadCount tin nhắn chưa đọc</p>
+                                </div>
+                                <div class="notif-icon-large"><i class="fa-solid fa-bell text-white"></i></div>
+                            </div>
+                            <a href="#notifications" class="btn btn-white w-100 rounded-pill fw-bold text-primary px-4 shadow-lg py-2">
+                                XEM CHI TIẾT
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- PREMIUM PROMO -->
+                    @if(!Model.User.IsPremium)
+                    {
+                        <div class="mt-4 section-reveal">
+                             <div class="premium-promo-card-mini p-4 rounded-5 overflow-hidden relative">
+                                 <div class="relative z-10">
+                                     <h5 class="fw-bold text-white mb-2">Trải nghiệm không giới hạn</h5>
+                                     <p class="text-white-50 extra-small mb-3">Nâng cấp Premium ngay hôm nay để tắt quảng cáo.</p>
+                                     <a asp-controller="Subscription" asp-action="Index" class="btn btn-warning btn-sm rounded-pill fw-black w-100">NÂNG CẤP NGAY</a>
+                                 </div>
+                                 <i class="fa-solid fa-gem position-absolute bottom-0 end-0 opacity-10" style="font-size: 80px; transform: translate(20%, 20%);"></i>
+                             </div>
+                        </div>
+                    }
                 </div>
-            }
-            else
-            {
-                <div class="p-5 text-center text-dim">
-                    <i class="fa-solid fa-envelope-open display-4 mb-3 opacity-25"></i>
-                    <p>Không có thông báo mới.</p>
-                </div>
-            }
+            </div>
         </div>
+
+        <!-- 3. FULL NOTIFICATIONS -->
+        <section id="notifications" class="mt-5 pt-5 section-reveal">
+             <h3 class="section-title mb-4">Thông báo hệ thống</h3>
+             <div class="glass-card rounded-5 overflow-hidden">
+                 @if(notifications.Any())
+                 {
+                     foreach(var n in notifications)
+                     {
+                         <div class="p-4 border-bottom border-white border-opacity-5 d-flex gap-4 @(!n.IsRead ? "bg-white bg-opacity-5" : "")" id="notif-@n.NotificationId">
+                             <div class="notif-type-icon @(n.Type == "System" ? "text-info" : "text-warning")">
+                                 <i class="fa-solid @(n.Type == "System" ? "fa-circle-info" : "fa-star") fs-4"></i>
+                             </div>
+                             <div class="flex-grow-1">
+                                 <div class="d-flex justify-content-between align-items-start mb-1">
+                                     <h6 class="fw-bold text-white m-0">@n.Title</h6>
+                                     <span class="text-white-50 extra-small">@n.CreatedAt.ToString("dd/MM/yyyy")</span>
+                                 </div>
+                                 <p class="text-white-50 small m-0">@n.Message</p>
+                                 @if(!n.IsRead)
+                                 {
+                                     <button onclick="markRead(@n.NotificationId)" class="btn btn-link text-accent p-0 mt-2 small fw-bold text-decoration-none">Đánh dấu đã đọc</button>
+                                 }
+                             </div>
+                         </div>
+                     }
+                 }
+                 else
+                 {
+                     <div class="p-5 text-center text-white-50">
+                         Không có thông báo mới.
+                     </div>
+                 }
+             </div>
+        </section>
     </div>
 </div>
 
-<style>
-    .profile-container {
-        padding-bottom: 50px;
-    }
-    
-    .profile-hero {
-        position: relative;
-        height: 400px;
-        border-radius: 24px;
-        overflow: hidden;
-        margin-top: -16px; 
-    }
-    
-    .profile-hero-bg {
-        position: absolute;
-        inset: 0;
-        background-size: cover;
-        background-position: center;
-        filter: blur(80px) brightness(0.4);
-        transform: scale(1.2);
-    }
-    
-    .profile-hero-content {
-        position: relative;
-        height: 100%;
-        background: linear-gradient(to top, rgba(15, 15, 15, 0.9) 0%, transparent 100%);
-        z-index: 1;
-    }
-    
-    .profile-avatar-wrapper {
-        position: relative;
-    }
-    
-    .profile-avatar {
-        width: 180px;
-        height: 180px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 4px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .premium-badge-float {
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-        background: #F1C40F;
-        color: #000;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        border: 4px solid #1a1a1a;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-    
-    .glass-card {
-        background: rgba(40, 40, 40, 0.3);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 20px;
-    }
-    
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-    }
-    
-    .stat-item {
-        background: rgba(255, 255, 255, 0.03);
-        padding: 20px;
-        border-radius: 16px;
-        text-align: center;
-    }
-    
-    .stat-value {
-        font-size: 1.8rem;
-        font-weight: 800;
-        color: var(--text-main);
-    }
-    
-    .stat-label {
-        font-size: 0.75rem;
-        color: var(--text-dim);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-top: 4px;
-    }
-    
-    .premium-promo-card {
-        background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%);
-        border-radius: 20px;
-        color: white;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .promo-icon {
-        width: 44px;
-        height: 44px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.4rem;
-    }
-    
-    .btn-icon-circle {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.05);
-        border: none;
-        color: white;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition: 0.2s;
-    }
-    
-    .btn-icon-circle:hover {
-        background: var(--accent-primary);
-        transform: scale(1.1);
-    }
-    
-    .notification-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    
-    .unread-notif {
-        background: rgba(108, 92, 231, 0.03) !important;
-        border-left: 4px solid var(--accent-primary) !important;
-    }
-    
-    .animate-fade-in {
-        animation: fadeIn 0.8s ease-out;
-    }
-    
-    @@keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    @@media (max-width: 768px) {
-        .profile-hero { height: auto; min-height: 500px; }
-        .profile-hero-content { flex-direction: column; align-items: center !important; text-align: center; }
-        .profile-avatar-wrapper { margin-right: 0 !important; margin-bottom: 24px; }
-        .profile-info h1 { font-size: 3rem; }
-        .profile-info .d-flex { justify-content: center; }
-    }
-</style>
+@section Scripts {
+    <script>
+        async function markRead(id) {
+            try {
+                const res = await fetch('/User/MarkNotificationRead/' + id, { method: 'POST' });
+                if(res.ok) {
+                    const el = document.getElementById('notif-' + id);
+                    el.classList.remove('bg-white', 'bg-opacity-5');
+                    const btn = el.querySelector('button');
+                    if(btn) btn.remove();
+                }
+            } catch(e) {}
+        }
 
-<script>
-    async function markRead(id) {
-        try {
-            const res = await fetch('/User/MarkNotificationRead/' + id, { method: 'POST' });
-            if(res.ok) {
-                const el = document.getElementById('notif-' + id);
-                el.classList.remove('unread-notif');
-                const btn = el.querySelector('button');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('revealed');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.section-reveal').forEach(el => observer.observe(el));
+    </script>
+}
+
+<style>
+    .user-profile-page { min-height: 100vh; }
+    .profile-header { min-height: 350px; position: relative; }
+    .profile-bg-blur {
+        position: absolute; inset: 0;
+        background-size: cover; background-position: center;
+        filter: blur(80px) brightness(0.4); opacity: 0.4; z-index: 1;
+    }
+    .profile-avatar-wrapper { position: relative; width: 180px; height: 180px; flex-shrink: 0; }
+    .profile-avatar-main { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .avatar-edit-overlay {
+        position: absolute; bottom: 10px; right: 10px; width: 44px; height: 44px;
+        background: white; color: black; border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; font-size: 1.2rem;
+        cursor: pointer; opacity: 0; transition: 0.3s;
+    }
+    .profile-avatar-wrapper:hover .avatar-edit-overlay { opacity: 1; }
+    
+    .profile-username { font-size: 4rem; letter-spacing: -2px; }
+    @@media (max-width: 768px) {
+        .profile-username { font-size: 2.5rem; letter-spacing: -1px; }
+        .profile-avatar-wrapper { width: 140px; height: 140px; }
+    }
+
+    .bg-gradient-notif {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    }
+    .notif-icon-large {
+        width: 48px; height: 48px; background: rgba(255,255,255,0.2);
+        border-radius: 12px; display: flex; align-items: center;
+        justify-content: center; font-size: 20px;
+    }
+    .btn-white { background: white; border: none; color: black; transition: 0.3s; }
+    .btn-white:hover { transform: scale(1.02); filter: brightness(0.95); }
+
+    .premium-promo-card-mini {
+        background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    /* STAT CARDS */
+    .hover-translate-y:hover { transform: translateY(-5px); }
+    .stat-label { letter-spacing: 0.05em; margin-top: 4px; }
+
+    /* MUSIC CARDS */
+    .playlist-thumb { width: 100%; aspect-ratio: 1; border-radius: 16px; object-fit: cover; }
+    
+    .section-reveal { opacity: 0; transform: translateY(30px); transition: 0.8s ease-out; }
+    .section-reveal.revealed { opacity: 1; transform: translateY(0); }
+
+    .sticky-sidebar { position: sticky; top: 100px; }
+
+    /* SONG ROW CUSTOM */
+    .song-row-premium {
+        display: flex; align-items: center; gap: 16px;
+        padding: 12px; border-radius: 12px; cursor: pointer; transition: 0.2s;
+    }
+    .song-row-premium:hover { background: rgba(255,255,255,0.08); }
+    .thumb-wrapper { width: 48px; height: 48px; flex-shrink: 0; position: relative; }
+    .thumb-wrapper img { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; }
+    .play-icon { 
+        position: absolute; inset: 0; background: rgba(0,0,0,0.5); 
+        display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.2s;
+        border-radius: 8px;
+    }
+    .song-row-premium:hover .play-icon { opacity: 1; }
+</style>
+              const btn = el.querySelector('button');
                 if(btn) btn.remove();
             }
         } catch(e) {}

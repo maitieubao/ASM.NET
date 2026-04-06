@@ -4,7 +4,7 @@ using YoutubeMusicPlayer.Application.Interfaces;
 
 namespace YoutubeMusicPlayer.Controllers;
 
-public class AlbumController : Controller
+public class AlbumController : BaseController
 {
     private readonly IAlbumService _albumService;
 

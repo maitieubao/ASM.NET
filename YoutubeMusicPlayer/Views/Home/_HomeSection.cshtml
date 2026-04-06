@@ -1,4 +1,4 @@
-@model YoutubeMusicPlayer.Models.MusicSection
+@model YoutubeMusicPlayer.Application.DTOs.MusicSection
 
 <div class="mb-5 section-reveal">
     <div class="section-header d-flex justify-content-between align-items-end mb-3">
@@ -6,8 +6,18 @@
             @if (!string.IsNullOrEmpty(Model.Subtitle)) {
                 <div class="section-subtitle">@Model.Subtitle.ToUpper()</div>
             }
-            <h2 class="section-title">@Model.Title</h2>
+            <div class="d-flex align-items-center">
+                <h2 class="section-title">@Model.Title</h2>
+                @if (Model.Title.Contains("BXH") || Model.Title.Contains("dành cho bạn") || Model.Title.Contains("Khám phá")) {
+                    <button class="btn btn-refresh-section ms-2" onclick="refreshSection(this)" title="Cập nhật mới">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                }
+            </div>
         </div>
+        <a href="/Home/Discovery?tag=@(System.Net.WebUtility.UrlEncode(Model.Title))" class="text-accent text-decoration-none fw-bold small transition-all hover-opacity-70 px-3 py-1 bg-white bg-opacity-5 rounded-pill hover-bg-opacity-10 border border-white border-opacity-10">
+            Xem thêm <i class="fa-solid fa-chevron-right ms-1 small"></i>
+        </a>
     </div>
 
     @if (Model.Albums != null && Model.Albums.Any())
@@ -16,7 +26,7 @@
             <button class="carousel-nav carousel-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
             <button class="carousel-nav carousel-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
             <div class="horizontal-carousel scrollbar-hide">
-                @foreach (var album in Model.Albums)
+                @foreach (var album in Model.Albums.Take(10))
                 {
                     <div class="ytm-card" onclick="window.location.href='/Album/Details/@album.AlbumId'">
                         <div class="ytm-card-thumb">
@@ -35,7 +45,7 @@
     else if (Model.Layout == "List3")
     {
         <div class="song-list-grid">
-            @foreach (var item in Model.Songs)
+            @foreach (var item in Model.Songs.Take(10))
             {
                 <div class="song-list-item" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
                     <img src="@item.ThumbnailUrl" class="song-list-img" alt="@item.Title">
@@ -53,7 +63,7 @@
             <button class="carousel-nav carousel-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
             <button class="carousel-nav carousel-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
             <div class="horizontal-carousel scrollbar-hide">
-                @foreach (var item in Model.Songs)
+                @foreach (var item in Model.Songs.Take(10))
                 {
                     <div class="ytm-card-wide" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
                         <div class="wide-thumb-wrapper">
@@ -75,7 +85,7 @@
             <button class="carousel-nav carousel-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
             <button class="carousel-nav carousel-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
             <div class="horizontal-carousel scrollbar-hide">
-                @foreach (var item in Model.Songs)
+                @foreach (var item in Model.Songs.Take(10))
                 {
                     <div class="ytm-card" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
                         <div class="ytm-card-thumb">

@@ -24,4 +24,7 @@ public class SubscriptionPlan
 
     [Column("description")]
     public string? Description { get; set; }
+
+    [Column("is_active")]
+    public bool IsActive { get; set; } = true;
 }

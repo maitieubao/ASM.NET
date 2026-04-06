@@ -9,22 +9,34 @@ using YoutubeExplode.Videos.Streams;
 using YoutubeExplode.Search;
 using YoutubeExplode.Videos;
 using YoutubeMusicPlayer.Application.Interfaces;
+using YoutubeMusicPlayer.Application.Common;
 
 namespace YoutubeMusicPlayer.Infrastructure.External;
 
 public class YoutubeService : IYoutubeService
 {
-    private readonly YoutubeClient _youtube = new YoutubeClient();
+    private readonly HttpClient _httpClient;
+    private readonly YoutubeClient _youtube;
     private readonly IMemoryCache _cache;
-    private readonly ISpotifyService _spotifyService;
+    private readonly IDeezerService _deezerService;
 
-    public YoutubeService(IMemoryCache cache, ISpotifyService spotifyService)
+    public YoutubeService(IMemoryCache cache, IDeezerService deezerService)
     {
         _cache = cache;
-        _spotifyService = spotifyService;
+        _deezerService = deezerService;
+
+        // ISOLATED HTTP CLIENT WITH MODERN HEADERS (Chrome 121)
+        _httpClient = new HttpClient();
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36");
+        _httpClient.DefaultRequestHeaders.Add("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7");
+        _httpClient.DefaultRequestHeaders.Add("sec-ch-ua", "\"Not A(Brand\";v=\"99\", \"Google Chrome\";v=\"121\", \"Chromium\";v=\"121\"");
+        _httpClient.DefaultRequestHeaders.Add("sec-ch-ua-mobile", "?0");
+        _httpClient.DefaultRequestHeaders.Add("sec-ch-ua-platform", "\"Windows\"");
+        
+        _youtube = new YoutubeClient(_httpClient);
     }
 
-    public async Task<string> GetAudioStreamUrlAsync(string videoUrl, string? title = null, string? artist = null)
+    public async Task<string> GetAudioStreamUrlAsync(string videoUrl, string? title = null, string? artist = null, bool isPremium = false)
     {
         string youtubeId = videoUrl;
         if (videoUrl.Contains("v=")) youtubeId = videoUrl.Split("v=").Last().Split("&").First();
@@ -34,7 +46,7 @@ public class YoutubeService : IYoutubeService
 
         try 
         {
-            return await GetUrlInternalAsync(youtubeId, cacheKey);
+            return await GetUrlInternalAsync(youtubeId, cacheKey, isPremium);
         }
         catch (Exception ex)
         {
@@ -42,53 +54,57 @@ public class YoutubeService : IYoutubeService
             
             try 
             {
-                // RECOVERY LOGIC: Use provided Title/Artist or fetch them if missing
-                string fallbackQuery = "";
-                if (!string.IsNullOrEmpty(title))
-                {
-                    fallbackQuery = $"{title} {artist} audio lyrics";
-                }
-                else
-                {
-                    try {
-                        var video = await _youtube.Videos.GetAsync(youtubeId);
-                        fallbackQuery = $"{video.Title} {video.Author.ChannelTitle} audio lyrics";
-                    } catch {
-                        // If GetAsync also fails, we can't do much without external info
-                        throw new Exception("Cannot fetch metadata for recovery.");
-                    }
-                }
-
-                var searchResults = await _youtube.Search.GetVideosAsync(fallbackQuery).CollectAsync(3);
+                // RECOVERY LOGIC: Use a more specific query to find stable audio-only versions
+                string fallbackQuery = !string.IsNullOrEmpty(title) 
+                    ? $"{title} {artist} official audio lyrics" 
+                    : "music high quality audio";
                 
-                // Try up to 3 results
+                var searchResults = await _youtube.Search.GetVideosAsync(fallbackQuery).CollectAsync(5); 
+                int retryCount = 0;
+
                 foreach(var fallbackVideo in searchResults)
                 {
                     if (fallbackVideo.Id == youtubeId) continue;
+                    if (retryCount >= 3) break; 
+                    
+                    if (fallbackVideo.Duration.HasValue && fallbackVideo.Duration.Value.TotalMinutes > 8.0) continue;
+
                     try {
-                        Console.WriteLine($"[YoutubeService] Trying fallback: {fallbackVideo.Id} ({fallbackVideo.Title})");
-                        return await GetUrlInternalAsync(fallbackVideo.Id, cacheKey);
+                        retryCount++;
+                        // Small delay to mimic human speed
+                        await Task.Delay(500); 
+                        return await GetUrlInternalAsync(fallbackVideo.Id, cacheKey, isPremium);
                     } catch { continue; }
                 }
             }
             catch (Exception recoveryEx)
             {
-                Console.WriteLine($"[YoutubeService] Recovery also failed: {recoveryEx.Message}");
+                Console.WriteLine($"[YoutubeService] Recovery failed: {recoveryEx.Message}");
             }
 
             throw new Exception("This video is restricted. Attempted recovery but no alternative audio was found.");
         }
     }
 
-    private async Task<string> GetUrlInternalAsync(string youtubeId, string cacheKey)
+    private async Task<string> GetUrlInternalAsync(string youtubeId, string cacheKey, bool isPremium)
     {
         var manifest = await _youtube.Videos.Streams.GetManifestAsync(youtubeId);
         var streamOptions = manifest.GetAudioOnlyStreams().OrderByDescending(s => s.Bitrate).ToList();
         
         if (!streamOptions.Any()) throw new Exception("No audio streams found.");
 
-        var url = streamOptions.First().Url;
-        Console.WriteLine($"[YoutubeService] Successfully extracted stream for {youtubeId}: {url.Substring(0, 50)}...");
+        // QUALITY GATE: Premium gets best, others get mid-range
+        IStreamInfo selectedStream = streamOptions.First(); // Default to highest (Premium)
+        
+        if (!isPremium && streamOptions.Count > 1)
+        {
+            // Pick a middle stream if available
+            int midIndex = streamOptions.Count / 2;
+            selectedStream = streamOptions[midIndex];
+        }
+
+        var url = selectedStream.Url;
+        Console.WriteLine($"[YoutubeService] Successfully extracted stream for {youtubeId} (Premium: {isPremium}, Bitrate: {selectedStream.Bitrate}): {url.Substring(0, 50)}...");
         _cache.Set(cacheKey, url, TimeSpan.FromMinutes(30));
         return url;
     }
@@ -164,16 +180,16 @@ public class YoutubeService : IYoutubeService
         return filteredResults;
     }
 
-    public async Task<IEnumerable<YoutubeVideoDetails>> SearchVideosAsync(string query, int limit = 30)
+    public async Task<IEnumerable<YoutubeVideoDetails>> SearchVideosAsync(string query, int limit = 30, bool searchCompilations = false)
     {
-        string cacheKey = $"search_v6_{query}_{limit}";
+        string cacheKey = $"search_v8_{query}_{limit}_{searchCompilations}";
         if (_cache.TryGetValue(cacheKey, out IEnumerable<YoutubeVideoDetails>? cached)) return cached!;
 
         // 1. Optimize query for MUSIC only
-        string optimizedQuery = query.EndsWith("music") || query.EndsWith("songs") ? query : $"{query} official music audio";
+        string optimizedQuery = searchCompilations ? query : (query.EndsWith("music") || query.EndsWith("songs") ? query : $"{query} official music audio");
         
-        var results = await _youtube.Search.GetVideosAsync(optimizedQuery).CollectAsync(30); 
-        var filtered = results.Where(IsLikelyMusic).ToList();
+        var results = await _youtube.Search.GetVideosAsync(optimizedQuery).CollectAsync(Math.Max(limit * 2, 50)); 
+        var filtered = results.Where(v => IsLikelyMusic(v, searchCompilations)).ToList();
 
         var tasks = filtered
             .Take(limit) 
@@ -218,19 +234,27 @@ public class YoutubeService : IYoutubeService
         });
     }
 
-    public async Task<IEnumerable<YoutubeVideoDetails>> GetTrendingMusicAsync(int limit = 15)
+    public async Task<IEnumerable<YoutubeVideoDetails>> GetTrendingMusicAsync(int limit = 15, bool forceRefresh = false)
     {
-        string cacheKey = $"trending_music_v7_{limit}";
-        if (_cache.TryGetValue(cacheKey, out IEnumerable<YoutubeVideoDetails>? cached)) return cached!;
+        string cacheKey = $"trending_music_v10_{limit}";
 
         try {
+            var now = DateTime.UtcNow;
+            var monthYear = now.ToString("MMMM yyyy");
             var queries = new List<string> {
-                "Thịnh hành âm nhạc Việt Nam mới nhất",
-                "Top 100 YouTube Music Vietnam",
-                "Global Hits 2024 Official Music"
-            };
+                $"Nhạc Việt mới nhất {monthYear}",
+                $"YouTube Music Trends Global {now.Year}",
+                "V-Pop Top Trending official music",
+                $"BXH Nhạc Trẻ {monthYear} hot nhất",
+                "Nonstop VinaHouse 2026",
+                "Lofi Việt nhẹ nhàng chill",
+                "Rap Việt mới nhất underground",
+                "Nhạc US-UK Chart hits 2026"
+            }.OrderBy(_ => Random.Shared.Next()).Take(3).ToList();
 
-            var tasks = queries.Select(q => SearchVideosAsync(q, limit / 2));
+            // Fetch exactly what's needed plus a small buffer for duplicates
+            var fetchLimit = limit + 5;
+            var tasks = queries.Select(q => SearchVideosAsync(q, fetchLimit));
             var resultsArray = await Task.WhenAll(tasks);
             
             var allResults = resultsArray.SelectMany(x => x).ToList();
@@ -238,18 +262,19 @@ public class YoutubeService : IYoutubeService
             var uniqueResults = allResults
                 .GroupBy(v => v.YoutubeVideoId)
                 .Select(g => g.First())
-                .OrderByDescending(v => v.TrackType == "Official")
+                .Where(IsMusic)
+                .OrderBy(_ => Random.Shared.Next())
                 .Take(limit)
                 .ToList();
 
-            _cache.Set(cacheKey, uniqueResults, TimeSpan.FromHours(6));
+            _cache.Set(cacheKey, uniqueResults, TimeSpan.FromHours(4));
             return uniqueResults;
         } catch { return Enumerable.Empty<YoutubeVideoDetails>(); }
     }
 
     private async Task<YoutubeVideoDetails> MapToFullDetailsAsync(IVideo v)
     {
-        // NO Spotify enrichment during search to avoid 429
+        // NO Deezer enrichment during search to avoid 429
         var details = new YoutubeVideoDetails
         {
             Title = v.Title,
@@ -299,18 +324,57 @@ public class YoutubeService : IYoutubeService
     }
     public bool IsMusic(YoutubeVideoDetails details)
     {
-        return IsLikelyMusicCore(details.Title, details.AuthorName, details.Duration);
+        return IsLikelyMusicCore(details.Title, details.AuthorName, details.Duration) && !IsCompilation(details) && !IsKaraoke(details);
     }
 
-    private bool IsLikelyMusic(YoutubeExplode.Search.VideoSearchResult v)
+    public bool IsCompilation(YoutubeVideoDetails details)
     {
-        return IsLikelyMusicCore(v.Title, v.Author.ChannelTitle, v.Duration);
+        var title = details.Title.ToLower();
+        bool hasCompKeywords = title.Contains("tổng hợp") || title.Contains("full album") || 
+                               title.Contains("nonstop") || title.Contains("mix") || 
+                               title.Contains("collection") || title.Contains("best of") ||
+                               title.Contains("tuyển tập") || title.Contains("playlist") ||
+                               title.Contains("tổng hợp nhạc") || title.Contains("nhạc tuyển tập");
+                               
+        if (details.Duration.HasValue && details.Duration.Value.TotalMinutes >= 7.0) return true;
+        
+        return hasCompKeywords;
     }
 
-    private bool IsLikelyMusicCore(string title, string author, TimeSpan? duration)
+    public bool IsKaraoke(YoutubeVideoDetails details)
     {
-        // Broaden for testing/stabilization
-        if (duration.HasValue && duration.Value.TotalMinutes > 30) return false;
+        var title = details.Title.ToLower();
+        return title.Contains("karaoke") || title.Contains("beat") || title.Contains("tách lời") || title.Contains("không lời");
+    }
+
+    private bool IsLikelyMusic(YoutubeExplode.Search.VideoSearchResult v, bool searchCompilations = false)
+    {
+        return IsLikelyMusicCore(v.Title, v.Author.ChannelTitle, v.Duration, searchCompilations);
+    }
+
+    private bool IsLikelyMusicCore(string title, string author, TimeSpan? duration, bool searchCompilations = false)
+    {
+        var t = title.ToLower();
+        bool hasCompKeywords = t.Contains("tổng hợp") || t.Contains("full album") || 
+                               t.Contains("nonstop") || t.Contains("mix") || 
+                               t.Contains("collection") || t.Contains("best of") ||
+                               t.Contains("tuyển tập") || t.Contains("playlist") ||
+                               t.Contains("tổng hợp nhạc") || t.Contains("nhạc tuyển tập");
+
+        if (searchCompilations)
+        {
+            // For compilations, we WANT long videos or compilation keywords
+            return true;
+        }
+
+        // For regular sections (Discovery, Charts), we want single tracks.
+        if (duration.HasValue && duration.Value.TotalMinutes > 7.0) return false; 
+        
+        // RELIABILITY GATE: If keywords say it's a compilation, it's NOT a single track
+        if (hasCompKeywords) return false;
+        
+        if (t.Contains("karaoke") || t.Contains("beat") || t.Contains("không lời")) return false;
+        
         return true;
     }
 
@@ -351,9 +415,10 @@ public class YoutubeService : IYoutubeService
         details.CleanedArtist = NormalizeArtist(parsed.Artist);
         details.TrackType = DetectTrackType(details.Title);
 
-        // SYNC WITH SPOTIFY (Safe enrichment)
+        // SYNC WITH DEEZER (Safe enrichment)
         try {
-            await TryEnrichWithSpotifyAsync(details);
+            if (IsMusic(details))
+                await TryEnrichWithDeezerAsync(details);
         } catch (Exception ex) {
             Console.WriteLine($"[YoutubeService] Metadata enrichment warning: {ex.Message}");
         }
@@ -363,20 +428,22 @@ public class YoutubeService : IYoutubeService
         return details;
     }
 
-    private async Task TryEnrichWithSpotifyAsync(YoutubeVideoDetails details)
+    private async Task TryEnrichWithDeezerAsync(YoutubeVideoDetails details)
     {
-        try {
-            var spotifyTrack = await _spotifyService.SearchTrackAsync(details.CleanedTitle, details.CleanedArtist);
-            if (spotifyTrack != null)
+        try
+        {
+            var deezerTrack = await _deezerService.SearchTrackAsync(details.CleanedTitle, details.CleanedArtist);
+            if (deezerTrack != null)
             {
-                details.CleanedArtist = spotifyTrack.ArtistName;
-                details.CleanedTitle = spotifyTrack.TrackName;
-                if (spotifyTrack.Genres.Any())
+                details.CleanedArtist = deezerTrack.ArtistName;
+                details.CleanedTitle = deezerTrack.TrackName;
+                if (deezerTrack.Genres.Any())
                 {
-                    details.Genre = NormalizeGenre(spotifyTrack.Genres.First());
+                    details.Genre = NormalizeGenre(deezerTrack.Genres.First());
                 }
             }
-        } catch { }
+        }
+        catch { }
     }
 
     private string NormalizeGenre(string g)
@@ -409,12 +476,14 @@ public class YoutubeService : IYoutubeService
     private string DetectTrackType(string title)
     {
         var t = title.ToLower();
-        if (t.Contains("remix") || t.Contains("mix") || t.Contains("nonstop")) return "Remix/Mix";
-        if (t.Contains("live") || t.Contains("concert")) return "Live";
-        if (t.Contains("cover")) return "Cover";
-        if (t.Contains("lyric")) return "Lyrics";
-        if (t.Contains("acoustic")) return "Acoustic";
-        return "Official";
+        if (t.Contains("karaoke") || t.Contains("beat")) return TrackTypes.Karaoke;
+        if (t.Contains("tổng hợp") || t.Contains("full album") || t.Contains("nonstop") || t.Contains("collection")) return TrackTypes.Compilation;
+        if (t.Contains("remix") || t.Contains("mix")) return TrackTypes.Remix;
+        if (t.Contains("live") || t.Contains("concert")) return TrackTypes.Live;
+        if (t.Contains("cover")) return TrackTypes.Cover;
+        if (t.Contains("lyric")) return TrackTypes.Lyrics;
+        if (t.Contains("acoustic")) return TrackTypes.Acoustic;
+        return TrackTypes.Official;
     }
 
     private List<string> ExtractAI_Tags(YoutubeVideoDetails v)

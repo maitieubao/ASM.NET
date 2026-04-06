@@ -55,4 +55,8 @@ public class Song
 
     public ICollection<SongArtist> SongArtists { get; set; } = new List<SongArtist>();
     public ICollection<SongGenre> SongGenres { get; set; } = new List<SongGenre>();
+    public ICollection<SongLike> SongLikes { get; set; } = new List<SongLike>();
+
+    [Column("is_deleted")]
+    public bool IsDeleted { get; set; } = false;
 }
