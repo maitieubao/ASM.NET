@@ -1,0 +1,52 @@
+/* variables.css - Theme constants and resets */
+:root {
+    /* Base Colors - Ultra Deep */
+    --bg-main: #070707;
+    --bg-sidebar: #010101;
+    --bg-card: rgba(255, 255, 255, 0.04);
+    --bg-card-hover: rgba(255, 255, 255, 0.1);
+    --bg-player: rgba(10, 10, 10, 0.85);
+    
+    /* Accent & Action Colors - Hyper Vibrant */
+    --accent-primary: #6C5CE7; /* Modern Purple */
+    --accent-hover: #8275E9;
+    --accent-glow: rgba(108, 92, 231, 0.5);
+    --accent-gradient: linear-gradient(135deg, #6C5CE7 0%, #a29bfe 100%);
+    
+    /* Text Colors */
+    --text-main: #FFFFFF;
+    --text-dim: #A0A0A0;
+    --text-muted: #6B6B6B;
+    
+    /* Glassmorphism & Effects */
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+    --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+    --glow-shadow: 0 0 15px var(--accent-glow);
+    
+    /* Layout Constants */
+    --sidebar-width: 80px; /* Slightly wider for better breathing room */
+    --player-height: 100px;
+    --border-radius: 12px;
+    --border-radius-lg: 18px;
+    --transition-speed: 0.3s;
+    
+    /* Skeleton Shimmer */
+    --skeleton-bg: #121212;
+    --skeleton-highlight: #1A1A1A;
+}
+
+* {
+    margin: 0; padding: 0; box-sizing: border-box;
+}
+
+body {
+    background-color: #030303;
+    color: var(--text-main);
+    font-family: 'Inter', 'Outfit', sans-serif;
+    overflow: hidden; 
+    min-height: 100vh;
+}
+
+a { text-decoration: none; color: inherit; transition: var(--transition-speed); }
+a:hover { color: var(--accent-primary); }

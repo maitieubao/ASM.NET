@@ -9,8 +9,31 @@ window.toggleQueue = function() {
 }
 
 window.toggleMetadata = function() {
-    const md = document.getElementById('metadataDrawer');
-    if (md) md.classList.toggle('open');
+    const md = document.getElementById('fullPlayerOverlay');
+    if (md) {
+        md.classList.toggle('open');
+        if (md.classList.contains('open')) {
+            // Update the overlay with current track info
+            const thumb = document.getElementById('currentThumbnail')?.src;
+            const title = document.getElementById('currentTitle')?.textContent;
+            const artist = document.getElementById('currentAuthor')?.textContent;
+            
+            if (thumb) {
+                document.getElementById('fullPlayerThumb').src = thumb;
+                document.getElementById('fullPlayerBackdrop').style.backgroundImage = `url(${thumb})`;
+                document.getElementById('fullPlayerBackdrop').style.backgroundSize = 'cover';
+                document.getElementById('fullPlayerBackdrop').style.backgroundPosition = 'center';
+                document.getElementById('fullPlayerBackdrop').style.filter = 'blur(80px) brightness(0.5)';
+            }
+            if (title) document.getElementById('fullPlayerTitle').textContent = title;
+            if (artist) document.getElementById('fullPlayerArtist').textContent = artist;
+
+            // Hide body scroll
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    }
 }
 
 // --- CAROUSEL SCROLLING ---
@@ -146,7 +169,7 @@ window.renderQueue = function() {
     }
     
     container.innerHTML = playQueue.map((t, i) => `
-        <div class="queue-item ${i === currentIndex ? 'active' : ''}" onclick="currentIndex=${i}; loadAndPlay(playQueue[${i}])">
+        <div class="queue-item ${i === currentIndex ? 'active' : ''}" onclick="currentIndex=${i}; loadAndPlay(playQueue[currentIndex]); renderQueue();">
             <img src="${t.thumbnail}" class="queue-item-thumb" alt="">
             <div class="queue-item-info">
                 <div class="queue-item-title">${t.title}</div>
@@ -217,13 +240,20 @@ window.playAdSequence = async function() {
 window.fetchRichMetadata = async function(videoId) {
     const lc = document.getElementById('lyricsContent');
     const bc = document.getElementById('bioContent');
-    if (lc) lc.innerHTML = '<div class="text-center py-5 text-muted small"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải lời bài hát...</div>';
-    if (bc) bc.innerHTML = '<div class="text-center py-5 text-muted small"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải tiểu sử...</div>';
+    
+    if (lc) lc.innerHTML = '<div class="text-center py-5 opacity-50"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tìm lời bài hát...</div>';
+    if (bc) bc.innerHTML = 'Đang tải tiểu sử...';
+
     try {
         const r = await fetch(`/Home/GetRichMetadata?videoId=${videoId}`);
         const data = await r.json();
-        if (lc) lc.textContent = data.lyrics || "Không tìm thấy lời bài hát.";
-        if (bc) bc.textContent = data.bio || "Không tìm thấy tiểu sử nghệ sĩ.";
+        
+        if (lc) {
+            lc.textContent = data.lyrics || "Hiện tại chưa có lời bài hát cho tác phẩm này.";
+            // Scroll to top
+            lc.parentElement.scrollTop = 0;
+        }
+        if (bc) bc.textContent = data.bio || "Thông tin nghệ sĩ đang được cập nhật...";
     } catch (e) {
         if (lc) lc.textContent = "Không tìm thấy lời bài hát.";
         if (bc) bc.textContent = "Không tìm thấy tiểu sử nghệ sĩ.";

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 using System.Threading.Tasks;
 using YoutubeMusicPlayer.Application.Interfaces;
 
@@ -17,33 +18,48 @@ public class CommentController : BaseController
 
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> GetSongComments(int songId)
+    public async Task<IActionResult> GetSongComments(int songId, int page = 1, int pageSize = 20)
     {
-        var comments = await _commentService.GetSongCommentsAsync(songId, CurrentUserId);
-        return SuccessResponse(comments);
+        var (comments, totalCount) = await _commentService.GetSongCommentsPaginatedAsync(songId, CurrentUserId, page, pageSize);
+        return SuccessResponse(new { comments, totalCount, page, pageSize });
     }
 
     [HttpPost]
     public async Task<IActionResult> AddComment(int songId, string content, int? parentId = null)
     {
         if (CurrentUserId == null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(content)) return BadRequestResponse("Nội dung không được để trống");
         
-        var comment = await _commentService.CreateCommentAsync(CurrentUserId.Value, songId, content, parentId);
+        if (string.IsNullOrWhiteSpace(content)) 
+            return BadRequestResponse("Nội dung không được để trống");
+            
+        if (content.Length > 1000)
+            return BadRequestResponse("Bình luận tối đa 1000 ký tự");
+
+        // Basic Encode to prevent simple XSS
+        var encodedContent = WebUtility.HtmlEncode(content);
+        
+        var comment = await _commentService.CreateCommentAsync(CurrentUserId.Value, songId, encodedContent, parentId);
         return SuccessResponse(comment);
     }
 
-    [HttpPost]
+    [HttpPut]
     public async Task<IActionResult> EditComment(int commentId, string content)
     {
         if (CurrentUserId == null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(content)) return BadRequestResponse("Nội dung không được để trống");
         
-        await _commentService.UpdateCommentAsync(commentId, CurrentUserId.Value, content);
+        if (string.IsNullOrWhiteSpace(content)) 
+            return BadRequestResponse("Nội dung không được để trống");
+            
+        if (content.Length > 1000)
+            return BadRequestResponse("Bình luận tối đa 1000 ký tự");
+
+        var encodedContent = WebUtility.HtmlEncode(content);
+        
+        await _commentService.UpdateCommentAsync(commentId, CurrentUserId.Value, encodedContent);
         return SuccessResponse(new { success = true });
     }
 
-    [HttpPost]
+    [HttpDelete]
     public async Task<IActionResult> DeleteComment(int commentId)
     {
         if (CurrentUserId == null) return Unauthorized();
@@ -56,11 +72,9 @@ public class CommentController : BaseController
     {
         if (CurrentUserId == null) return Unauthorized();
         
-        await _commentService.ToggleCommentLikeAsync(CurrentUserId.Value, commentId);
+        // Combined call to reduce database round-trips
+        var status = await _commentService.ToggleCommentLikeAndGetStatusAsync(CurrentUserId.Value, commentId);
         
-        var count = await _commentService.GetCommentLikeCountAsync(commentId);
-        var isLiked = await _commentService.IsCommentLikedAsync(CurrentUserId.Value, commentId);
-        
-        return SuccessResponse(new { count, isLiked });
+        return SuccessResponse(status);
     }
 }

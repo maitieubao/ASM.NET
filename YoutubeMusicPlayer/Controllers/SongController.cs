@@ -45,9 +45,8 @@ public class SongController : BaseController
         var viewModel = new SongIndexViewModel
         {
             Songs = songs,
-            TotalCount = totalCount,
+            TotalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)pageSize),
             CurrentPage = page,
-            PageSize = pageSize,
             SearchTerm = searchTerm
         };
 

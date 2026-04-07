@@ -32,6 +32,11 @@ public static class UserRoles
     public const string Customer = "Customer";
 }
 
+public static class AuthConstants
+{
+    public const string InternalUserIdClaim = "InternalUserId";
+}
+
 public static class ReportStatus
 {
     public const string Pending = "Pending";

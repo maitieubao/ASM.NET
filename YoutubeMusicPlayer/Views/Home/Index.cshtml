@@ -30,7 +30,9 @@
                 @foreach (var item in Model.RecentListened.Take(6))
                 {
                     <div class="recent-card" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
-                        <img src="@item.ThumbnailUrl" alt="@item.Title">
+                        <img src="@item.ThumbnailUrl" 
+                             alt="@item.Title" 
+                             onerror="this.src='https://ui-avatars.com/api/?name=@(System.Net.WebUtility.UrlEncode(item.Title))&background=181818&color=6C5CE7&size=64'">
                         <div class="recent-card-info">
                             <span class="recent-card-title">@item.Title</span>
                         </div>
@@ -98,7 +100,7 @@
                 <i class="fa-solid fa-xmark me-2"></i> Đóng tìm kiếm
             </button>
         </div>
-        <div id="search-results-content" class="song-list-grid">
+        <div id="search-results-content" class="song-list-grid pb-5">
             <!-- Results will be injected here -->
         </div>
     </div>
@@ -119,9 +121,8 @@
 
         async function loadAllSections() {
             const placeholders = document.querySelectorAll('.section-placeholder');
-            for (const el of placeholders) {
-                await loadSection(el);
-            }
+            const promises = Array.from(placeholders).map(el => loadSection(el));
+            await Promise.all(promises);
         }
 
         async function loadSection(el, forceRefresh = false) {

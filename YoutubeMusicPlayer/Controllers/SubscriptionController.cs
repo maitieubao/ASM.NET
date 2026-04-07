@@ -52,7 +52,7 @@ public class SubscriptionController : BaseController
     [Authorize]
     public async Task<IActionResult> Transactions()
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId;
         if (!userId.HasValue) return Unauthorized();
 
         var payments = await _subscriptionService.GetUserPaymentsAsync(userId.Value);
@@ -63,7 +63,7 @@ public class SubscriptionController : BaseController
     [HttpPost]
     public async Task<IActionResult> CancelSubscription()
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId;
         if (!userId.HasValue) return Unauthorized();
 
         var success = await _subscriptionService.CancelSubscriptionAsync(userId.Value);
@@ -76,7 +76,7 @@ public class SubscriptionController : BaseController
     [Authorize]
     public async Task<IActionResult> Download(string youtubeId, string title)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId;
         if (!userId.HasValue) return Unauthorized();
 
         // Premium validation

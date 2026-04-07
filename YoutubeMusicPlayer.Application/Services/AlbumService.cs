@@ -194,13 +194,13 @@ public class AlbumService : IAlbumService
             .ToListAsync(ct);
     }
 
-    public async Task<IEnumerable<AlbumDto>> SearchAlbumsAsync(string query, CancellationToken ct = default)
+    public async Task<IEnumerable<AlbumDto>> SearchAlbumsAsync(string query, int count, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query)) return Enumerable.Empty<AlbumDto>();
         return await _unitOfWork.Repository<Album>().Query()
             .AsNoTracking()
             .Where(a => !a.IsDeleted && EF.Functions.Like(a.Title, $"%{query}%"))
-            .Take(5)
+            .Take(count)
             .Select(a => new AlbumDto
             {
                 AlbumId = a.AlbumId,
@@ -209,6 +209,11 @@ public class AlbumService : IAlbumService
                 ReleaseDate = a.ReleaseDate
             })
             .ToListAsync(ct);
+    }
+
+    public async Task<IEnumerable<AlbumDto>> SearchAlbumsAsync(string query, CancellationToken ct = default)
+    {
+        return await SearchAlbumsAsync(query, 10, ct);
     }
 
     public async Task<IEnumerable<AlbumDto>> GetTrendingAlbumsAsync(int count, CancellationToken ct = default)

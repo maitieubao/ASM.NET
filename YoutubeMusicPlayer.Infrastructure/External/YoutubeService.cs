@@ -39,9 +39,16 @@ public class YoutubeService : IYoutubeService
     public async Task<string> GetAudioStreamUrlAsync(string videoUrl, string? title = null, string? artist = null, bool isPremium = false)
     {
         string youtubeId = videoUrl;
-        if (videoUrl.Contains("v=")) youtubeId = videoUrl.Split("v=").Last().Split("&").First();
+        if (videoUrl.Contains("v=")) {
+            var parts = videoUrl.Split("v=");
+            if (parts.Length > 1) {
+                youtubeId = parts[1].Split("&").First();
+            }
+        } else if (videoUrl.Contains("youtu.be/")) {
+            youtubeId = videoUrl.Split("youtu.be/").Last().Split("?").First();
+        }
 
-        string cacheKey = $"stream_v4_{youtubeId}";
+        string cacheKey = $"stream_v5_{youtubeId}";
         if (_cache.TryGetValue(cacheKey, out string? cachedUrl)) return cachedUrl!;
 
         try 
@@ -50,29 +57,23 @@ public class YoutubeService : IYoutubeService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[YoutubeService] Primary stream failed for {youtubeId}: {ex.Message}. Attempting RECOVERY...");
+            Console.WriteLine($"[YoutubeService] Lỗi trích xuất chính cho {youtubeId}: {ex.Message}");
             
             try 
             {
-                // RECOVERY LOGIC: Use a more specific query to find stable audio-only versions
+                // LOGIC PHỤC HỒI: Tìm kiếm phiên bản ổn định hơn (audio-only, lyrics, official audio)
                 string fallbackQuery = !string.IsNullOrEmpty(title) 
-                    ? $"{title} {artist} official audio lyrics" 
+                    ? $"{title} {artist} official audio" 
                     : "music high quality audio";
                 
-                var searchResults = await _youtube.Search.GetVideosAsync(fallbackQuery).CollectAsync(5); 
-                int retryCount = 0;
+                var searchResults = await _youtube.Search.GetVideosAsync(fallbackQuery).CollectAsync(3); 
 
                 foreach(var fallbackVideo in searchResults)
                 {
                     if (fallbackVideo.Id == youtubeId) continue;
-                    if (retryCount >= 3) break; 
                     
-                    if (fallbackVideo.Duration.HasValue && fallbackVideo.Duration.Value.TotalMinutes > 8.0) continue;
-
                     try {
-                        retryCount++;
-                        // Small delay to mimic human speed
-                        await Task.Delay(500); 
+                        Console.WriteLine($"[YoutubeService] Đang thử nguồn dự phòng: {fallbackVideo.Title} ({fallbackVideo.Id})");
                         return await GetUrlInternalAsync(fallbackVideo.Id, cacheKey, isPremium);
                     } catch { continue; }
                 }
@@ -82,30 +83,40 @@ public class YoutubeService : IYoutubeService
                 Console.WriteLine($"[YoutubeService] Recovery failed: {recoveryEx.Message}");
             }
 
-            throw new Exception("This video is restricted. Attempted recovery but no alternative audio was found.");
+            throw new Exception($"Không thể trích xuất âm thanh cho video này. Lỗi: {ex.Message}");
         }
     }
 
     private async Task<string> GetUrlInternalAsync(string youtubeId, string cacheKey, bool isPremium)
     {
+        // Sử dụng GetManifestAsync với retry logic nội bộ nếu cần
         var manifest = await _youtube.Videos.Streams.GetManifestAsync(youtubeId);
-        var streamOptions = manifest.GetAudioOnlyStreams().OrderByDescending(s => s.Bitrate).ToList();
         
-        if (!streamOptions.Any()) throw new Exception("No audio streams found.");
+        // Ưu tiên Audio-only streams với Bitrate tốt nhất
+        var audioStreams = manifest.GetAudioOnlyStreams();
+        
+        // Lọc bỏ các stream có thể gây lỗi hoặc không phù hợp
+        var streamOptions = audioStreams
+            .OrderByDescending(s => s.Bitrate)
+            .ToList();
+        
+        if (!streamOptions.Any()) throw new Exception("Không tìm thấy luồng âm thanh nào khả dụng.");
 
-        // QUALITY GATE: Premium gets best, others get mid-range
-        IStreamInfo selectedStream = streamOptions.First(); // Default to highest (Premium)
+        // Lựa chọn chất lượng stream dựa trên gói thành viên
+        IStreamInfo selectedStream = streamOptions.First(); 
         
         if (!isPremium && streamOptions.Count > 1)
         {
-            // Pick a middle stream if available
-            int midIndex = streamOptions.Count / 2;
-            selectedStream = streamOptions[midIndex];
+            // Đối với người dùng free, chọn stream ở giữa để tiết kiệm băng thông và tăng độ ổn định
+            int index = Math.Min(1, streamOptions.Count - 1); 
+            selectedStream = streamOptions[index];
         }
 
         var url = selectedStream.Url;
-        Console.WriteLine($"[YoutubeService] Successfully extracted stream for {youtubeId} (Premium: {isPremium}, Bitrate: {selectedStream.Bitrate}): {url.Substring(0, 50)}...");
-        _cache.Set(cacheKey, url, TimeSpan.FromMinutes(30));
+        Console.WriteLine($"[YoutubeService] Thành công! ID: {youtubeId}, Bitrate: {selectedStream.Bitrate}, Size: {selectedStream.Size}");
+        
+        // Cache link trong 60 phút (link YouTube thường hết hạn sau 6h, nhưng 60p là an toàn nhất)
+        _cache.Set(cacheKey, url, TimeSpan.FromHours(1));
         return url;
     }
 

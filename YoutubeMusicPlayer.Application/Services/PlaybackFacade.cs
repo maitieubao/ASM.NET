@@ -39,11 +39,14 @@ public class PlaybackFacade : IPlaybackFacade
         string youtubeId = ExtractYoutubeId(videoUrl);
         if (string.IsNullOrEmpty(youtubeId)) return new PlaybackStreamDto { Error = "InvalidURL", Message = "Đường dẫn không hợp lệ." };
 
-        bool isPremium = userId.HasValue && await _subscriptionService.IsUserPremiumAsync(userId.Value);
-
-        // Parallel: Stream extraction and DB song retrieval
+        // Parallel: Stream extraction, Premium check, and DB song retrieval
+        var premiumTask = userId.HasValue ? _subscriptionService.IsUserPremiumAsync(userId.Value) : Task.FromResult(false);
+        var isPremium = await premiumTask;
         var streamTask = _youtubeService.GetAudioStreamUrlAsync(videoUrl, title, artist, isPremium);
-        var song = await _songService.GetOrCreateByYoutubeIdAsync(youtubeId);
+        var songTask = _songService.GetOrCreateByYoutubeIdAsync(youtubeId);
+
+        // Await minimal necessary components
+        var song = await songTask;
         var streamUrl = await streamTask;
 
         var result = new PlaybackStreamDto { StreamUrl = streamUrl, SongId = song?.SongId, ShowAd = !isPremium };

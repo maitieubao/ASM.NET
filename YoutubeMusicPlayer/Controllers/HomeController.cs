@@ -45,7 +45,8 @@ public class HomeController : BaseController
         try
         {
             var results = await _homeFacade.SearchAllAsync(query, CurrentUserId);
-            return SuccessResponse(results);
+            // We return just the list because the search.js expects a direct array
+            return Ok(results); 
         }
         catch (Exception ex)
         {

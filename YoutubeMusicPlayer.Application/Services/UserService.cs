@@ -216,6 +216,16 @@ public class UserService : IUserService
         }
     }
 
+    public async Task<bool> TogglePremiumAsync(int id, CancellationToken ct = default)
+    {
+        // Atomic update to prevent race conditions and improve performance (Single SQL statement)
+        int updatedCount = await _unitOfWork.ExecuteSqlRawAsync(
+            "UPDATE users SET ispremium = NOT ispremium WHERE userid = @p0 AND is_deleted = false", 
+            ct, id);
+            
+        return updatedCount > 0;
+    }
+
     private UserDto MapToDto(User u) => new UserDto
     {
         UserId = u.UserId,

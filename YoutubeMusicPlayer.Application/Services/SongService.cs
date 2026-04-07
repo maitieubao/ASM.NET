@@ -148,9 +148,12 @@ public class SongService : ISongService
         {
             if (string.IsNullOrEmpty(existing.LyricsText))
             {
+                var targetId = existing.SongId;
                 await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) =>
                 {
-                    await EnrichSongAsync(existing.SongId);
+                    // Use a fresh scope or ensure service availability
+                    var scopeSongService = sp.GetRequiredService<ISongService>();
+                    await scopeSongService.EnrichSongAsync(targetId);
                 });
             }
             return await GetSongByIdAsync(existing.SongId, ct);
@@ -210,7 +213,11 @@ public class SongService : ISongService
         await _unitOfWork.Repository<SongArtist>().AddAsync(new SongArtist { SongId = song.SongId, ArtistId = artist.ArtistId, Role = "Main" }, ct);
         await _unitOfWork.CompleteAsync(ct);
 
-        await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) => { await EnrichSongAsync(song.SongId); });
+        var targetSongId = song.SongId;
+        await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) => { 
+            var scopeSongService = sp.GetRequiredService<ISongService>();
+            await scopeSongService.EnrichSongAsync(targetSongId); 
+        });
 
         return MapToDto(song);
     }
@@ -344,5 +351,27 @@ public class SongService : ISongService
             uow.Repository<Song>().Update(song);
             await uow.CompleteAsync(ct);
         } catch {}
+    }
+
+    public async Task<bool> TogglePremiumStatusAsync(int id, CancellationToken ct = default)
+    {
+        var song = await _unitOfWork.Repository<Song>().GetByIdAsync(id, ct);
+        if (song == null) return false;
+
+        song.IsPremiumOnly = !song.IsPremiumOnly;
+        _unitOfWork.Repository<Song>().Update(song);
+        await _unitOfWork.CompleteAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> ToggleExplicitStatusAsync(int id, CancellationToken ct = default)
+    {
+        var song = await _unitOfWork.Repository<Song>().GetByIdAsync(id, ct);
+        if (song == null) return false;
+
+        song.IsExplicit = !song.IsExplicit;
+        _unitOfWork.Repository<Song>().Update(song);
+        await _unitOfWork.CompleteAsync(ct);
+        return true;
     }
 }

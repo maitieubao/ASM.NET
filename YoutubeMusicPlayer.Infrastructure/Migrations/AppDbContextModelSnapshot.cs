@@ -43,6 +43,14 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("coverimageurl");
 
+                    b.Property<string>("DeezerAlbumId")
+                        .HasColumnType("text")
+                        .HasColumnName("deezer_album_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
                     b.Property<bool>("IsExplicit")
                         .HasColumnType("boolean")
                         .HasColumnName("isexplicit");
@@ -116,6 +124,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Property<string>("Country")
                         .HasColumnType("text")
                         .HasColumnName("country");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean")
@@ -228,6 +240,36 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("comments");
+                });
+
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.CommentLike", b =>
+                {
+                    b.Property<int>("LikeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("likeid");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("LikeId"));
+
+                    b.Property<int>("CommentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("commentid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createdat");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
+
+                    b.HasKey("LikeId");
+
+                    b.HasIndex("CommentId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("comment_likes", (string)null);
                 });
 
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Genre", b =>
@@ -398,6 +440,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("featuredtype");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
                     b.Property<bool>("IsFeatured")
                         .HasColumnType("boolean")
                         .HasColumnName("isfeatured");
@@ -521,6 +567,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Property<int?>("Duration")
                         .HasColumnType("integer")
                         .HasColumnName("duration");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<bool>("IsExplicit")
                         .HasColumnType("boolean")
@@ -702,6 +752,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Property<string>("GoogleId")
                         .HasColumnType("text")
                         .HasColumnName("googleid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<bool>("IsLocked")
                         .HasColumnType("boolean")
@@ -939,6 +993,25 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.CommentLike", b =>
+                {
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Comment", "Comment")
+                        .WithMany()
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Comment");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.ListeningHistory", b =>
                 {
                     b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
@@ -1082,7 +1155,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongLike", b =>
                 {
                     b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
-                        .WithMany()
+                        .WithMany("SongLikes")
                         .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1173,6 +1246,8 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("SongArtists");
 
                     b.Navigation("SongGenres");
+
+                    b.Navigation("SongLikes");
                 });
 
             modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.User", b =>

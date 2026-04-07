@@ -1,23 +1,27 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
-using System.Collections.Generic;
+using YoutubeMusicPlayer.Application.Common;
 
 namespace YoutubeMusicPlayer.Controllers;
 
 public class AuthController : Controller
 {
     private readonly IAuthService _authService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, ILogger<AuthController> logger)
     {
         _authService = authService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -43,14 +47,18 @@ public class AuthController : Controller
         var user = await _authService.AuthenticateAsync(model.Email, model.Password);
         if (user == null)
         {
-            ModelState.AddModelError(string.Empty, "Invalid email or password.");
+            ModelState.AddModelError(string.Empty, "Email hoặc mật khẩu không chính xác.");
             return View(model);
         }
 
         await SignInUser(user, model.RememberMe);
         
-        return string.IsNullOrEmpty(returnUrl) ? 
-                RedirectToAction("Index", "Home") : Redirect(returnUrl);
+        // Security: Open Redirect protection
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return Redirect(returnUrl);
+        }
+        return RedirectToAction("Index", "Home");
     }
 
     [HttpGet]
@@ -117,12 +125,17 @@ public class AuthController : Controller
             
             await SignInUser(user, true);
 
-            return string.IsNullOrEmpty(returnUrl) ? 
-                RedirectToAction("Index", "Home") : Redirect(returnUrl);
+            // Security: Open Redirect protection
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            return RedirectToAction("Index", "Home");
         }
         catch (System.Exception ex)
         {
-            ModelState.AddModelError(string.Empty, "Lỗi kết nối Cơ sở dữ liệu Supabase: " + ex.Message);
+            _logger.LogError(ex, "Lỗi đăng nhập Google cho email {Email}", email);
+            ModelState.AddModelError(string.Empty, "Không thể hoàn tất đăng nhập bằng Google lúc này. Vui lòng thử lại sau.");
             return View("Login"); 
         }
     }
@@ -146,13 +159,17 @@ public class AuthController : Controller
     public async Task<IActionResult> ForgotPassword(string email)
     {
         var token = await _authService.ForgotPasswordAsync(email);
+        
+        // Security: Prevent Email Enumeration by returning a neutral message
+        TempData["Message"] = "Nếu email này tồn tại trong hệ thống, chúng tôi đã gửi mã xác nhận.";
+        
         if (token != null)
         {
-            TempData["Message"] = $"Your reset token is: {token}. In production, this would be sent to your email.";
-            return RedirectToAction(nameof(ResetPassword), new { email });
+            // Debug purpose only - remove in pure production env
+            TempData["DebugToken"] = token;
         }
-        ModelState.AddModelError("", "Email not found.");
-        return View();
+
+        return RedirectToAction(nameof(ResetPassword), new { email });
     }
 
     [HttpGet]
@@ -178,7 +195,7 @@ public class AuthController : Controller
     {
         var claims = new List<Claim>
         {
-            new Claim("InternalUserId", user.UserId.ToString()), // Dùng tên riêng để tránh nhầm với Google ID
+            new Claim(AuthConstants.InternalUserIdClaim, user.UserId.ToString()),
             new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new Claim(ClaimTypes.Name, user.Username),
             new Claim(ClaimTypes.Email, user.Email),
@@ -195,7 +212,10 @@ public class AuthController : Controller
         
         var authProperties = new AuthenticationProperties
         {
-            IsPersistent = isPersistent
+            IsPersistent = isPersistent,
+            IssuedUtc = DateTimeOffset.UtcNow,
+            ExpiresUtc = isPersistent ? DateTimeOffset.UtcNow.AddDays(7) : DateTimeOffset.UtcNow.AddHours(2),
+            AllowRefresh = true
         };
 
         await HttpContext.SignInAsync(

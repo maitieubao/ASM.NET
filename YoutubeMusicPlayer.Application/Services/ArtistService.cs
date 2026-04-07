@@ -391,17 +391,35 @@ public class ArtistService : IArtistService
         return artist.Bio;
     }
 
-    public async Task<IEnumerable<ArtistDto>> SearchArtistsAsync(string query, CancellationToken ct = default)
+    public async Task<IEnumerable<ArtistDto>> SearchArtistsAsync(string query, int count, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(query)) return Enumerable.Empty<ArtistDto>();
 
         var artists = await _unitOfWork.Repository<Artist>().Query()
             .Where(a => !a.IsDeleted && EF.Functions.Like(a.Name, $"%{query}%"))
             .OrderByDescending(a => a.SubscriberCount)
-            .Take(5)
+            .Take(count)
             .ToListAsync(ct);
 
         return artists.Select(MapToDto);
+    }
+
+    public async Task<IEnumerable<ArtistDto>> SearchArtistsAsync(string query, CancellationToken ct = default)
+    {
+        return await SearchArtistsAsync(query, 10, ct);
+    }
+
+    public async Task<bool> ToggleVerifiedStatusAsync(int id, CancellationToken ct = default)
+    {
+        var artist = await _unitOfWork.Repository<Artist>().GetByIdAsync(id, ct);
+        if (artist == null || artist.IsDeleted) return false;
+
+        artist.IsVerified = !artist.IsVerified;
+        _unitOfWork.Repository<Artist>().Update(artist);
+        await _unitOfWork.CompleteAsync(ct);
+        
+        _cache.Remove($"artist_details_{id}"); // Invalidate cache
+        return true;
     }
 
     private ArtistDto MapToDto(Artist a) 

@@ -22,13 +22,16 @@ public class LyricsService : ILyricsService
     {
         if (string.IsNullOrWhiteSpace(artist) || string.IsNullOrWhiteSpace(title)) return null;
 
-        string cacheKey = $"lyrics_{artist.ToLower().Trim()}_{title.ToLower().Trim()}";
+        var cleanArtist = CleanInput(artist);
+        var cleanTitle = CleanInput(title);
+
+        string cacheKey = $"lyrics_{cleanArtist.ToLower().Trim()}_{cleanTitle.ToLower().Trim()}";
         if (_cache.TryGetValue(cacheKey, out string? cachedLyrics)) return cachedLyrics;
 
         try
         {
             // Using lyrics.ovh as a free, reliable source for basic lyrics
-            var url = $"https://api.lyrics.ovh/v1/{Uri.EscapeDataString(artist)}/{Uri.EscapeDataString(title)}";
+            var url = $"https://api.lyrics.ovh/v1/{Uri.EscapeDataString(cleanArtist)}/{Uri.EscapeDataString(cleanTitle)}";
             
             var response = await _http.GetAsync(url);
             if (!response.IsSuccessStatusCode) return null;
@@ -47,6 +50,23 @@ public class LyricsService : ILyricsService
         }
 
         return null;
+    }
+
+    private string CleanInput(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        // 1. Remove bracketed metadata: (Official Video), [MV], (Lyrics), etc.
+        var cleaned = System.Text.RegularExpressions.Regex.Replace(input, @"\s?[\(\[].*?[\)\]]", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        // 2. Remove common noise
+        cleaned = cleaned.Replace(" - Topic", "", StringComparison.OrdinalIgnoreCase);
+        cleaned = cleaned.Replace("official video", "", StringComparison.OrdinalIgnoreCase);
+        cleaned = cleaned.Replace("official audio", "", StringComparison.OrdinalIgnoreCase);
+        cleaned = cleaned.Replace("official music video", "", StringComparison.OrdinalIgnoreCase);
+        
+        // 3. Trim extra whitespace
+        return cleaned.Trim();
     }
 
     private class LyricsResponse

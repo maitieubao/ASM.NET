@@ -22,10 +22,15 @@ public class AdminTaxonomyController : Controller
 
     public async Task<IActionResult> Index(CancellationToken ct = default)
     {
+        var genresTask = _genreService.GetAllGenresAsync(ct);
+        var categoriesTask = _categoryService.GetAllCategoriesAsync(ct);
+
+        await Task.WhenAll(genresTask, categoriesTask);
+
         var model = new AdminTaxonomyViewModel
         {
-            Genres = await _genreService.GetAllGenresAsync(),
-            Categories = await _categoryService.GetAllCategoriesAsync()
+            Genres = await genresTask,
+            Categories = await categoriesTask
         };
         return View(model);
     }
@@ -38,13 +43,23 @@ public class AdminTaxonomyController : Controller
     public async Task<IActionResult> CreateGenre(GenreDto dto, CancellationToken ct = default)
     {
         if (!ModelState.IsValid) return View(dto);
-        await _genreService.CreateGenreAsync(dto); // Missing ct in simple services, but adding for future
-        return RedirectToAction(nameof(Index));
+        
+        try
+        {
+            await _genreService.CreateGenreAsync(dto, ct);
+            TempData["Success"] = "Thể loại đã được tạo thành công!";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (System.Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            return View(dto);
+        }
     }
 
     public async Task<IActionResult> EditGenre(int id, CancellationToken ct = default)
     {
-        var g = await _genreService.GetGenreByIdAsync(id);
+        var g = await _genreService.GetGenreByIdAsync(id, ct);
         if (g == null) return NotFound();
         return View(g);
     }
@@ -53,15 +68,34 @@ public class AdminTaxonomyController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditGenre(GenreDto dto, CancellationToken ct = default)
     {
-        await _genreService.UpdateGenreAsync(dto);
-        return RedirectToAction(nameof(Index));
+        if (!ModelState.IsValid) return View(dto);
+
+        try
+        {
+            await _genreService.UpdateGenreAsync(dto, ct);
+            TempData["Success"] = "Thể loại đã được cập nhật thành công!";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (System.Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            return View(dto);
+        }
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteGenre(int id, CancellationToken ct = default)
     {
-        await _genreService.DeleteGenreAsync(id);
+        try
+        {
+            await _genreService.DeleteGenreAsync(id, ct);
+            TempData["Success"] = "Thể loại đã được xóa thành công!";
+        }
+        catch (System.Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
         return RedirectToAction(nameof(Index));
     }
 
@@ -73,13 +107,23 @@ public class AdminTaxonomyController : Controller
     public async Task<IActionResult> CreateCategory(CategoryDto dto, CancellationToken ct = default)
     {
         if (!ModelState.IsValid) return View(dto);
-        await _categoryService.CreateCategoryAsync(dto);
-        return RedirectToAction(nameof(Index));
+        
+        try
+        {
+            await _categoryService.CreateCategoryAsync(dto, ct);
+            TempData["Success"] = "Danh mục đã được tạo thành công!";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (System.Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            return View(dto);
+        }
     }
 
     public async Task<IActionResult> EditCategory(int id, CancellationToken ct = default)
     {
-        var c = await _categoryService.GetCategoryByIdAsync(id);
+        var c = await _categoryService.GetCategoryByIdAsync(id, ct);
         if (c == null) return NotFound();
         return View(c);
     }
@@ -88,15 +132,34 @@ public class AdminTaxonomyController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditCategory(CategoryDto dto, CancellationToken ct = default)
     {
-        await _categoryService.UpdateCategoryAsync(dto);
-        return RedirectToAction(nameof(Index));
+        if (!ModelState.IsValid) return View(dto);
+
+        try
+        {
+            await _categoryService.UpdateCategoryAsync(dto, ct);
+            TempData["Success"] = "Danh mục đã được cập nhật thành công!";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (System.Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            return View(dto);
+        }
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteCategory(int id, CancellationToken ct = default)
     {
-        await _categoryService.DeleteCategoryAsync(id);
+        try
+        {
+            await _categoryService.DeleteCategoryAsync(id, ct);
+            TempData["Success"] = "Danh mục đã được xóa thành công!";
+        }
+        catch (System.Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
         return RedirectToAction(nameof(Index));
     }
 }

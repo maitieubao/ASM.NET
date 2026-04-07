@@ -93,14 +93,15 @@ public class PaymentController : BaseController
         {
             var paymentInfo = await _payOSService.GetPaymentLinkInformationAsync(orderCode);
             
-            if (paymentInfo.status == "PAID" || paymentInfo.status == "COMPLETED")
+            if (paymentInfo.Status.ToString() == "PAID" || paymentInfo.Status.ToString() == "COMPLETED")
             {
                 _logger.LogInformation("Verified PAID status for OrderCode {OrderCode} via PayOS API.", orderCode);
-                await _subscriptionService.ProcessPaymentSuccessAsync(orderCode, paymentInfo.id);
+                // PayOS uses id and status in some versions, but if it is mapped to PascalCase, use Status and Id
+                await _subscriptionService.ProcessPaymentSuccessAsync(orderCode, paymentInfo.Id);
                 return View();
             }
 
-            _logger.LogWarning("Verification failed for OrderCode {OrderCode}. Status: {Status}", orderCode, paymentInfo.status);
+            _logger.LogWarning("Verification failed for OrderCode {OrderCode}. Status: {Status}", orderCode, paymentInfo.Status);
             TempData["Message"] = "Giao dịch hiện đang chờ xử lý hoặc chưa hoàn thành.";
         }
         catch (Exception ex)

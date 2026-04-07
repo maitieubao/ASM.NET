@@ -173,30 +173,37 @@ window.loadAndPlay = async function(track) {
         const res = await fetch(url);
         if (!res.ok) throw new Error('Network error');
         
-        const data = await res.json();
-        if (data.streamUrl) {
+        const json = await res.json();
+        const data = json.data; // Access the nested data object from ApiResponse<T>
+        
+        if (data && data.streamUrl) {
             streamCache[track.videoId] = data.streamUrl;
             currentSongDbId = data.songId || null; 
             
-            if (data.showAd && typeof playAdSequence === 'function') {
-                await playAdSequence();
-            }
-
+            // Priority: Load and play audio first
             audioPlayer.src = data.streamUrl;
+            audioPlayer.load(); // Boost some browsers' loading speed
             
-            const likeBtn = document.getElementById('playerLikeBtn');
-            if(likeBtn) {
-                if(data.isLiked) {
-                    likeBtn.querySelector('i').className = 'fa-solid fa-heart text-danger';
-                } else {
-                    likeBtn.querySelector('i').className = 'fa-regular fa-heart text-dim';
-                }
-            }
-
             const hasStarted = await safePlayCurrentTrack();
+
+            // Background tasks: Metadata and button updates
+            setTimeout(() => {
+                const likeBtn = document.getElementById('playerLikeBtn');
+                if(likeBtn) {
+                    const icon = likeBtn.querySelector('i');
+                    if(icon) {
+                        if(data.isLiked) {
+                            icon.className = 'fa-solid fa-heart text-danger';
+                        } else {
+                            icon.className = 'fa-regular fa-heart text-dim';
+                        }
+                    }
+                }
+            }, 10); // Minimal delay so audio takes precedence
+            
             if (hasStarted) {
                 isSongLoading = false;
-                consecutiveErrorCount = 0; // Success! Reset the counter
+                consecutiveErrorCount = 0;
                 setPlayerMessage(track.title, track.author);
                 startTracking();
                 if (typeof fetchRichMetadata === 'function') {

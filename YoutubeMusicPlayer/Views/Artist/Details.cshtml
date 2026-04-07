@@ -100,11 +100,10 @@
                         else
                         {
                             <div class="text-center py-5 glass-card rounded-5 border-white border-opacity-5">
-                                <div class="opacity-20 mb-3"><i class="fa-solid fa-music display-1"></i></div>
-                                <h5 class="text-white-50">Đang tìm kiếm bài hát của @Model.Name...</h5>
-                                <p class="small text-muted">Vui lòng quay lại sau vài giây hoặc F5 trang.</p>
-                                <form asp-action="RefreshBio" asp-route-id="@Model.ArtistId" method="post" class="mt-3">
-                                    <button type="submit" class="btn btn-sm btn-outline-accent rounded-pill px-4">Đồng bộ lại ngay</button>
+                                <div class="opacity-10 mb-2"><i class="fa-solid fa-music fs-1"></i></div>
+                                <p class="small text-muted mb-3">Đang đồng bộ bài hát của @Model.Name...</p>
+                                <form asp-action="RefreshBio" asp-route-id="@Model.ArtistId" method="post">
+                                    <button type="submit" class="btn btn-sm btn-outline-accent rounded-pill px-4">Đồng bộ ngay</button>
                                 </form>
                             </div>
                         }
@@ -313,74 +312,3 @@
     </script>
 }
 
-<style>
-    .artist-header-hero { height: 60vh; min-height: 400px; }
-    .artist-banner-bg {
-        position: absolute; width: 100%; height: 100%;
-        background-size: cover; background-position: center 20%;
-        filter: brightness(0.8); z-index: 1; transition: 0.5s ease;
-    }
-    .banner-gradient {
-        position: absolute; width: 100%; height: 100%;
-        background: linear-gradient(180deg, transparent 0%, rgba(3,3,3,0.4) 50%, #030303 100%);
-        z-index: 2;
-    }
-    .artist-avatar-main {
-        width: 200px; height: 200px; object-fit: cover;
-        border-radius: 50%; box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-    }
-    @@media (min-width: 768px) {
-        .artist-avatar-main { width: 240px; height: 240px; }
-        .artist-title-large { font-size: 5rem; letter-spacing: -4px; }
-    }
-    @@media (max-width: 767px) {
-        .artist-title-large { font-size: 2.5rem; letter-spacing: -2px; }
-    }
-
-    .sticky-top-actions { top: 72px; }
-    .btn-play-rounded {
-        width: 56px; height: 56px; background: var(--accent-primary);
-        color: white; border-radius: 50%; display: flex; align-items: center;
-        justify-content: center; font-size: 20px; border: none; transition: 0.3s;
-    }
-    .btn-play-rounded:hover { transform: scale(1.1); filter: brightness(1.1); }
-
-    .action-nav-link { 
-        color: var(--text-dim); font-weight: 700; text-decoration: none; 
-        font-size: 0.9rem; padding: 8px 0; border-bottom: 2px solid transparent; 
-        text-transform: uppercase; letter-spacing: 0.05em; transition: 0.2s;
-    }
-    .action-nav-link:hover, .action-nav-link.active { color: white; border-bottom-color: var(--accent-primary); }
-
-    /* SONG ROWS */
-    .song-row-premium {
-        display: grid; grid-template-columns: 40px 50px 1fr 100px 150px;
-        align-items: center; padding: 12px 16px; border-radius: 12px;
-        cursor: pointer; transition: 0.2s; gap: 16px;
-    }
-    @@media (max-width: 768px) {
-        .song-row-premium { grid-template-columns: 30px 40px 1fr 100px; }
-    }
-    .song-row-premium:hover { background: rgba(255,255,255,0.08); }
-    .thumb-wrapper { position: relative; width: 44px; height: 44px; }
-    .thumb-wrapper img { width: 100%; height: 100%; border-radius: 4px; object-fit: cover; }
-    .play-icon { 
-        position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); 
-        display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.2s;
-    }
-    .song-row-premium:hover .play-icon { opacity: 1; }
-    .song-title { font-weight: 700; color: white; font-size: 0.95rem; }
-    .plays, .duration { color: var(--text-dim); font-size: 0.85rem; }
-    .actions { display: flex; align-items: center; gap: 16px; opacity: 0; transition: 0.2s; }
-    .song-row-premium:hover .actions { opacity: 1; }
-
-    /* ABOUT SECTION */
-    .about-card { height: 400px; border: 1px solid rgba(255,255,255,0.05); }
-    .about-bg { position: absolute; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.5); }
-    .about-overlay { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(3,3,3,0.9) 0%, transparent 70%); z-index: 2; }
-    
-    .sticky-sidebar { position: sticky; top: 150px; }
-    .line-clamp-4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-
-    .btn.following { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2) !important; color: var(--accent-primary); }
-</style>

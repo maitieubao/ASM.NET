@@ -13,6 +13,8 @@ public interface IArtistService
     Task CreateArtistAsync(ArtistDto artistDto, CancellationToken ct = default);
     Task UpdateArtistAsync(ArtistDto artistDto, CancellationToken ct = default);
     Task DeleteArtistAsync(int id, CancellationToken ct = default);
+    Task<IEnumerable<ArtistDto>> SearchArtistsAsync(string term, int count, CancellationToken ct = default);
+    Task<bool> ToggleVerifiedStatusAsync(int id, CancellationToken ct = default);
     Task<string?> RefreshArtistBioAsync(int id, CancellationToken ct = default);
     Task<string?> SyncArtistMetadataAsync(int artistId, CancellationToken ct = default);
     Task<IEnumerable<ArtistDto>> GetFollowedArtistsAsync(int userId, CancellationToken ct = default);

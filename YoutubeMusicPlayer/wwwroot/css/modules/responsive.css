@@ -1,0 +1,35 @@
+/* responsive.css - Media queries for mobile and tablet support */
+@media (max-width: 1200px) {
+    .player-bar {
+        grid-template-columns: minmax(0, 240px) minmax(0, 1fr) minmax(0, 220px);
+        padding: 0 20px;
+    }
+}
+
+@media (max-width: 992px) {
+    body { overflow: auto; }
+    #app-root {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr var(--player-height);
+        height: 100dvh;
+    }
+    .sidebar {
+        grid-column: 1; grid-row: 1;
+        flex-direction: row; flex-wrap: wrap;
+        padding: 20px; border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .main-content { grid-column: 1; grid-row: 2; padding: 24px 20px; }
+    .player-bar { grid-column: 1; grid-row: 3; grid-template-columns: 1fr; }
+    .queue-drawer {
+        right: 0; top: auto; bottom: 0; width: 100%;
+        height: min(60dvh, 520px); transform: translateY(100%);
+    }
+    .queue-drawer.open { transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+    :root { --player-height: 180px; }
+    .music-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .player-bar { padding: 16px 20px; }
+}

@@ -10,12 +10,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    
-    <!-- CSS -->
+    <!-- Frameworks & Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    
+    <!-- SYSTEMATIC CSS MODULARIZATION -->
+    <link rel="stylesheet" href="~/css/modules/variables.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/layout.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/header.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/cards.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/player.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/drawers.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/ui-elements.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/immersive.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/artist.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/responsive.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
@@ -111,6 +122,10 @@
             </div>
 
             @RenderBody()
+            
+            <!-- Global TempData Flash Holders for Toastr -->
+            <input type="hidden" id="tempDataSuccess" value="@TempData["Success"]" />
+            <input type="hidden" id="tempDataError" value="@TempData["Error"]" />
         </main>
 
         <!-- PLAYER BAR -->
@@ -178,29 +193,45 @@
         </div>
     </div>
 
-    <!-- METADATA DRAWER (Lyrics & Bio) -->
-    <div id="metadataDrawer" class="queue-drawer scrollbar-hide">
-        <div class="p-4 border-bottom border-white border-opacity-5 d-flex justify-content-between align-items-center">
-            <h5 class="m-0 fw-bold">Lời bài hát & Nghệ sĩ</h5>
-            <button class="btn-close btn-close-white" onclick="toggleMetadata()"></button>
+    <!-- FULL SCREEN PLAYER OVERLAY (Lyrics & Bio) -->
+    <div id="fullPlayerOverlay" class="full-player-overlay">
+        <div id="fullPlayerBackdrop" class="full-player-backdrop"></div>
+        
+        <div class="full-player-close" onclick="toggleMetadata()">
+            <i class="fa-solid fa-chevron-down fs-4"></i>
         </div>
-        <div class="p-4">
-             <ul class="nav nav-pills gap-2 mb-4">
-                <li class="nav-item">
-                    <button class="tag-badge active py-1 px-3 border-secondary bg-transparent" data-bs-toggle="pill" data-bs-target="#lyrics-tab">Lyrics</button>
-                </li>
-                <li class="nav-item">
-                    <button class="tag-badge py-1 px-3 border-secondary bg-transparent" data-bs-toggle="pill" data-bs-target="#bio-tab">Nghệ sĩ</button>
-                </li>
-             </ul>
-             <div class="tab-content">
-                <div class="tab-pane fade show active" id="lyrics-tab">
-                    <div id="lyricsContent" class="text-dim small" style="white-space: pre-line; line-height: 1.8;">Chọn bài hát để xem lời...</div>
+
+        <div class="full-player-content">
+            <!-- Visuals Side -->
+            <div class="full-player-visuals">
+                <img id="fullPlayerThumb" src="" class="full-player-thumb" alt="Album Art">
+                <div class="full-player-info mt-3 w-100">
+                    <h1 id="fullPlayerTitle" class="title text-truncate">Sẵn sàng phát nhạc</h1>
+                    <p id="fullPlayerArtist" class="artist text-truncate">Chọn bài hát bạn yêu thích</p>
+                    
+                    <div class="mt-5 d-flex gap-4">
+                        <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" onclick="togglePlayerLike()">
+                            <i class="fa-regular fa-heart me-2"></i> Yêu thích
+                        </button>
+                        <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" data-bs-toggle="collapse" data-bs-target="#bioCollapse">
+                            <i class="fa-solid fa-user-tag me-2"></i> Nghệ sĩ
+                        </button>
+                    </div>
+
+                    <div class="collapse mt-4" id="bioCollapse">
+                        <div class="glass-card p-4 rounded-4 small text-dim" id="bioContent" style="max-height: 200px; overflow-y: auto;">
+                            Thông tin nghệ sĩ đang được tải...
+                        </div>
+                    </div>
                 </div>
-                <div class="tab-pane fade" id="bio-tab">
-                    <div id="bioContent" class="text-dim small" style="line-height: 1.6;">Thông tin nghệ sĩ...</div>
+            </div>
+
+            <!-- Lyrics Side -->
+            <div class="lyrics-container scrollbar-hide">
+                <div id="lyricsContent" class="lyrics-text" style="white-space: pre-line;">
+                    Chọn bài hát để xem lời...
                 </div>
-             </div>
+            </div>
         </div>
     </div>
 
@@ -251,9 +282,12 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     
     <!-- YTM Logic -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <!-- Core Music Logic Modules -->
     <script src="~/js/ui.js" asp-append-version="true"></script>
     <script src="~/js/player.js" asp-append-version="true"></script>
     <script src="~/js/search.js" asp-append-version="true"></script>
+    <script src="~/js/admin_notifications.js" asp-append-version="true"></script>
 
     <script>
         // Global Auth state for JS access if needed

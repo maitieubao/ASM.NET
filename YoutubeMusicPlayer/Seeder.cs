@@ -12,7 +12,7 @@ namespace YoutubeMusicPlayer.Testing
         public static void Seed() 
         {
             var contextOptions = new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql("Host=db.djesziteeraxenpdhybn.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=MaiTieuBao1234!@#$;")
+                .UseNpgsql("Host=aws-1-ap-south-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.djesziteeraxenpdhybn;Password=MaiTieuBao1234!@#$;SSL Mode=Require;Trust Server Certificate=true;Pooling=true;")
                 .Options;
 
             using var db = new AppDbContext(contextOptions);

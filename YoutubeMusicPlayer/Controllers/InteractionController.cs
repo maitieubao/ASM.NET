@@ -35,10 +35,12 @@ public class InteractionController : BaseController
     {
         if (CurrentUserId == null) return Unauthorized();
 
+        var userId = CurrentUserId.Value;
+
         await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) =>
         {
             var scopeInteractionService = sp.GetRequiredService<IInteractionService>();
-            await scopeInteractionService.UpdateListeningStatsAsync(CurrentUserId.Value, songId, durationSeconds);
+            await scopeInteractionService.UpdateListeningStatsAsync(userId, songId, durationSeconds);
         });
 
         return Ok();

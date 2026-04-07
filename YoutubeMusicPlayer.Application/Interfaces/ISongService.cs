@@ -21,4 +21,6 @@ public interface ISongService
     Task<IEnumerable<SongDto>> GetSongsByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default);
     Task<(IEnumerable<SongDto> Songs, int TotalCount)> GetSongsByIdsPaginatedAsync(IEnumerable<int> ids, int page, int pageSize, CancellationToken ct = default);
     Task EnrichSongAsync(int songId, CancellationToken ct = default);
+    Task<bool> TogglePremiumStatusAsync(int id, CancellationToken ct = default);
+    Task<bool> ToggleExplicitStatusAsync(int id, CancellationToken ct = default);
 }

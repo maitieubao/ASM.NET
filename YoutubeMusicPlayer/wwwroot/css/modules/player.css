@@ -1,0 +1,90 @@
+/* player.css - Bottom player bar and playback controls */
+.player-bar {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    background: rgba(10, 10, 10, 0.45); 
+    backdrop-filter: blur(30px) saturate(180%);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+    z-index: 3000;
+    padding: 0 32px;
+    display: grid;
+    grid-template-columns: 320px 1fr 320px;
+    align-items: center;
+    gap: 20px;
+}
+
+.player-info { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.player-thumb { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; }
+.player-text { display: flex; flex-direction: column; min-width: 0; }
+.player-title { font-weight: 700; font-size: 0.95rem; }
+.player-artist { font-size: 0.8rem; color: var(--text-dim); }
+
+.player-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.control-btns { display: flex; align-items: center; gap: 24px; color: var(--text-dim); }
+.control-btns i { font-size: 1.2rem; cursor: pointer; transition: 0.2s; }
+.control-btns i:hover { color: var(--text-main); }
+.play-main { color: var(--text-main); font-size: 2.5rem !important; }
+
+/* SLIDERS & PROGRESS */
+.progress-container {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.progress-bar-slider, .volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.progress-bar-slider::-webkit-slider-thumb, .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    border: 2px solid var(--accent-primary);
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.dynamic-bg-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 0%, var(--accent-glow) 0%, transparent 70%);
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+}
+
+#visualizerCanvas {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 30px;
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: -1;
+}

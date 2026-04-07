@@ -1,6 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using YoutubeMusicPlayer.Application.Common;
@@ -20,7 +18,7 @@ public class NotificationService : INotificationService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(int userId, int count = 20)
+    public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(int userId, int count = 20, CancellationToken ct = default)
     {
         // Optimized: SQL-level processing (.Select) to avoid loading all notifications into RAM
         return await _unitOfWork.Repository<Notification>().Query()
@@ -38,21 +36,21 @@ public class NotificationService : INotificationService
                 IsRead = n.IsRead,
                 CreatedAt = n.CreatedAt
             })
-            .ToListAsync();
+            .ToListAsync(ct);
     }
 
-    public async Task MarkAsReadAsync(int notificationId)
+    public async Task MarkAsReadAsync(int notificationId, CancellationToken ct = default)
     {
-        var n = await _unitOfWork.Repository<Notification>().GetByIdAsync(notificationId);
+        var n = await _unitOfWork.Repository<Notification>().GetByIdAsync(notificationId, ct);
         if (n != null)
         {
             n.IsRead = true;
             _unitOfWork.Repository<Notification>().Update(n);
-            await _unitOfWork.CompleteAsync();
+            await _unitOfWork.CompleteAsync(ct);
         }
     }
 
-    public async Task SendSystemNotificationAsync(string title, string message, string type = NotificationTypes.System)
+    public async Task SendSystemNotificationAsync(string title, string message, string type = NotificationTypes.System, CancellationToken ct = default)
     {
         var n = new Notification
         {
@@ -62,13 +60,13 @@ public class NotificationService : INotificationService
             Type = type,
             CreatedAt = DateTime.UtcNow
         };
-        await _unitOfWork.Repository<Notification>().AddAsync(n);
-        await _unitOfWork.CompleteAsync();
+        await _unitOfWork.Repository<Notification>().AddAsync(n, ct);
+        await _unitOfWork.CompleteAsync(ct);
         
         // SignalR Placeholder: Send message across SignalR Hub if configured
     }
 
-    public async Task SendUserNotificationAsync(int userId, string title, string message, string type = NotificationTypes.StatusChange)
+    public async Task SendUserNotificationAsync(int userId, string title, string message, string type = NotificationTypes.StatusChange, CancellationToken ct = default)
     {
          var n = new Notification
         {
@@ -78,13 +76,13 @@ public class NotificationService : INotificationService
             Type = type,
             CreatedAt = DateTime.UtcNow
         };
-        await _unitOfWork.Repository<Notification>().AddAsync(n);
-        await _unitOfWork.CompleteAsync();
+        await _unitOfWork.Repository<Notification>().AddAsync(n, ct);
+        await _unitOfWork.CompleteAsync(ct);
 
         // SignalR Placeholder: Send message across SignalR Hub if configured
     }
 
-    public async Task<IEnumerable<NotificationDto>> GetAllNotificationsAsync(int count = 50)
+    public async Task<IEnumerable<NotificationDto>> GetAllNotificationsAsync(int count = 50, CancellationToken ct = default)
     {
         // Optimized: Single SQL join for user names to avoid N+1 and loading all notifications into RAM
         return await _unitOfWork.Repository<Notification>().Query()
@@ -103,16 +101,16 @@ public class NotificationService : INotificationService
                 IsRead = n.IsRead,
                 CreatedAt = n.CreatedAt
             })
-            .ToListAsync();
+            .ToListAsync(ct);
     }
 
-    public async Task DeleteNotificationAsync(int notificationId)
+    public async Task DeleteNotificationAsync(int notificationId, CancellationToken ct = default)
     {
-        var n = await _unitOfWork.Repository<Notification>().GetByIdAsync(notificationId);
+        var n = await _unitOfWork.Repository<Notification>().GetByIdAsync(notificationId, ct);
         if (n != null)
         {
             _unitOfWork.Repository<Notification>().Remove(n);
-            await _unitOfWork.CompleteAsync();
+            await _unitOfWork.CompleteAsync(ct);
         }
     }
 }

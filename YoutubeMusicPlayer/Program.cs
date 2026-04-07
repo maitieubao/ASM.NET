@@ -12,15 +12,19 @@ using Microsoft.AspNetCore.Authentication.Google;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Fix PostgreSQL DateTime issue
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
 // Performance Optimization: Memory Cache
 builder.Services.AddMemoryCache();
+builder.Services.AddResponseCaching();
 
 // Performance// 2. Database (Tối ưu hóa tốc độ bằng pooling và giảm độ trễ DNS)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContextPool<AppDbContext>(options =>
+builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 // Authentication & Identity
@@ -88,12 +92,12 @@ using (var scope = app.Services.CreateScope())
     try
     {
         // ONE-TIME RESET FOR TRENDING ALBUMS (Force refresh from Deezer)
-        context.Database.ExecuteSqlRaw("TRUNCATE TABLE songartists CASCADE; TRUNCATE TABLE albumartists CASCADE; TRUNCATE TABLE songlikes CASCADE; TRUNCATE TABLE playlistsongs CASCADE; DELETE FROM songs; DELETE FROM albums;");
-        Console.WriteLine("[DB INIT] Albums and Songs cleared for fresh Deezer sync.");
+        // context.Database.ExecuteSqlRaw("TRUNCATE TABLE songartists CASCADE; TRUNCATE TABLE albumartists CASCADE; TRUNCATE TABLE songlikes CASCADE; TRUNCATE TABLE playlistsongs CASCADE; DELETE FROM songs; DELETE FROM albums;");
+        // Console.WriteLine("[DB INIT] Albums and Songs cleared for fresh Deezer sync.");
         
         // Add lyricstext to songs if missing
         // ... (rest of migration logic)
-        context.Database.ExecuteSqlRaw(@"
+        await context.Database.ExecuteSqlRawAsync(@"
             DO $$ 
             BEGIN 
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='songs' AND column_name='lyricstext') THEN
@@ -105,6 +109,36 @@ using (var scope = app.Services.CreateScope())
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='total_listen_seconds') THEN
                     ALTER TABLE users ADD COLUMN total_listen_seconds double precision DEFAULT 0;
                 END IF;
+
+                -- Premium & Content Security (Subscription Tables)
+                CREATE TABLE IF NOT EXISTS subscription_plans (
+                    planid SERIAL PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    price DECIMAL NOT NULL,
+                    duration_days INTEGER NOT NULL,
+                    description TEXT,
+                    is_active BOOLEAN DEFAULT TRUE
+                );
+
+                CREATE TABLE IF NOT EXISTS user_subscriptions (
+                    user_subscription_id SERIAL PRIMARY KEY,
+                    userid INTEGER NOT NULL REFERENCES users(userid),
+                    planid INTEGER NOT NULL REFERENCES subscription_plans(planid),
+                    start_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    end_date TIMESTAMP WITH TIME ZONE,
+                    is_active BOOLEAN DEFAULT TRUE
+                );
+
+                CREATE TABLE IF NOT EXISTS payments (
+                    paymentid SERIAL PRIMARY KEY,
+                    userid INTEGER NOT NULL REFERENCES users(userid),
+                    planid INTEGER NOT NULL REFERENCES subscription_plans(planid),
+                    amount DECIMAL NOT NULL,
+                    payment_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+                    order_code BIGINT NOT NULL,
+                    payos_transaction_id TEXT
+                );
 
                 -- Fix missing columns in reports
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='details') THEN
@@ -175,10 +209,6 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE comments ADD COLUMN updatedat timestamp with time zone;
                 END IF;
 
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscription_plans' AND column_name='is_active') THEN
-                    ALTER TABLE subscription_plans ADD COLUMN is_active boolean DEFAULT true;
-                END IF;
-
                 -- New Tables
                 CREATE TABLE IF NOT EXISTS comment_likes (
                     likeid SERIAL PRIMARY KEY,
@@ -240,9 +270,9 @@ using (var scope = app.Services.CreateScope())
             END $$;");
 
         // --- NEW: SEED SUBSCRIPTION PLANS ---
-        if (!context.Set<SubscriptionPlan>().Any())
+        if (!await context.SubscriptionPlans.AnyAsync())
         {
-            context.Set<SubscriptionPlan>().AddRange(new List<SubscriptionPlan>
+            context.SubscriptionPlans.AddRange(new List<SubscriptionPlan>
             {
                 new SubscriptionPlan { Name = "Gói 1 Tháng", Price = 59000, DurationDays = 30, Description = "Sử dụng đầy đủ mọi tính năng trong 30 ngày." },
                 new SubscriptionPlan { Name = "Gói 3 Tháng", Price = 159000, DurationDays = 90, Description = "Tiết kiệm hơn với gói 3 tháng cao cấp." },
@@ -286,6 +316,7 @@ app.Use(async (context, next) =>
 });
 
 app.UseHttpsRedirection(); 
+app.UseResponseCaching();
 app.UseStaticFiles();
 app.UseRouting();
 

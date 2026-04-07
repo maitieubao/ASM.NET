@@ -1,11 +1,16 @@
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace YoutubeMusicPlayer.Application.DTOs;
 
 public class ArtistDto
 {
     public int ArtistId { get; set; }
+
+    [Required(ErrorMessage = "Tên nghệ sĩ không được để trống")]
+    [StringLength(100, ErrorMessage = "Tên nghệ sĩ không được quá 100 ký tự")]
     public string Name { get; set; } = string.Empty;
+
     public string? Bio { get; set; }
     public string? Country { get; set; }
     public string? AvatarUrl { get; set; }

@@ -14,6 +14,7 @@ public interface IAlbumService
     Task UpdateAlbumAsync(AlbumDto albumDto, CancellationToken ct = default);
     Task DeleteAlbumAsync(int id, CancellationToken ct = default);
     Task<IEnumerable<AlbumDto>> GetRecentAlbumsAsync(int count, CancellationToken ct = default);
+    Task<IEnumerable<AlbumDto>> SearchAlbumsAsync(string term, int count, CancellationToken ct = default);
     Task<IEnumerable<AlbumDto>> SearchAlbumsAsync(string query, CancellationToken ct = default);
     Task<IEnumerable<AlbumDto>> GetTrendingAlbumsAsync(int count, CancellationToken ct = default);
     Task EnsureAlbumSyncMetadataBackground(int albumId, string? artistName, CancellationToken ct = default);

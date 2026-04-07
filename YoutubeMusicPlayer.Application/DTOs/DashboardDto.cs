@@ -6,15 +6,19 @@ namespace YoutubeMusicPlayer.Application.DTOs;
 public class DashboardDto
 {
     public int TotalUsers { get; set; }
+    public int NewUsers24h { get; set; }
+    public int PremiumUsersCount { get; set; }
     public int TotalSongs { get; set; }
     public int TotalPlaylists { get; set; }
     public long TotalPlays { get; set; }
     public int PendingReports { get; set; }
     public decimal TotalRevenue { get; set; }
+    public decimal MonthlyRevenue { get; set; } // Current month
     
     public IEnumerable<TopSongDto> TopSongs { get; set; } = new List<TopSongDto>();
     public IEnumerable<TopArtistDto> TopArtists { get; set; } = new List<TopArtistDto>();
     public IEnumerable<DailyPlayCountDto> PlayHistory { get; set; } = new List<DailyPlayCountDto>();
+    public IEnumerable<DailyPlayCountDto> RegistrationHistory { get; set; } = new List<DailyPlayCountDto>();
     public IEnumerable<PaymentDto> RecentPayments { get; set; } = new List<PaymentDto>();
 }
 

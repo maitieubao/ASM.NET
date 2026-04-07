@@ -170,10 +170,8 @@ public class HomeFacade : IHomeFacade
         }
 
         string optimizedQuery = query;
-        if (query.Length < 15 && !query.Contains("official") && !query.Contains("audio")) {
-            optimizedQuery = $"{query} official music audio quality";
-        }
-
+        // Search Logic: Just use the raw query for YouTube to get default behavior as requested
+        
         // Parallel Search: YouTube + Parallel DB Tasks (Scope-based)
         var ytTask = _youtubeService.SearchVideosAsync(optimizedQuery);
         
@@ -217,9 +215,8 @@ public class HomeFacade : IHomeFacade
             AlbumId = a.AlbumId
         }));
 
-        // Add songs
+        // Add songs (No filtering for global search as per user request)
         finalResults.AddRange(ytResults
-            .Where(v => _youtubeService.IsMusic(v))
             .Select(v => new SearchResultDto {
                 Title = v.Title,
                 Author = v.AuthorName,

@@ -16,4 +16,5 @@ public interface IUserService
     Task<IEnumerable<ListeningHistoryDto>> GetUserListeningHistoryAsync(int userId, CancellationToken ct = default);
     Task<bool> UpdateUserAsync(UserDto userDto, CancellationToken ct = default);
     Task<bool> UpdateUserAsync(UpdateUserRequest request, CancellationToken ct = default);
+    Task<bool> TogglePremiumAsync(int id, CancellationToken ct = default);
 }
