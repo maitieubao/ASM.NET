@@ -1,11 +1,11 @@
 @model YoutubeMusicPlayer.Application.DTOs.UserProfileViewModel
 @{
     ViewData["Title"] = "Trang cá nhân - " + Model.User.Username;
-    var history = Model.ListeningHistory;
-    var notifications = Model.Notifications;
-    var playlists = Model.Playlists;
-    var topGenres = Model.TopGenres;
-    int unreadCount = notifications.Count(n => !n.IsRead);
+    var history = Model.ListeningHistory ?? new List<YoutubeMusicPlayer.Application.DTOs.ListeningHistoryDto>();
+    var notifications = Model.Notifications ?? new List<YoutubeMusicPlayer.Application.DTOs.NotificationDto>();
+    var playlists = Model.Playlists ?? new List<YoutubeMusicPlayer.Application.DTOs.PlaylistDto>();
+    var topGenres = Model.TopGenres ?? new List<string>();
+    int unreadCount = notifications.Any() ? notifications.Count(n => !n.IsRead) : 0;
 }
 
 <div class="user-profile-page animate-fade-in scrollbar-hide">
@@ -57,7 +57,7 @@
             <div class="col-6 col-md-3">
                 <div class="stat-card glass-card p-4 rounded-5 border-white border-opacity-5 text-center transition-all hover-translate-y">
                     <div class="stat-icon mb-2 text-danger"><i class="fa-solid fa-heart fs-3"></i></div>
-                    <div class="stat-value fw-black text-white fs-3">--</div>
+                    <div class="stat-value fw-black text-white fs-3">@Model.LikedSongsCount.ToString("N0")</div>
                     <div class="stat-label text-white-50 extra-small uppercase">Yêu thích</div>
                 </div>
             </div>
@@ -70,15 +70,40 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="stat-card glass-card p-4 rounded-5 border-white border-opacity-5 text-center transition-all hover-translate-y">
-                    <div class="stat-icon mb-2 text-info"><i class="fa-solid fa-bolt fs-3"></i></div>
-                    <div class="stat-value fw-black text-white fs-3">@topGenres.Count()</div>
-                    <div class="stat-label text-white-50 extra-small uppercase">Thể loại quan tâm</div>
+                    <div class="stat-icon mb-2 text-info"><i class="fa-solid fa-clock fs-3"></i></div>
+                    <div class="stat-value fw-black text-white fs-3">@Math.Round(Model.TotalListenTimeMinutes, 0).ToString("N0")</div>
+                    <div class="stat-label text-white-50 extra-small uppercase">Phút nghe nhạc</div>
                 </div>
             </div>
         </div>
 
+        <!-- 3. FOLLOWED ARTISTS SECTION -->
+        <section class="mb-5 section-reveal">
+            <h3 class="section-title mb-4">Nghệ sĩ đang quan tâm</h3>
+            <div class="d-flex gap-4 overflow-auto pb-3 scrollbar-hide">
+                @if (Model.FollowedArtists != null && Model.FollowedArtists.Any())
+                {
+                    foreach (var artist in Model.FollowedArtists)
+                    {
+                        <div class="artist-card-mini group text-center" style="min-width: 120px; cursor: pointer;" onclick="window.location.href='/Artist/Details/@artist.ArtistId'">
+                            <div class="avatar-wrapper mx-auto mb-3 overflow-hidden rounded-circle bg-white bg-opacity-10 border border-white border-opacity-20">
+                                <img src="@(string.IsNullOrEmpty(artist.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + artist.Name + "&size=200" : artist.AvatarUrl)" alt="@artist.Name" class="w-100 h-100 object-fit-cover group-hover-scale-110">
+                            </div>
+                            <h6 class="text-white fw-bold m-0 text-truncate">@artist.Name</h6>
+                            <span class="text-white-50 extra-small">Nghệ sĩ</span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="glass-card p-4 w-100 text-center text-white-50 rounded-4">
+                        Bạn chưa theo dõi nghệ sĩ nào.
+                    </div>
+                }
+            </div>
+        </section>
+
         <div class="row g-5">
-            <!-- LEFT: Playlists & History -->
             <div class="col-lg-8">
                 <!-- A. MY PLAYLISTS -->
                 <section class="mb-5 section-reveal">
@@ -99,141 +124,91 @@
                                             <img src="@(string.IsNullOrEmpty(pl.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + pl.Title + "&background=282828&color=fff&size=400" : pl.CoverImageUrl)" class="playlist-thumb" loading="lazy">
                                             <div class="card-play-btn shadow-accent" onclick="event.stopPropagation(); playPlaylist(@pl.PlaylistId)"><i class="fa-solid fa-play"></i></div>
                                         </div>
-                                        <div class="card-title text-truncate">@pl.Title</div>
-                                        <div class="card-subtitle mt-1">@pl.SongsCount bài hát • @(pl.IsPublic ? "Công khai" : "Riêng tư")</div>
+                                        <h6 class="text-white fw-bold text-truncate mb-1">@pl.Title</h6>
+                                        <span class="text-white-50 extra-small">@(pl.IsPublic ? "Công khai" : "Riêng tư")</span>
                                     </div>
                                 </div>
                             }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="glass-card p-5 rounded-5 text-center border-dashed border-white border-opacity-10">
-                            <i class="fa-solid fa-music text-white-10 display-3 mb-4"></i>
-                            <h5 class="text-white">Bạn chưa có playlist nào</h5>
-                            <p class="text-dim small mb-4">Lưu những bài hát yêu thích vào playlist cá nhân.</p>
-                            <a asp-controller="Playlist" asp-action="Index" class="btn btn-outline-accent rounded-pill px-4">Tạo ngay</a>
                         </div>
                     }
                 </section>
 
                 <!-- B. RECENTLY PLAYED -->
-                @if (history.Any())
-                {
-                    <section class="mb-5 section-reveal">
-                        <div class="d-flex align-items-center justify-content-between mb-4">
-                            <h3 class="section-title">Nghe gần đây</h3>
-                            <a asp-action="History" class="text-accent small fw-bold text-decoration-none">Xem tất cả</a>
-                        </div>
-                        <div class="popular-list">
-                            @foreach (var h in history.Take(5))
+                <section class="mb-5 section-reveal">
+                    <h3 class="section-title mb-4">Nghe gần đây</h3>
+                    <div class="glass-card rounded-5 overflow-hidden">
+                        @if (history.Any())
+                        {
+                            foreach (var h in history.Take(5))
                             {
-                                <div class="song-row-premium group" 
-                                     onclick="playSingleTrack('@h.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(h.SongTitle)', '@System.Web.HttpUtility.JavaScriptStringEncode(h.AuthorName)', '@h.ThumbnailUrl')">
+                                <div class="song-row-premium" onclick="playSong(@h.SongId)">
                                     <div class="thumb-wrapper">
                                         <img src="@h.ThumbnailUrl" loading="lazy">
                                         <div class="play-icon"><i class="fa-solid fa-play text-white"></i></div>
                                     </div>
-                                    <div class="title-meta flex-grow-1">
-                                        <div class="song-title text-truncate">@h.SongTitle</div>
-                                        <div class="text-dim extra-small text-truncate">@h.AuthorName</div>
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <h6 class="text-white fw-bold m-0 text-truncate">@h.SongTitle</h6>
+                                        <span class="text-white-50 extra-small">@h.AuthorName</span>
                                     </div>
-                                    <div class="text-dim extra-small me-4 d-none d-md-block">@h.ListenedAt.ToString("g")</div>
-                                    <div class="actions">
-                                        <button class="btn-icon" onclick="event.stopPropagation();"><i class="fa-solid fa-ellipsis"></i></button>
-                                    </div>
+                                    <div class="text-white-50 extra-small">@h.ListenedAt.ToString("HH:mm dd/MM")</div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="sticky-sidebar">
+                    <!-- C. DISCOVER GENRES -->
+                    <section class="mb-5 section-reveal">
+                        <h3 class="section-title mb-4">Gu âm nhạc</h3>
+                        <div class="glass-card p-4 rounded-5">
+                            @if (topGenres.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var g in topGenres)
+                                    {
+                                        <span class="badge bg-white bg-opacity-10 text-white rounded-pill px-3 py-2 fw-medium border border-white border-opacity-5">#@g</span>
+                                    }
                                 </div>
                             }
                         </div>
                     </section>
-                }
-            </div>
 
-            <!-- RIGHT SIDEBAR -->
-            <div class="col-lg-4">
-                <div class="sticky-sidebar">
-                    <!-- GENRES -->
-                    @if (topGenres.Any())
-                    {
-                        <div class="mb-5 section-reveal">
-                            <h4 class="fw-bold text-white mb-4">Gu âm nhạc</h4>
-                            <div class="d-flex flex-wrap gap-2">
-                                @foreach (var genre in topGenres)
+                    <!-- D. NOTIFICATIONS -->
+                    <section class="mb-5 section-reveal">
+                        <div class="d-flex align-items-center justify-content-between mb-4">
+                            <h3 class="section-title">Thông báo</h3>
+                            @if(unreadCount > 0)
+                            {
+                                <span class="badge bg-danger rounded-pill">@unreadCount mới</span>
+                            }
+                        </div>
+                        <div class="glass-card rounded-5 overflow-hidden">
+                            @if(notifications.Any())
+                            {
+                                foreach(var n in notifications.Take(4))
                                 {
-                                    <span class="tag-badge py-2 px-3 border-white border-opacity-10 bg-white bg-opacity-5 text-white-50">@genre</span>
+                                    <div class="p-4 border-bottom border-white border-opacity-5 d-flex gap-4 @(!n.IsRead ? "bg-white bg-opacity-5" : "")" id="notif-@n.NotificationId">
+                                        <div class="notif-type-icon @(n.Type == "System" ? "text-info" : "text-warning")">
+                                            <i class="fa-solid @(n.Type == "System" ? "fa-circle-info" : "fa-star") fs-4"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                                <h6 class="fw-bold text-white m-0">@n.Title</h6>
+                                                <span class="text-white-50 extra-small">@n.CreatedAt.ToString("dd/MM")</span>
+                                            </div>
+                                            <p class="text-white-50 small m-0">@n.Message</p>
+                                        </div>
+                                    </div>
                                 }
-                            </div>
+                            }
                         </div>
-                    }
-
-                    <!-- NOTIFICATIONS PREVIEW -->
-                    <div class="section-reveal">
-                        <div class="glass-card p-4 rounded-5 border-0 shadow-2xl bg-gradient-notif mt-4">
-                            <div class="d-flex justify-content-between align-items-start mb-4">
-                                <div>
-                                    <h4 class="fw-black text-white m-0">Thông báo</h4>
-                                    <p class="text-white-50 small m-0">@unreadCount tin nhắn chưa đọc</p>
-                                </div>
-                                <div class="notif-icon-large"><i class="fa-solid fa-bell text-white"></i></div>
-                            </div>
-                            <a href="#notifications" class="btn btn-white w-100 rounded-pill fw-bold text-primary px-4 shadow-lg py-2">
-                                XEM CHI TIẾT
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- PREMIUM PROMO -->
-                    @if(!Model.User.IsPremium)
-                    {
-                        <div class="mt-4 section-reveal">
-                             <div class="premium-promo-card-mini p-4 rounded-5 overflow-hidden relative">
-                                 <div class="relative z-10">
-                                     <h5 class="fw-bold text-white mb-2">Trải nghiệm không giới hạn</h5>
-                                     <p class="text-white-50 extra-small mb-3">Nâng cấp Premium ngay hôm nay để tắt quảng cáo.</p>
-                                     <a asp-controller="Subscription" asp-action="Index" class="btn btn-warning btn-sm rounded-pill fw-black w-100">NÂNG CẤP NGAY</a>
-                                 </div>
-                                 <i class="fa-solid fa-gem position-absolute bottom-0 end-0 opacity-10" style="font-size: 80px; transform: translate(20%, 20%);"></i>
-                             </div>
-                        </div>
-                    }
+                    </section>
                 </div>
             </div>
         </div>
-
-        <!-- 3. FULL NOTIFICATIONS -->
-        <section id="notifications" class="mt-5 pt-5 section-reveal">
-             <h3 class="section-title mb-4">Thông báo hệ thống</h3>
-             <div class="glass-card rounded-5 overflow-hidden">
-                 @if(notifications.Any())
-                 {
-                     foreach(var n in notifications)
-                     {
-                         <div class="p-4 border-bottom border-white border-opacity-5 d-flex gap-4 @(!n.IsRead ? "bg-white bg-opacity-5" : "")" id="notif-@n.NotificationId">
-                             <div class="notif-type-icon @(n.Type == "System" ? "text-info" : "text-warning")">
-                                 <i class="fa-solid @(n.Type == "System" ? "fa-circle-info" : "fa-star") fs-4"></i>
-                             </div>
-                             <div class="flex-grow-1">
-                                 <div class="d-flex justify-content-between align-items-start mb-1">
-                                     <h6 class="fw-bold text-white m-0">@n.Title</h6>
-                                     <span class="text-white-50 extra-small">@n.CreatedAt.ToString("dd/MM/yyyy")</span>
-                                 </div>
-                                 <p class="text-white-50 small m-0">@n.Message</p>
-                                 @if(!n.IsRead)
-                                 {
-                                     <button onclick="markRead(@n.NotificationId)" class="btn btn-link text-accent p-0 mt-2 small fw-bold text-decoration-none">Đánh dấu đã đọc</button>
-                                 }
-                             </div>
-                         </div>
-                     }
-                 }
-                 else
-                 {
-                     <div class="p-5 text-center text-white-50">
-                         Không có thông báo mới.
-                     </div>
-                 }
-             </div>
-        </section>
     </div>
 </div>
 
@@ -244,9 +219,11 @@
                 const res = await fetch('/User/MarkNotificationRead/' + id, { method: 'POST' });
                 if(res.ok) {
                     const el = document.getElementById('notif-' + id);
-                    el.classList.remove('bg-white', 'bg-opacity-5');
-                    const btn = el.querySelector('button');
-                    if(btn) btn.remove();
+                    if(el) {
+                        el.classList.remove('bg-white', 'bg-opacity-5');
+                        const btn = el.querySelector('button');
+                        if(btn) btn.remove();
+                    }
                 }
             } catch(e) {}
         }
@@ -287,34 +264,13 @@
         .profile-avatar-wrapper { width: 140px; height: 140px; }
     }
 
-    .bg-gradient-notif {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-    }
-    .notif-icon-large {
-        width: 48px; height: 48px; background: rgba(255,255,255,0.2);
-        border-radius: 12px; display: flex; align-items: center;
-        justify-content: center; font-size: 20px;
-    }
-    .btn-white { background: white; border: none; color: black; transition: 0.3s; }
-    .btn-white:hover { transform: scale(1.02); filter: brightness(0.95); }
-
-    .premium-promo-card-mini {
-        background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
-    }
-
-    /* STAT CARDS */
     .hover-translate-y:hover { transform: translateY(-5px); }
     .stat-label { letter-spacing: 0.05em; margin-top: 4px; }
-
-    /* MUSIC CARDS */
     .playlist-thumb { width: 100%; aspect-ratio: 1; border-radius: 16px; object-fit: cover; }
-    
     .section-reveal { opacity: 0; transform: translateY(30px); transition: 0.8s ease-out; }
     .section-reveal.revealed { opacity: 1; transform: translateY(0); }
-
     .sticky-sidebar { position: sticky; top: 100px; }
 
-    /* SONG ROW CUSTOM */
     .song-row-premium {
         display: flex; align-items: center; gap: 16px;
         padding: 12px; border-radius: 12px; cursor: pointer; transition: 0.2s;
@@ -328,10 +284,9 @@
         border-radius: 8px;
     }
     .song-row-premium:hover .play-icon { opacity: 1; }
+
+    .avatar-wrapper { width: 80px; height: 80px; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .artist-card-mini:hover .avatar-wrapper { transform: scale(1.1); box-shadow: 0 10px 30px rgba(108, 92, 231, 0.4); }
+    .group-hover-scale-110 { transition: 0.4s; }
+    .artist-card-mini:hover .group-hover-scale-110 { transform: scale(1.1); }
 </style>
-              const btn = el.querySelector('button');
-                if(btn) btn.remove();
-            }
-        } catch(e) {}
-    }
-</script>

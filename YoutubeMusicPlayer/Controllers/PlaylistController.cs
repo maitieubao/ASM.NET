@@ -229,4 +229,25 @@ public class PlaylistController : BaseController
 
         return View(viewModel);
     }
+
+    [HttpPost]
+    public async Task<IActionResult> Reorder(int playlistId, [FromBody] List<int> sortedSongIds)
+    {
+        if (CurrentUserId == null) return Unauthorized();
+        if (sortedSongIds == null || !sortedSongIds.Any()) return BadRequestResponse("Dữ liệu không hợp lệ.");
+
+        try
+        {
+            await _playlistService.ReorderSongsAsync(playlistId, sortedSongIds, CurrentUserId.Value, IsAdmin);
+            return SuccessResponse(new { success = true });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            return BadRequestResponse("Lỗi khi sắp xếp lại danh sách phát.");
+        }
+    }
 }

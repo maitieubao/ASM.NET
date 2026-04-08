@@ -161,6 +161,7 @@ public class ArtistService : IArtistService
             AlbumType = al.AlbumType ?? "Album"
         });
         dto.RelatedArtists = relatedArtists.Select(MapToDto);
+        dto.WikipediaUrl = a.WikipediaUrl;
         
         _cache.Set(cacheKey, dto, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1), Size = 1 });
         return dto;
@@ -171,6 +172,7 @@ public class ArtistService : IArtistService
         if (string.IsNullOrWhiteSpace(dto.Bio))
         {
             dto.Bio = await _wikipediaService.GetArtistBioAsync(dto.Name);
+            dto.WikipediaUrl = await _wikipediaService.GetWikipediaUrlAsync(dto.Name);
         }
 
         var artist = new Artist 
@@ -181,7 +183,8 @@ public class ArtistService : IArtistService
             AvatarUrl = dto.AvatarUrl,
             BannerUrl = dto.BannerUrl,
             IsVerified = dto.IsVerified,
-            SubscriberCount = dto.SubscriberCount
+            SubscriberCount = dto.SubscriberCount,
+            WikipediaUrl = dto.WikipediaUrl
         };
         await _unitOfWork.Repository<Artist>().AddAsync(artist, ct);
         await _unitOfWork.CompleteAsync(ct);
@@ -199,6 +202,7 @@ public class ArtistService : IArtistService
             artist.BannerUrl = dto.BannerUrl;
             artist.IsVerified = dto.IsVerified;
             artist.SubscriberCount = dto.SubscriberCount;
+            artist.WikipediaUrl = dto.WikipediaUrl;
             _unitOfWork.Repository<Artist>().Update(artist);
             await _unitOfWork.CompleteAsync(ct);
         }
@@ -221,9 +225,11 @@ public class ArtistService : IArtistService
         if (artist == null || artist.IsDeleted) return null;
 
         var bio = await _wikipediaService.GetArtistBioAsync(artist.Name);
+        var url = await _wikipediaService.GetWikipediaUrlAsync(artist.Name);
         if (!string.IsNullOrEmpty(bio))
         {
             artist.Bio = bio;
+            artist.WikipediaUrl = url;
             _unitOfWork.Repository<Artist>().Update(artist);
             await _unitOfWork.CompleteAsync(ct);
             return bio;
@@ -286,6 +292,7 @@ public class ArtistService : IArtistService
             bool modified = false;
             if (string.IsNullOrEmpty(artist.Bio)) {
                 artist.Bio = await wik.GetArtistBioAsync(artist.Name);
+                artist.WikipediaUrl = await wik.GetWikipediaUrlAsync(artist.Name);
                 modified = true;
             }
 
@@ -435,6 +442,7 @@ public class ArtistService : IArtistService
             BannerUrl = a.BannerUrl,
             IsVerified = a.IsVerified,
             SubscriberCount = a.SubscriberCount,
+            WikipediaUrl = a.WikipediaUrl,
             MonthlyListeners = (a.SubscriberCount + (dailyListeners * 30)).ToString("N0")
         };
     }

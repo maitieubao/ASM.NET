@@ -171,7 +171,14 @@
                         <div class="about-card rounded-5 overflow-hidden relative cursor-pointer group shadow-2xl" onclick="showFullBio()">
                             <img src="@(Model.BannerUrl ?? Model.AvatarUrl ?? "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=2000")" class="about-bg transition-all group-hover-scale-110">
                             <div class="about-overlay p-4 d-flex flex-column justify-content-end">
-                                <h3 class="fw-bold text-white mb-2">Giới thiệu</h3>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h3 class="fw-bold text-white mb-0">Giới thiệu</h3>
+                                    @if(!string.IsNullOrEmpty(Model.WikipediaUrl)) {
+                                        <a href="@Model.WikipediaUrl" target="_blank" onclick="event.stopPropagation()" class="text-white-50 hover-text-white transition-all">
+                                            <i class="fa-brands fa-wikipedia-w"></i>
+                                        </a>
+                                    }
+                                </div>
                                 <div class="about-preview line-clamp-4 text-white-50 small mb-0 lh-base">
                                     @Html.Raw(Model.Bio?.Replace("\n", "<br/>") ?? "Thông tin nghệ sĩ đang được cập nhật...")
                                 </div>
@@ -231,6 +238,13 @@
                     <div class="bio-content text-white-50" style="font-size: 1.1rem; line-height: 1.8;">
                         @Html.Raw(Model.Bio?.Replace("\n", "<br/>") ?? "Thông tin nghệ sĩ đang được cập nhật...")
                     </div>
+                    @if(!string.IsNullOrEmpty(Model.WikipediaUrl)) {
+                        <div class="mt-3">
+                            <a href="@Model.WikipediaUrl" target="_blank" class="btn btn-outline-light btn-sm rounded-pill px-4">
+                                <i class="fa-brands fa-wikipedia-w me-2"></i> Đọc thêm trên Wikipedia
+                            </a>
+                        </div>
+                    }
                     <div class="mt-5 pt-4 border-top border-white border-opacity-10 row g-4">
                         <div class="col-6 col-md-3">
                             <div class="text-white-50 small mb-1 uppercase tracking-tighter">Xếp hạng thế giới</div>

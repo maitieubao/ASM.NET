@@ -19,6 +19,7 @@ public interface IPlaylistService
     Task<PlaylistDto> CreateFeaturedPlaylistAsync(string title, string? featuredType, string? description, string? coverImageUrl, CancellationToken ct = default);
     Task UpdatePlaylistAsync(PlaylistDto dto, int userId, bool isAdmin = false, CancellationToken ct = default);
     Task<(IEnumerable<PlaylistDto> Playlists, int TotalCount)> GetPaginatedPlaylistsAsync(int page, int pageSize, string? searchTerm = null, CancellationToken ct = default);
+    Task ReorderSongsAsync(int playlistId, List<int> sortedSongIds, int userId, bool isAdmin = false, CancellationToken ct = default);
 }
 
 

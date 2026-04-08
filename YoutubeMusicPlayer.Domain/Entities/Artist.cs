@@ -17,6 +17,9 @@ public class Artist
     [Column("bio")]
     public string? Bio { get; set; }
 
+    [Column("wikipedia_url")]
+    public string? WikipediaUrl { get; set; }
+
     [Column("country")]
     public string? Country { get; set; }
 

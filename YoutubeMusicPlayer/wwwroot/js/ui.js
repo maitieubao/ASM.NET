@@ -92,37 +92,47 @@ let currentTargetSongId = null;
 let currentTargetYoutubeId = null;
 
 window.openAddToPlaylist = async function(songId, youtubeId) {
+    if (!window.YTM_CONFIG.isAuthenticated) {
+        toastr.warning("Vui lòng đăng nhập để sử dụng tính năng này.");
+        return;
+    }
+
     currentTargetSongId = songId;
     currentTargetYoutubeId = youtubeId;
-    const container = document.getElementById('playlistList');
-    const playlistModal = document.getElementById('addToPlaylistModal');
+    const container = document.getElementById('playlistListContainer');
+    const playlistModalEl = document.getElementById('addToPlaylistModal');
 
     if (container) {
-        container.innerHTML = '<div class="text-center py-3"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải...</div>';
+        container.innerHTML = '<div class="text-center py-4 opacity-50"><i class="fa-solid fa-circle-notch fa-spin fs-4"></i></div>';
     }
     
-    if (playlistModal) {
-        const modal = new bootstrap.Modal(playlistModal);
+    if (playlistModalEl) {
+        const modal = new bootstrap.Modal(playlistModalEl);
         modal.show();
 
         try {
             const res = await fetch('/Playlist/GetPlaylistsJson');
-            if (!res.ok) {
-                container.innerHTML = '<div class="text-center py-3 text-danger">Vui lòng đăng nhập để sử dụng tính năng này.</div>';
+            if (res.status === 401) {
+                container.innerHTML = '<div class="text-center py-3 text-danger small">Phiên đăng nhập hết hạn.</div>';
                 return;
             }
-            const playlists = await res.json();
-            if (playlists.length === 0) {
-                container.innerHTML = '<div class="text-center py-3 text-muted">Bạn chưa có playlist nào. <a href="/Playlist" class="text-accent">Tạo ngay</a></div>';
+            const data = await res.json();
+            const playlists = data.data || data; // Handle SuccessResponse wrapper if exists
+            
+            if (!playlists || playlists.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-dim small">Bạn chưa có playlist nào.</div>';
             } else {
                 container.innerHTML = playlists.map(p => `
-                    <button onclick="addToPlaylist(${p.playlistId})" class="btn btn-dark text-start border-secondary border-opacity-25 hover-bg-accent rounded-3 p-3 mb-1 w-100">
-                        <i class="fa-solid fa-plus me-2 text-accent"></i> ${p.title}
+                    <button onclick="addToPlaylist(${p.playlistId})" class="btn btn-dark text-start border-white border-opacity-5 hover-bg-accent rounded-3 p-3 w-100 d-flex align-items-center">
+                        <div class="bg-accent bg-opacity-10 rounded-2 p-2 me-3">
+                            <i class="fa-solid fa-plus text-accent"></i>
+                        </div>
+                        <span class="fw-bold">${p.title}</span>
                     </button>
                 `).join('');
             }
         } catch(e) {
-            if (container) container.innerHTML = '<p class="text-center text-danger">Lỗi kết nối.</p>';
+            if (container) container.innerHTML = '<p class="text-center text-danger small">Lỗi kết nối máy chủ.</p>';
         }
     }
 }
@@ -140,23 +150,84 @@ window.addToPlaylist = async function(playlistId) {
             params.append("youtubeId", currentTargetYoutubeId);
         }
 
-        const res = await fetch(url, {
-            method: 'POST',
-            body: params
-        });
+        const res = await fetch(url, { method: 'POST', body: params });
+        const data = await res.json();
 
-        if (res.ok) {
+        if (res.ok && (data.success || data)) {
             const modalEl = document.getElementById('addToPlaylistModal');
             if (modalEl) {
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) modal.hide();
             }
-            alert("Đã thêm vào playlist!");
+            toastr.success("Đã thêm vào playlist!");
         } else {
-            alert("Lỗi khi thêm vào playlist.");
+            toastr.error(data.message || "Lỗi khi thêm vào playlist.");
         }
-    } catch(e) { alert("Lỗi khi thực hiện thao tác."); }
+    } catch(e) { toastr.error("Lỗi khi thực hiện thao tác."); }
 }
+
+window.createNewPlaylistFromModal = async function() {
+    const input = document.getElementById('newPlaylistTitle');
+    const title = input?.value?.trim();
+    
+    if (!title) {
+        toastr.info("Vui lòng nhập tên playlist.");
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('title', title);
+        
+        // Anti-forgery token if needed, but the controller has ValidateAntiForgeryToken
+        // We'll try to find it in the page
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+        if (token) formData.append('__RequestVerificationToken', token);
+
+        const res = await fetch('/Playlist/Create', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (res.ok) {
+            toastr.success(`Đã tạo playlist "${title}"`);
+            input.value = '';
+            // Refresh the list in modal
+            openAddToPlaylist(currentTargetSongId, currentTargetYoutubeId);
+            // Refresh sidebar
+            loadSidebarPlaylists();
+        } else {
+            toastr.error("Không thể tạo playlist mới.");
+        }
+    } catch(e) { toastr.error("Lỗi hệ thống."); }
+}
+
+window.loadSidebarPlaylists = async function() {
+    const container = document.getElementById('sidebarPlaylists');
+    if (!container || !window.YTM_CONFIG.isAuthenticated) return;
+
+    try {
+        const res = await fetch('/Playlist/GetPlaylistsJson');
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        const playlists = data.data || data;
+
+        if (playlists && playlists.length > 0) {
+            container.innerHTML = playlists.map(p => `
+                <a href="/Playlist/Details/${p.playlistId}" class="nav-item small py-2 px-1 opacity-75 hover-opacity-100">
+                    <i class="fa-solid fa-music text-dim me-2"></i>
+                    <span class="text-truncate">${p.title}</span>
+                </a>
+            `).join('');
+        }
+    } catch(e) {}
+}
+
+// Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    loadSidebarPlaylists();
+});
 
 // --- QUEUE MANAGEMENT ---
 window.renderQueue = function() {

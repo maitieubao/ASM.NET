@@ -1,114 +1,93 @@
 using System;
 using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
-using WikiDotNet;
 using YoutubeMusicPlayer.Application.Interfaces;
 
 namespace YoutubeMusicPlayer.Infrastructure.External;
 
 public class WikipediaService : IWikipediaService
 {
-    private readonly WikiSearcher _wikiSearcher = new WikiSearcher();
-    private readonly System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient();
+    private readonly HttpClient _httpClient;
 
-    public WikipediaService()
+    public WikipediaService(HttpClient httpClient)
     {
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "YoutubeMusicPlayer/1.0 (maiti@example.com)");
+        _httpClient = httpClient;
+        // User-Agent is required by Wikipedia API
+        if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
+        {
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "YoutubeMusicPlayer/1.0 (maitieubao@example.com)");
+        }
     }
 
     public async Task<string?> GetArtistBioAsync(string artistName)
     {
-        if (string.IsNullOrWhiteSpace(artistName)) return null;
-        string searchName = NormalizeArtistName(artistName);
-        
-        // Strategy: Try multiple variations to find the artist
-        var queries = new[] { 
-            searchName, 
-            $"{searchName} singer", 
-            $"{searchName} musical artist",
-            $"{searchName} band"
-        };
-
-        foreach (var query in queries)
-        {
-            // Try English first
-            var bio = await Task.Run(() => FetchBio(query, "en"));
-            if (!string.IsNullOrWhiteSpace(bio)) return bio;
-
-            // Then try Vietnamese
-            bio = await Task.Run(() => FetchBio(query, "vi"));
-            if (!string.IsNullOrWhiteSpace(bio)) return bio;
-        }
-
-        return null;
-    }
-
-    private string? FetchBio(string artistName, string language)
-    {
-        try
-        {
-            var settings = new WikiSearchSettings
-            {
-                Language = language,
-                ResultLimit = 2 // Check top 2 to find a better match
-            };
-
-            var response = _wikiSearcher.Search(artistName, settings);
-
-            if (response?.Query?.SearchResults != null && response.Query.SearchResults.Any())
-            {
-                // Find the best match that actually has a preview
-                var results = response.Query.SearchResults
-                    .Where(r => !string.IsNullOrEmpty(r.Preview) && r.Preview.Length > 100);
-
-                var bestMatch = results.FirstOrDefault() ?? response.Query.SearchResults.First();
-                var bio = bestMatch.Preview;
-
-                if (!string.IsNullOrWhiteSpace(bio) && bio.Length > 50)
-                {
-                    // Clean up HTML tags if any (Wiki.Net usually returns text, but just in case)
-                    bio = System.Text.RegularExpressions.Regex.Replace(bio, "<.*?>", string.Empty);
-                    return bio;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Wiki.Net Error for {artistName} ({language}): {ex.Message}");
-        }
-
-        return null;
+        var summary = await GetSummaryAsync(artistName);
+        return summary?.Extract;
     }
 
     public async Task<string?> GetArtistImageAsync(string artistName)
     {
+        var summary = await GetSummaryAsync(artistName);
+        return summary?.ThumbnailUrl ?? summary?.OriginalImageUrl;
+    }
+
+    public async Task<string?> GetWikipediaUrlAsync(string artistName)
+    {
+        var summary = await GetSummaryAsync(artistName);
+        return summary?.ContentUrls?.Desktop?.Page;
+    }
+
+    private async Task<WikiSummary?> GetSummaryAsync(string artistName)
+    {
         if (string.IsNullOrWhiteSpace(artistName)) return null;
         string searchName = NormalizeArtistName(artistName);
 
-        try
+        // Languages to try in order
+        var languages = new[] { "vi", "en" };
+        
+        foreach (var lang in languages)
         {
-            // API: https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&titles=ArtistName
-            string url = $"https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&titles={Uri.EscapeDataString(searchName)}&origin=*";
-            var response = await _httpClient.GetAsync(url);
-            if (response.IsSuccessStatusCode)
+            // Wikipedia Summary API: https://en.wikipedia.org/api/rest_v1/page/summary/{title}
+            // We search for the page first to get the correct title (handling redirects and disambiguation)
+            string searchUrl = $"https://{lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch={Uri.EscapeDataString(searchName)}&format=json&origin=*";
+            
+            try
             {
-                var json = await response.Content.ReadAsStringAsync();
-                var doc = System.Text.Json.JsonDocument.Parse(json);
-                var pages = doc.RootElement.GetProperty("query").GetProperty("pages");
-                
-                foreach (var page in pages.EnumerateObject())
+                var searchResponse = await _httpClient.GetAsync(searchUrl);
+                if (!searchResponse.IsSuccessStatusCode) continue;
+
+                var searchJson = await searchResponse.Content.ReadAsStringAsync();
+                using var searchDoc = JsonDocument.Parse(searchJson);
+                var searchResults = searchDoc.RootElement.GetProperty("query").GetProperty("search");
+
+                if (searchResults.GetArrayLength() > 0)
                 {
-                    if (page.Value.TryGetProperty("original", out var original))
+                    string matchedTitle = searchResults[0].GetProperty("title").GetString()!;
+                    
+                    string summaryUrl = $"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{Uri.EscapeDataString(matchedTitle)}";
+                    var summaryResponse = await _httpClient.GetAsync(summaryUrl);
+                    
+                    if (summaryResponse.IsSuccessStatusCode)
                     {
-                        return original.GetProperty("source").GetString();
+                        var summaryJson = await summaryResponse.Content.ReadAsStringAsync();
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var summary = JsonSerializer.Deserialize<WikiSummary>(summaryJson, options);
+                        
+                        if (summary != null && !string.IsNullOrEmpty(summary.Extract))
+                        {
+                            return summary;
+                        }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WikipediaService] Error fetching for {artistName} in {lang}: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-             Console.WriteLine($"Wiki Image Fetch Error for {artistName}: {ex.Message}");
-        }
+
         return null;
     }
 
@@ -119,5 +98,53 @@ public class WikipediaService : IWikipediaService
         if (searchName.EndsWith("- Topic")) searchName = searchName.Replace("- Topic", "");
         return searchName.Trim();
     }
-}
 
+    private class WikiSummary
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("displaytitle")]
+        public string? DisplayTitle { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("extract")]
+        public string? Extract { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("extract_html")]
+        public string? ExtractHtml { get; set; }
+
+        public string? ThumbnailUrl => Thumbnail?.Source;
+        public string? OriginalImageUrl => OriginalImage?.Source;
+
+        [System.Text.Json.Serialization.JsonPropertyName("thumbnail")]
+        public WikiImage? Thumbnail { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("originalimage")]
+        public WikiImage? OriginalImage { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("content_urls")]
+        public WikiContentUrls? ContentUrls { get; set; }
+    }
+
+    private class WikiImage
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("source")]
+        public string? Source { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
+    }
+
+    private class WikiContentUrls
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("desktop")]
+        public WikiUrlSet? Desktop { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("mobile")]
+        public WikiUrlSet? Mobile { get; set; }
+    }
+
+    private class WikiUrlSet
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("page")]
+        public string? Page { get; set; }
+    }
+}

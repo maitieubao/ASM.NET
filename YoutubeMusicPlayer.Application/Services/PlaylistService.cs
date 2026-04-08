@@ -255,6 +255,33 @@ public class PlaylistService : IPlaylistService
         return (playlists, totalCount);
     }
 
+    public async Task ReorderSongsAsync(int playlistId, List<int> sortedSongIds, int userId, bool isAdmin = false, CancellationToken ct = default)
+    {
+        var playlist = await _unitOfWork.Repository<Playlist>().GetByIdAsync(playlistId, ct);
+        if (playlist == null || playlist.IsDeleted) return;
+        
+        if (playlist.UserId != userId && !isAdmin) 
+            throw new UnauthorizedAccessException("Bạn không có quyền sắp xếp danh sách phát này.");
+
+        var playlistSongs = await _unitOfWork.Repository<PlaylistSong>()
+                                    .Query()
+                                    .Where(ps => ps.PlaylistId == playlistId)
+                                    .ToListAsync(ct);
+
+        for (int i = 0; i < sortedSongIds.Count; i++)
+        {
+            var songId = sortedSongIds[i];
+            var ps = playlistSongs.FirstOrDefault(x => x.SongId == songId);
+            if (ps != null)
+            {
+                ps.Position = i;
+                _unitOfWork.Repository<PlaylistSong>().Update(ps);
+            }
+        }
+
+        await _unitOfWork.CompleteAsync(ct);
+    }
+
     private PlaylistDto MapToDto(Playlist p)
     {
         return new PlaylistDto

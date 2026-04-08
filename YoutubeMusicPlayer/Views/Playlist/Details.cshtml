@@ -38,23 +38,40 @@
         </div>
     </div>
 
+    <!-- SEARCH & ACTIONS -->
+    <div class="glass-card mb-4 p-3 d-flex justify-content-between align-items-center gap-3">
+        <div class="search-input-wrapper flex-grow-1" style="max-width: 400px;">
+            <i class="fa-solid fa-magnifying-glass text-dim me-2"></i>
+            <input type="text" id="playlistSearch" class="bg-transparent border-0 text-white w-100 outline-none" placeholder="Tìm bài hát trong playlist..." onkeyup="filterPlaylist()">
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-light border-opacity-10 rounded-pill btn-sm h-100" onclick="exportPlaylist()">
+                <i class="fa-solid fa-share-nodes me-1"></i> Chia sẻ
+            </button>
+        </div>
+    </div>
+
     <!-- SONGS LIST -->
     <div class="glass-card overflow-hidden">
         <table class="modern-table">
             <thead>
                 <tr>
-                    <th class="ps-4">#</th>
+                    <th class="ps-4" style="width: 50px;"></th>
+                    <th style="width: 40px;">#</th>
                     <th>Tiêu đề bài hát</th>
                     <th class="d-none d-md-table-cell">Thời lượng</th>
                     <th class="text-end pe-4">Thao tác</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="playlistSongsTableBody" data-playlist-id="@Model.PlaylistId">
                 @{ int i = 1; }
                 @foreach (var s in Model.Songs)
                 {
-                    <tr class="song-row" onclick="playSingleTrack('@s.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(s.Title)', 'Playlist: @System.Web.HttpUtility.JavaScriptStringEncode(Model.Title)', '@s.ThumbnailUrl')">
-                        <td class="ps-4 text-dim fw-bold">@i</td>
+                    <tr class="song-row" data-song-id="@s.SongId" onclick="playSingleTrack('@s.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(s.Title)', 'Playlist: @System.Web.HttpUtility.JavaScriptStringEncode(Model.Title)', '@s.ThumbnailUrl')">
+                        <td class="ps-4 text-dim">
+                            <i class="fa-solid fa-grip-vertical drag-handle cursor-move opacity-25 hover-opacity-100"></i>
+                        </td>
+                        <td class="text-dim fw-bold"><span class="row-index">@i</span></td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <img src="@s.ThumbnailUrl" class="rounded me-3" style="width: 44px; height: 44px; object-fit: cover;">
@@ -181,17 +198,56 @@
         opacity: 1;
     }
     
-    .animate-fade-in {
-        animation: fadeIn 0.8s ease-out;
-    }
-    
     @@keyframes fadeIn {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
+
+    .sortable-ghost {
+        opacity: 0.4;
+        background: var(--accent-color) !important;
+    }
+
+    .cursor-move { cursor: move; }
+    .outline-none { outline: none; }
 </style>
 
 <script>
+    function filterPlaylist() {
+        const input = document.getElementById('playlistSearch');
+        const filter = input.value.toLowerCase();
+        const rows = document.querySelectorAll('#playlistSongsTableBody .song-row');
+
+        rows.forEach(row => {
+            const title = row.querySelector('.fw-bold.text-main').textContent.toLowerCase();
+            if (title.includes(filter)) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+
+    async function playPlaylist(id) {
+        try {
+            const res = await fetch(`/Playlist/GetPlaylistSongs/${id}`);
+            const songs = await res.json();
+            if (songs && songs.length > 0) {
+                // Clear and add to queue
+                playQueue = songs.map(s => ({
+                    videoId: s.youtubeVideoId,
+                    title: s.title,
+                    author: s.authorName,
+                    thumbnail: s.thumbnailUrl
+                }));
+                currentIndex = 0;
+                loadAndPlay(playQueue[0]);
+                renderQueue();
+                toastr.info(`Đang phát playlist: @Model.Title`);
+            }
+        } catch(e) { toastr.error("Lỗi khi tải playlist."); }
+    }
+
     async function toggleLike(songId, btn) {
         try {
             const formData = new FormData();

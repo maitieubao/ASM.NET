@@ -80,7 +80,7 @@ builder.Services.AddHostedService<QueuedHostedService>();
 builder.Services.AddScoped<IYoutubeService, YoutubeService>();
 builder.Services.AddHttpClient<ILyricsService, LyricsService>();
 builder.Services.AddHttpClient<IDeezerService, DeezerService>();
-builder.Services.AddScoped<IWikipediaService, WikipediaService>();
+builder.Services.AddHttpClient<IWikipediaService, WikipediaService>();
 builder.Services.AddScoped<IAiAgentService, SemanticKernelAgentService>();
 
 var app = builder.Build();
@@ -105,6 +105,9 @@ using (var scope = app.Services.CreateScope())
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='artists' AND column_name='bio') THEN
                     ALTER TABLE artists ADD COLUMN bio text;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='artists' AND column_name='wikipedia_url') THEN
+                    ALTER TABLE artists ADD COLUMN wikipedia_url text;
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='total_listen_seconds') THEN
                     ALTER TABLE users ADD COLUMN total_listen_seconds double precision DEFAULT 0;
