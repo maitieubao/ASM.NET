@@ -255,9 +255,10 @@
                 // Remove typing indicator
                 document.getElementById(typingId)?.remove();
 
-                // Robust property check (handle both CamelCase and PascalCase)
-                const resMsg = data.message || data.Message || 'Tôi xin lỗi, có lỗi khi xử lý tin nhắn.';
-                const resAction = data.suggestedAction || data.SuggestedAction;
+                // Extract data from ApiResponse wrapper
+                const apiData = data.data || data.Data || data;
+                const resMsg = apiData.message || apiData.Message || data.message || data.Message || 'Tôi xin lỗi, có lỗi khi xử lý tin nhắn.';
+                const resAction = apiData.suggestedAction || apiData.SuggestedAction;
 
                 // Add to history
                 chatHistory.push({ role: 'user', content: msg });

@@ -14,7 +14,7 @@ public class WikipediaServiceTests
     [SetUp]
     public void Setup()
     {
-        _wikiService = new WikipediaService();
+        _wikiService = new WikipediaService(new System.Net.Http.HttpClient());
     }
 
     [Test]

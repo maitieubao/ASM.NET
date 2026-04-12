@@ -1,0 +1,12 @@
+[2026-04-09 21:26:51] === STARTING VERIFICATION LOOP ===
+[2026-04-09 21:27:00] Step: Search submitted.
+[2026-04-09 21:34:51] === STARTING VERIFICATION LOOP ===
+[2026-04-09 21:34:58] Step: Search submitted.
+[2026-04-09 21:35:01] Step: Playing song...
+[2026-04-09 21:35:03] Step: Overlay opened.
+[2026-04-09 21:35:07] Attempt 1: UNKNOWN STATE. HTML: 
+                    Chọn bài hát để xem lời...
+
+[2026-04-09 21:35:10] Attempt 2: LOADING...
+[2026-04-09 21:35:13] Attempt 3: SUCCESS! Lyrics found. Sample: there's a fire starting in my heart
+[2026-04-09 21:35:13] === LOOP COMPLETED SUCCESSFULLY ===

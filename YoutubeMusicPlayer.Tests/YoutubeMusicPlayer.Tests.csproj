@@ -5,12 +5,13 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.5" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
@@ -20,6 +21,7 @@
     <PackageReference Include="payOS" Version="2.1.0" />
     <PackageReference Include="Selenium.WebDriver" Version="4.29.0" />
     <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="133.0.6943.14100" />
+    <PackageReference Include="DotNetSeleniumExtras.WaitHelpers" Version="3.11.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,9 +29,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="**/*.cs" />
-    <Compile Include="FunctionalTests\Selenium\SeleniumTests.cs" />
+    <Compile Include="FunctionalTests\Selenium\LyricsTests.cs" />
+    <Compile Include="FunctionalTests\Selenium\LyricsVerificationLoop.cs" />
+    <Compile Include="FunctionalTests\Selenium\PlaylistVerificationLoop.cs" />
+    <Compile Include="FunctionalTests\Selenium\AlbumSearchVerificationTests.cs" />
+    <Compile Include="FunctionalTests\Selenium\YoutubeLyricsValidationTests.cs" />
+    <Compile Include="UnitTests\LyricsLogicTests.cs" />
+    <Compile Include="UnitTests\PlaybackResolutionTests.cs" />
+    <Compile Include="UnitTests\ExternalServices\YoutubeDiagnosticTests.cs" />
+    <Compile Include="UnitTests\ExternalServices\YoutubeServiceTests.cs" />
   </ItemGroup>
+
 
   <ItemGroup>
     <ProjectReference Include="..\YoutubeMusicPlayer.Application\YoutubeMusicPlayer.Application.csproj" />

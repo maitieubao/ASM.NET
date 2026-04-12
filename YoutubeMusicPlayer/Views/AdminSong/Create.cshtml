@@ -1,0 +1,150 @@
+@model YoutubeMusicPlayer.Application.DTOs.SongDto
+@{
+    ViewData["Title"] = "Thêm bài hát mới";
+    var genres = ViewBag.Genres as IEnumerable<YoutubeMusicPlayer.Application.DTOs.GenreDto> ?? new List<YoutubeMusicPlayer.Application.DTOs.GenreDto>();
+}
+
+<div class="container mt-4 pb-5 text-white animate-fade-in">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-black m-0">Thêm bài hát mới</h2>
+            <div class="text-dim small">Nhập thông tin chi tiết cho nội dung âm nhạc mới</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Index" class="btn btn-outline-light rounded-pill px-4">Hủy bỏ</a>
+            <button type="submit" form="songForm" class="btn btn-warning rounded-pill px-5 fw-bold">Tạo bài hát</button>
+        </div>
+    </div>
+
+    <div class="row g-5">
+        <!-- Preview Sidebar -->
+        <div class="col-lg-4">
+            <div class="glass-card p-4 rounded-5 border-0 shadow-lg text-center mb-4 sticky-sidebar" style="top: 100px;">
+                <div class="position-relative mb-4 group">
+                    <img id="thumbnailPreview" src="@(string.IsNullOrEmpty(Model.ThumbnailUrl) ? "https://placehold.co/600x600/111/444?text=Preview" : Model.ThumbnailUrl)" 
+                         class="w-100 rounded-4 shadow-2xl" style="aspect-ratio: 1; object-fit: cover;">
+                </div>
+                <h4 id="titlePreview" class="fw-bold text-white mb-1">@(string.IsNullOrEmpty(Model.Title) ? "Tên bài hát" : Model.Title)</h4>
+                <div class="text-dim small mb-4">Mã ISRC: Dự kiến tạo tự động</div>
+                
+                <div class="mt-4 pt-4 border-top border-white border-opacity-10 text-start">
+                    <div class="text-dim uppercase small fw-bold mb-3">Hướng dẫn</div>
+                    <ul class="extra-small text-white-50 ps-3">
+                        <li class="mb-2">Nhập đúng Youtube Video ID để hệ thống tự lấy metadata.</li>
+                        <li class="mb-2">Chọn ít nhất một thể loại để bài hát dễ tìm kiếm.</li>
+                        <li>Đánh dấu "Premium" nếu muốn giới hạn cho hội viên.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Form Tabs -->
+        <div class="col-lg-8">
+            <form id="songForm" asp-action="Create" method="post">
+                <div class="glass-card rounded-5 border-0 overflow-hidden shadow-2xl">
+                    <!-- Tab Headers -->
+                    <ul class="nav nav-tabs admin-tabs border-0 px-4 pt-4" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#general-info">Thông tin chung</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#lyrics-tab">Lời nhạc (Lyrics)</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#config-tab">Cấu hình & Bản quyền</button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Contents -->
+                    <div class="tab-content p-5">
+                        <!-- Tab 1: General Info -->
+                        <div class="tab-pane fade show active" id="general-info">
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Tên bài hát</label>
+                                    <input asp-for="Title" class="form-control-pro" placeholder="Nhập tên bài hát..." required oninput="document.getElementById('titlePreview').innerText = this.value || 'Tên bài hát'" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">ID Album (Tùy chọn)</label>
+                                    <input asp-for="AlbumId" type="number" class="form-control-pro" placeholder="Nhập ID album..." />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Youtube Video ID</label>
+                                    <input asp-for="YoutubeVideoId" class="form-control-pro" placeholder="víd: dQw4w9WgXcQ" required />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Ảnh đại diện (Thumbnail URL)</label>
+                                    <input asp-for="ThumbnailUrl" class="form-control-pro" placeholder="https://..." oninput="document.getElementById('thumbnailPreview').src = this.value || 'https://placehold.co/600x600/111/444?text=Preview'" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Thể loại nhạc</label>
+                                    <div class="genre-selector-grid p-4 rounded-4 bg-dark bg-opacity-25 border border-white border-opacity-5">
+                                        <div class="row row-cols-2 row-cols-md-3 g-3">
+                                            @foreach(var g in genres) {
+                                                <div class="col">
+                                                    <div class="form-check custom-check">
+                                                         <input class="form-check-input" type="checkbox" name="GenreIds" value="@g.GenreId" 
+                                                                id="g-@g.GenreId" @(Model.GenreIds != null && Model.GenreIds.Contains(g.GenreId) ? "checked" : "")>
+                                                         <label class="form-check-label small" for="g-@g.GenreId">@g.Name</label>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Lyrics -->
+                        <div class="tab-pane fade" id="lyrics-tab">
+                            <div class="mb-4">
+                                <label class="form-label x-small uppercase fw-bold text-dim">Lời bài hát (Toàn bộ)</label>
+                                <textarea name="lyricstext" class="form-control-pro font-monospace" rows="15" placeholder="Hế lô... hế lô... hế lô..."></textarea>
+                            </div>
+                            <div>
+                                <label class="form-label x-small uppercase fw-bold text-dim">Đường dẫn đồng bộ (.lrc)</label>
+                                <input type="text" class="form-control-pro" placeholder="https://example.com/sync-lyrics.lrc" />
+                            </div>
+                        </div>
+
+                        <!-- Tab 3: Config -->
+                        <div class="tab-pane fade" id="config-tab">
+                            <div class="row g-5">
+                                <div class="col-md-6">
+                                    <div class="config-card glass-card p-4 rounded-4 border-0">
+                                        <h6 class="fw-bold mb-3">Bản quyền (Rights)</h6>
+                                        <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-3">
+                                            <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" asp-for="IsExplicit">
+                                            <label class="form-check-label small" asp-for="IsExplicit">Nội dung Explicit (18+)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="config-card glass-card p-4 rounded-4 border-0">
+                                        <h6 class="fw-bold mb-3">Thương mại (Access)</h6>
+                                        <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-3 mb-3">
+                                            <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" asp-for="IsPremiumOnly">
+                                            <label class="form-check-label small" asp-for="IsPremiumOnly">Chỉ dành cho Premium</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .admin-tabs .nav-link { color: #888; border: 0 !important; background: transparent !important; padding: 12px 24px; font-weight: 700; font-size: 14px; position: relative; }
+    .admin-tabs .nav-link.active { color: #ffc107; }
+    .admin-tabs .nav-link.active::after { content: ''; position: absolute; bottom: 0; left: 24px; right: 24px; height: 3px; background: #ffc107; border-radius: 3px; }
+    
+    .form-control-pro { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; padding: 12px 18px; width: 100%; transition: 0.2s; }
+    .form-control-pro:focus { background: rgba(255,255,255,0.08); border-color: #ffc107; outline: none; }
+    
+    .custom-check .form-check-input { background-color: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
+    .custom-check .form-check-input:checked { background-color: #ffc107; border-color: #ffc107; }
+</style>

@@ -79,9 +79,9 @@ window.performFullSearch = async function() {
         searchMain.style.display = 'block';
         searchMain.classList.add('active'); // Trigger animation
         queryTitle.innerText = `Tìm kiếm cho "${query}"`;
-        searchContent.className = "row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3"; // Restore grid layout
+        searchContent.className = "search-results-list"; // Vertical list
         searchContent.innerHTML = `
-            <div class="col-12 text-center p-5">
+            <div class="text-center p-5">
                 <div class="spinner-border text-accent mb-3" style="width: 3rem; height: 3rem;"></div>
                 <div class="text-dim">Đang tìm kiếm giai điệu của bạn...</div>
             </div>
@@ -95,51 +95,61 @@ window.performFullSearch = async function() {
                 searchContent.innerHTML = data.map(item => {
                     let typeLabel = '';
                     let onclick = '';
-                    let itemClass = 'song-list-item search-result-item h-100';
-                    let imgStyle = 'width: 56px; height: 56px;';
-                    let imgClass = 'song-list-img';
+                    let itemClass = 'search-result-row';
+                    let imgClass = 'search-result-img';
                     
                     if (item.type === 'Album') {
-                        onclick = `window.location.href='/Album/Details/${item.albumId}'`;
-                        typeLabel = '<span class="tag-badge py-0 px-2 extra-small opacity-75">Album</span>';
+                        if (item.source === 'Internal') {
+                            onclick = `window.location.href='/Album/Details/${item.albumId}'`;
+                        } else {
+                            onclick = `window.location.href='/Album/DetailsEx?source=${item.source}&id=${item.externalId}'`;
+                        }
+                        typeLabel = 'Album';
                     } else if (item.type === 'Artist') {
                         onclick = `window.location.href='/Artist/Details/${item.artistId}'`;
-                        typeLabel = '<span class="tag-badge bg-accent text-white py-0 px-2 extra-small">Nghệ sĩ</span>';
-                        itemClass += ' search-result-artist';
-                        imgStyle = 'width: 64px; height: 64px;';
+                        typeLabel = 'Nghệ sĩ';
+                        itemClass += ' is-artist';
+                        imgClass += ' rounded-circle';
                     } else {
-                        onclick = `playSingleTrack('${item.videoId}', '${item.title.replace(/'/g, "\\'")}', '${item.author.replace(/'/g, "\\'")}', '${item.thumbnail}')`;
-                        typeLabel = `<span class="text-dim extra-small">${item.author}</span>`;
+                        const escapedTitle = item.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const escapedAuthor = (item.author || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const vidId = item.videoId || ""; // Empty string if null
+                        onclick = `playSingleTrack('${vidId}', '${escapedTitle}', '${escapedAuthor}', '${item.thumbnail}')`;
+                        typeLabel = item.author || 'Bài hát';
                     }
 
                     return `
-                        <div class="col">
-                            <div class="${itemClass}" onclick="${onclick}">
-                                <div class="d-flex align-items-center flex-grow-1 min-w-0">
-                                    <div class="position-relative flex-shrink-0 me-3">
-                                        <img src="${item.thumbnail}" class="${imgClass}" style="${imgStyle}" alt="">
-                                        ${item.type === 'Song' ? '<div class="song-list-play-overlay"><i class="fa-solid fa-play"></i></div>' : ''}
-                                    </div>
-                                    <div class="song-list-info overflow-hidden">
-                                        <div class="song-list-title fs-6 fw-bold mb-1 text-truncate" title="${item.title}">
-                                            ${item.title} 
-                                            ${item.type === 'Artist' && item.isVerified ? '<i class="bi bi-patch-check-fill text-accent ms-1"></i>' : ''}
-                                        </div>
-                                        <div class="song-list-meta d-flex align-items-center gap-2">
-                                            ${typeLabel}
-                                        </div>
-                                    </div>
+                        <div class="${itemClass}" onclick="${onclick}">
+                            <div class="row-thumbnail">
+                                <img src="${item.thumbnail}" class="${imgClass}" alt="">
+                                ${item.type === 'Song' ? '<div class="row-play-overlay"><i class="fa-solid fa-play"></i></div>' : ''}
+                            </div>
+                            <div class="row-content">
+                                <div class="row-title">
+                                    ${item.title} 
+                                    ${item.type === 'Artist' && item.isVerified ? '<i class="bi bi-patch-check-fill text-accent ms-1"></i>' : ''}
                                 </div>
-                                <div class="ms-auto flex-shrink-0 d-flex align-items-center gap-3">
-                                    <i class="fa-solid fa-ellipsis-vertical text-dim cursor-pointer p-2 hover-text-main"></i>
+                                <div class="row-meta">
+                                    ${item.type} • ${typeLabel}
                                 </div>
+                            </div>
+                            <div class="row-actions">
+                                <button class="btn-icon-subtle" title="Yêu thích" onclick="event.stopPropagation(); togglePlayerLike()">
+                                    <i class="fa-regular fa-heart"></i>
+                                </button>
+                                <button class="btn-icon-subtle" title="Thêm vào Playlist" onclick="event.stopPropagation(); showAddToPlaylistModal('${item.videoId}')">
+                                    <i class="fa-solid fa-folder-plus text-accent"></i>
+                                </button>
+                                <button class="btn-icon-subtle" title="Khác">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
                             </div>
                         </div>
                     `;
                 }).join('');
             } else {
                 searchContent.innerHTML = `
-                    <div class="col-12 p-5 text-center">
+                    <div id="no-search-results" class="col-12 p-5 text-center">
                         <i class="fa-solid fa-magnifying-glass-chart fs-1 text-dim mb-3"></i>
                         <h4 class="text-white">Không tìm thấy kết quả</h4>
                         <p class="text-dim">Hãy thử với từ khóa khác như tên bài hát hoặc nghệ sĩ.</p>
@@ -147,7 +157,8 @@ window.performFullSearch = async function() {
                 `;
             }
         } catch (err) {
-            searchContent.innerHTML = '<div class="col-12 p-5 text-center text-danger">Có lỗi xảy ra khi tìm kiếm bài hát. Vui lòng thử lại.</div>';
+            console.error("Search failed:", err);
+            searchContent.innerHTML = '<div id="search-error" class="col-12 p-5 text-center text-danger">Có lỗi xảy ra khi tìm kiếm bài hát. Vui lòng thử lại.</div>';
         }
     } else {
         window.location.href = `/Home/Discovery?tag=${encodeURIComponent(query)}`;

@@ -50,61 +50,68 @@ public class InteractionService : IInteractionService
     {
         if (durationSeconds <= 0) return;
 
-        // 1. Update User Global Stats
-        var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
-        if (user != null)
+        try
         {
-            user.TotalListenSeconds += durationSeconds;
-            _unitOfWork.Repository<User>().Update(user);
-        }
-
-        // 2. Fetch all necessary song, artist, and genre data in ONE query
-        var song = await _unitOfWork.Repository<Song>().Query()
-            .Include(s => s.SongArtists).ThenInclude(sa => sa.Artist)
-            .Include(s => s.SongGenres).ThenInclude(sg => sg.Genre)
-            .FirstOrDefaultAsync(s => s.SongId == songId);
-
-        if (song == null) return;
-
-        // 3. Update Song PlayCount (Only if play is > 30s)
-        if (durationSeconds > 30)
-        {
-            song.PlayCount += 1;
-            _unitOfWork.Repository<Song>().Update(song);
-
-            // 3.1 Update Artist Popularity (Implicitly if logic needed later, but removed redundant Update check)
-            // Artist updates removed as it was a "dead update" - no fields were being modified.
-        }
-
-        // 4. Update Genre-specific Stats (Using optimized lookup)
-        foreach (var sg in song.SongGenres)
-        {
-            var genreName = sg.Genre.Name;
-            
-            // Optimized: Database lookup instead of loading full list or using Find (IEnumerable)
-            var stat = await _unitOfWork.Repository<UserGenreStat>().Query()
-                .FirstOrDefaultAsync(s => s.UserId == userId && s.GenreName == genreName);
-
-            if (stat == null)
+            // 1. Update User Global Stats
+            var user = await _unitOfWork.Repository<User>().Query()
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+                
+            if (user != null)
             {
-                stat = new UserGenreStat
+                user.TotalListenSeconds += durationSeconds;
+                _unitOfWork.Repository<User>().Update(user);
+            }
+
+            // 2. Fetch song with includes (Using AsNoTracking for the initial check to see if it exists)
+            var song = await _unitOfWork.Repository<Song>().Query()
+                .Include(s => s.SongArtists)
+                .Include(s => s.SongGenres).ThenInclude(sg => sg.Genre)
+                .FirstOrDefaultAsync(s => s.SongId == songId);
+
+            if (song == null) return;
+
+            // 3. Update Song PlayCount (Only if play is > 30s)
+            if (durationSeconds > 30)
+            {
+                song.PlayCount += 1;
+                _unitOfWork.Repository<Song>().Update(song);
+            }
+
+            // 4. Update Genre-specific Stats
+            foreach (var sg in song.SongGenres)
+            {
+                var genreName = sg.Genre.Name;
+                
+                var stat = await _unitOfWork.Repository<UserGenreStat>().Query()
+                    .FirstOrDefaultAsync(s => s.UserId == userId && s.GenreName == genreName);
+
+                if (stat == null)
                 {
-                    UserId = userId,
-                    GenreName = genreName,
-                    ListenSeconds = durationSeconds,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                await _unitOfWork.Repository<UserGenreStat>().AddAsync(stat);
+                    stat = new UserGenreStat
+                    {
+                        UserId = userId,
+                        GenreName = genreName,
+                        ListenSeconds = durationSeconds,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.Repository<UserGenreStat>().AddAsync(stat);
+                }
+                else
+                {
+                    stat.ListenSeconds += durationSeconds;
+                    stat.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.Repository<UserGenreStat>().Update(stat);
+                }
             }
-            else
-            {
-                stat.ListenSeconds += durationSeconds;
-                stat.UpdatedAt = DateTime.UtcNow;
-                _unitOfWork.Repository<UserGenreStat>().Update(stat);
-            }
-        }
 
-        await _unitOfWork.CompleteAsync();
+            await _unitOfWork.CompleteAsync();
+        }
+        catch (ObjectDisposedException ex)
+        {
+            // Log and absorb if the context was disposed during a shutdown/retry cycle
+            // The QueuedHostedService will handle retries if this was a transient failure
+            throw; 
+        }
     }
 
     public async Task<IEnumerable<string>> GetTopPreferredGenresAsync(int userId, int count = 5)

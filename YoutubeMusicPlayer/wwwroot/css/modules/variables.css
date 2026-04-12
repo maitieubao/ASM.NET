@@ -25,7 +25,7 @@
     --glow-shadow: 0 0 15px var(--accent-glow);
     
     /* Layout Constants */
-    --sidebar-width: 80px; /* Slightly wider for better breathing room */
+    --sidebar-width: 240px; /* Modern wide sidebar */
     --player-height: 100px;
     --border-radius: 12px;
     --border-radius-lg: 18px;

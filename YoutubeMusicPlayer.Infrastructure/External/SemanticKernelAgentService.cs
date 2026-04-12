@@ -5,6 +5,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Infrastructure.External.AiPlugins;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace YoutubeMusicPlayer.Infrastructure.External;
 
@@ -14,6 +15,7 @@ public class SemanticKernelAgentService : IAiAgentService
 {
     private readonly Kernel _kernel;
     private readonly IChatCompletionService _chatCompletionService;
+    private readonly ILogger<SemanticKernelAgentService> _logger;
 
     public SemanticKernelAgentService(
         IConfiguration configuration,
@@ -23,8 +25,10 @@ public class SemanticKernelAgentService : IAiAgentService
         ISongService songService,
         ISubscriptionService subscriptionService,
         IPlaylistService playlistService,
-        IWikipediaService wikipediaService)
+        IWikipediaService wikipediaService,
+        ILogger<SemanticKernelAgentService> logger)
     {
+        _logger = logger;
         var apiKey = configuration["Groq:ApiKey"];
         var modelId = configuration["Groq:ModelId"] ?? "llama-3.3-70b-versatile";
         var baseUrl = configuration["Groq:BaseUrl"] ?? "https://api.groq.com/openai/v1";
@@ -40,7 +44,7 @@ public class SemanticKernelAgentService : IAiAgentService
         
         // Performance & Reliability: Custom headers if needed for DeepSeek can be added via HttpClient
 
-        // Register Plugins to match the AI Assistant's capabilities (simplified names to prevent LLM hallucinations)
+        // Register Plugins (Simple names to avoid Groq tool-calling errors)
         builder.Plugins.AddFromObject(new MusicSearchPlugin(youtubeService, deezerService), "Music");
         builder.Plugins.AddFromObject(new UserInteractionPlugin(interactionService, songService, subscriptionService), "User");
         builder.Plugins.AddFromObject(new PlaylistPlugin(playlistService, songService), "Playlist");
@@ -55,23 +59,21 @@ public class SemanticKernelAgentService : IAiAgentService
         try {
             var chatHistory = new ChatHistory();
             
-            // System Prompt
-            string systemPrompt = "Bạn là trợ lý âm nhạc thông minh 'Antigravity Music'.\n" +
-                                   "Nhiệm vụ: Tìm nhạc, quản lý playlist, xem lịch sử và thông tin nghệ sĩ.\n" +
-                                   (userId.HasValue ? $"ID người dùng hiện tại: {userId.Value}.\n" : "Người dùng chưa đăng nhập.\n") +
-                                   "Phong cách: Thân thiện, chuyên nghiệp, súc tích bằng tiếng Việt.\n" +
-                                   " QUY TẮC QUAN TRỌNG:\n" +
-                                   "1. Khi người dùng muốn nghe nhạc, hãy tìm kiếm và gợi ý bài hát.\n" +
-                                   "2. Nếu quyết định phát một bài cụ thể, hãy thêm dòng 'ACTION:play:[VideoID]' vào CUỐI câu trả lời.\n" +
-                                   "3. Giới hạn 5 bài hát mỗi lần gợi ý.\n" +
-                                   "4. Luôn ưu tiên dùng các công cụ (plugins) có sẵn để tra cứu thông tin chính xác.";
+            // System Prompt (Optimized for Groq)
+            string systemPrompt = "Bạn là trợ lý âm nhạc 'Antigravity AI'. Thân thiện, chuyên nghiệp, súc tích bằng tiếng Việt.\n" +
+                                   "Nhiệm vụ: Tìm nhạc, quản lý playlist, tra cứu nghệ sĩ.\n" +
+                                   (userId.HasValue ? $"User ID: {userId.Value}.\n" : "") +
+                                   "QUY TẮC:\n" +
+                                   "1. Tìm và gợi ý bài hát khi được yêu cầu.\n" +
+                                   "2. Khi phát một bài, thêm 'ACTION:play:[VideoID]' vào CUỐI câu.\n" +
+                                   "3. Ưu tiên sử dụng công cụ (plugins) để có thông tin chính xác.";
 
             chatHistory.AddSystemMessage(systemPrompt);
 
-            // Load historical context
+            // Load context
             if (history != null && history.Any())
             {
-                foreach (var msg in history.TakeLast(8)) 
+                foreach (var msg in history.TakeLast(6)) 
                 {
                     if (msg.Role == "assistant") chatHistory.AddAssistantMessage(msg.Content);
                     else chatHistory.AddUserMessage(msg.Content);
@@ -93,30 +95,20 @@ public class SemanticKernelAgentService : IAiAgentService
             var responseText = result.Content ?? "Tôi không tìm thấy thông tin phù hợp.";
             var response = new AgentResponse { Message = responseText };
 
-            // Suggested Action Extraction (Robust version)
+            // Suggested Action Extraction
             var match = System.Text.RegularExpressions.Regex.Match(responseText, @"ACTION:play:([a-zA-Z0-9_-]{11})");
             if (match.Success)
             {
                 response.SuggestedAction = "play:" + match.Groups[1].Value;
-            }
-            else if (responseText.Contains("ACTION:play:"))
-            {
-                // Fallback for non-standard IDs if any
-                var parts = responseText.Split("ACTION:play:");
-                var potentialId = parts.Last().Split(new[] { ' ', '\n', '<', ']', ')' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-                if (!string.IsNullOrEmpty(potentialId))
-                {
-                    response.SuggestedAction = "play:" + potentialId.Replace("[", "").Replace("]", "");
-                }
             }
 
             return response;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[AiAgent] Error: {ex.Message}");
+            _logger.LogError(ex, "[AiAgent] ProcessCommandAsync failed");
             return new AgentResponse { 
-                Message = "Rất tiếc, tôi đang gặp chút vấn đề khi kết nối với máy chủ AI. Bạn hãy thử lại sau vài giây nhé!" 
+                Message = "Rất tiếc, máy chủ AI đang bận hoặc gặp sự cố kết nối. Bạn vui lòng thử lại sau giây lát nhé!" 
             };
         }
     }

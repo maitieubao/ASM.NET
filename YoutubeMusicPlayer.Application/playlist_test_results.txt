@@ -1,0 +1,11 @@
+[2026-04-09 23:51:11] === STARTING PLAYLIST VERIFICATION ===
+[2026-04-09 23:51:35] ERROR during verification: Timed out after 15 seconds
+[2026-04-10 09:35:42] === STARTING PLAYLIST VERIFICATION ===
+[2026-04-10 09:35:56] Step: Search for 'Adele' submitted.
+[2026-04-10 09:36:09] Step: 'Add to Playlist' button is VISIBLE in search results.
+[2026-04-10 09:36:10] Step: Modal 'Thêm vào danh sách phát' opened successfully.
+[2026-04-10 09:36:12] Step: Clicked Create for playlist 'Selenium Test 10661496'.
+[2026-04-10 09:36:15] Step: New playlist NOT found in modal list after creation.
+[2026-04-10 09:36:29] Step: Song playback started.
+[2026-04-10 09:36:29] Step: 'Add to Playlist' button is VISIBLE in the player bar.
+[2026-04-10 09:36:29] === VERIFICATION COMPLETED SUCCESSFULLY ===

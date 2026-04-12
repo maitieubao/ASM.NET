@@ -9,6 +9,8 @@ using YoutubeMusicPlayer.Application.Interfaces;
 
 namespace YoutubeMusicPlayer.Controllers;
 
+[Route("Admin")]
+[Route("AdminDashboard")]
 [Authorize(Roles = "Admin")]
 public class AdminDashboardController : Controller
 {

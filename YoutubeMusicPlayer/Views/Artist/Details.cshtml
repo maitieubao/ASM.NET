@@ -89,8 +89,8 @@
                                         <button class="btn-icon" onclick="event.stopPropagation(); toggleLikeByYoutubeId('@song.YoutubeVideoId', this)">
                                             <i class="fa-solid fa-heart"></i>
                                         </button>
-                                        <button class="btn-icon" onclick="event.stopPropagation(); openAddToPlaylist(@song.SongId, '@song.YoutubeVideoId')">
-                                            <i class="fa-solid fa-plus"></i>
+                                        <button class="btn-icon" title="Thêm vào Playlist" onclick="event.stopPropagation(); showAddToPlaylistModal('@song.YoutubeVideoId')">
+                                            <i class="fa-solid fa-folder-plus text-accent"></i>
                                         </button>
                                         <div class="duration d-none d-sm-block">@(song.Duration.HasValue ? TimeSpan.FromSeconds(song.Duration.Value).ToString(@"m\:ss") : "--:--")</div>
                                     </div>

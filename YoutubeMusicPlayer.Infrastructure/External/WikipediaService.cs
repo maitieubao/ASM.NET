@@ -42,61 +42,133 @@ public class WikipediaService : IWikipediaService
     private async Task<WikiSummary?> GetSummaryAsync(string artistName)
     {
         if (string.IsNullOrWhiteSpace(artistName)) return null;
-        string searchName = NormalizeArtistName(artistName);
+        string baseName = NormalizeArtistName(artistName);
 
         // Languages to try in order
         var languages = new[] { "vi", "en" };
         
         foreach (var lang in languages)
         {
-            // Wikipedia Summary API: https://en.wikipedia.org/api/rest_v1/page/summary/{title}
-            // We search for the page first to get the correct title (handling redirects and disambiguation)
-            string searchUrl = $"https://{lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch={Uri.EscapeDataString(searchName)}&format=json&origin=*";
-            
-            try
+            // Stage 1: Try multiple search variations
+            var searchQueries = new List<string> { baseName };
+            if (lang == "vi") searchQueries.Add($"{baseName} (ca sĩ)");
+            else searchQueries.Add($"{baseName} (musician)");
+            searchQueries.Add($"{baseName} music");
+
+            foreach (var query in searchQueries)
             {
-                var searchResponse = await _httpClient.GetAsync(searchUrl);
-                if (!searchResponse.IsSuccessStatusCode) continue;
-
-                var searchJson = await searchResponse.Content.ReadAsStringAsync();
-                using var searchDoc = JsonDocument.Parse(searchJson);
-                var searchResults = searchDoc.RootElement.GetProperty("query").GetProperty("search");
-
-                if (searchResults.GetArrayLength() > 0)
+                string searchUrl = $"https://{lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch={Uri.EscapeDataString(query)}&format=json&origin=*&srlimit=10";
+                
+                try
                 {
-                    string matchedTitle = searchResults[0].GetProperty("title").GetString()!;
+                    var searchResponse = await _httpClient.GetAsync(searchUrl);
+                    if (!searchResponse.IsSuccessStatusCode) continue;
+
+                    var searchJson = await searchResponse.Content.ReadAsStringAsync();
+                    using var searchDoc = JsonDocument.Parse(searchJson);
                     
-                    string summaryUrl = $"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{Uri.EscapeDataString(matchedTitle)}";
-                    var summaryResponse = await _httpClient.GetAsync(summaryUrl);
-                    
-                    if (summaryResponse.IsSuccessStatusCode)
+                    if (!searchDoc.RootElement.TryGetProperty("query", out var queryElement) || 
+                        !queryElement.TryGetProperty("search", out var searchResults) || 
+                        searchResults.GetArrayLength() == 0) continue;
+
+                    // Pick the best candidate (first one that isn't a disambiguation page or has music keywords)
+                    string? matchedTitle = null;
+                    for (int i = 0; i < searchResults.GetArrayLength(); i++)
                     {
-                        var summaryJson = await summaryResponse.Content.ReadAsStringAsync();
-                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                        var summary = JsonSerializer.Deserialize<WikiSummary>(summaryJson, options);
-                        
-                        if (summary != null && !string.IsNullOrEmpty(summary.Extract))
+                        var snippet = searchResults[i].GetProperty("snippet").GetString()?.ToLower() ?? "";
+                        var title = searchResults[i].GetProperty("title").GetString()!;
+
+                        // Skip disambiguation pages
+                        if (title.Contains("(định hướng)") || title.Contains("(disambiguation)")) continue;
+
+                        // Priority match if snippet contains music terms
+                        if (snippet.Contains("ca sĩ") || snippet.Contains("nghệ sĩ") || snippet.Contains("nhạc") || 
+                            snippet.Contains("singer") || snippet.Contains("musician") || snippet.Contains("band") || snippet.Contains("album"))
                         {
-                            return summary;
+                            matchedTitle = title;
+                            break;
                         }
                     }
+
+                    // Fallback to the very first result if no "perfect" match found
+                    matchedTitle ??= searchResults[0].GetProperty("title").GetString();
+
+                    if (!string.IsNullOrEmpty(matchedTitle))
+                    {
+                        var summary = await FetchSummaryByTitleAsync(lang, matchedTitle);
+                        if (summary != null && IsValidBio(summary.Extract)) return summary;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[WikipediaService] Error fetching for {artistName} in {lang}: {ex.Message}");
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WikipediaService] Search error for {query} in {lang}: {ex.Message}");
+                }
             }
         }
 
         return null;
     }
 
+    private async Task<WikiSummary?> FetchSummaryByTitleAsync(string lang, string title)
+    {
+        // 1. Try REST API (Modern, clean JSON)
+        string summaryUrl = $"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{Uri.EscapeDataString(title)}";
+        try {
+            var response = await _httpClient.GetAsync(summaryUrl);
+            if (response.IsSuccessStatusCode) {
+                var json = await response.Content.ReadAsStringAsync();
+                var summary = JsonSerializer.Deserialize<WikiSummary>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (summary != null && IsValidBio(summary.Extract)) return summary;
+            }
+        } catch { /* Fallback to standard Query API */ }
+
+        // 2. Fallback to Standard Query API (More robust for redirects/complex pages)
+        string queryUrl = $"https://{lang}.wikipedia.org/w/api.php?action=query&prop=extracts|pageimages&exintro&explaintext&titles={Uri.EscapeDataString(title)}&format=json&origin=*&pithumbsize=1000";
+        try {
+            var response = await _httpClient.GetAsync(queryUrl);
+            if (response.IsSuccessStatusCode) {
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                var pages = doc.RootElement.GetProperty("query").GetProperty("pages");
+                var page = pages.EnumerateObject().First().Value;
+
+                if (page.TryGetProperty("extract", out var extract) && !string.IsNullOrEmpty(extract.GetString())) {
+                    var summary = new WikiSummary {
+                        Title = page.GetProperty("title").GetString(),
+                        Extract = extract.GetString()
+                    };
+                    if (page.TryGetProperty("thumbnail", out var thumb)) {
+                        summary.Thumbnail = new WikiImage { Source = thumb.GetProperty("source").GetString() };
+                    }
+                    return summary;
+                }
+            }
+        } catch { }
+
+        return null;
+    }
+
+    private bool IsValidBio(string? extract)
+    {
+        if (string.IsNullOrEmpty(extract)) return false;
+        if (extract.Length < 50) return false;
+        // Check for disambiguation stubs
+        if (extract.Contains("có thể đề cập đến") || extract.Contains("may refer to")) return false;
+        return true;
+    }
+
     private string NormalizeArtistName(string artistName)
     {
-        string searchName = artistName;
-        if (searchName.EndsWith(" - Topic")) searchName = searchName.Replace(" - Topic", "");
-        if (searchName.EndsWith("- Topic")) searchName = searchName.Replace("- Topic", "");
-        return searchName.Trim();
+        if (string.IsNullOrEmpty(artistName)) return "";
+        string name = artistName;
+        // Remove common YouTube/Streaming noise
+        name = System.Text.RegularExpressions.Regex.Replace(name, @"(?i)\s?-?\s?Topic$", "");
+        name = System.Text.RegularExpressions.Regex.Replace(name, @"(?i)\s?official.*$", "");
+        name = System.Text.RegularExpressions.Regex.Replace(name, @"(?i)\s?music.*$", "");
+        name = System.Text.RegularExpressions.Regex.Replace(name, @"(?i)\s?vevo.*$", "");
+        name = System.Text.RegularExpressions.Regex.Replace(name, @"(?i)\s?lyrics.*$", "");
+        name = System.Text.RegularExpressions.Regex.Replace(name, @"(?i)\[.*?\]|\(.*?\)", ""); // Remove [MV], (Audio)
+        return name.Trim();
     }
 
     private class WikiSummary

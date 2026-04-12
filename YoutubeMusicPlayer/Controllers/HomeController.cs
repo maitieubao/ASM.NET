@@ -55,24 +55,34 @@ public class HomeController : BaseController
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetStreamUrl(string videoUrl, string? title = null, string? artist = null)
+    public async Task<IActionResult> GetStreamUrl(string? videoUrl, string? title = null, string? artist = null, string? query = null)
     {
-        if (string.IsNullOrEmpty(videoUrl)) return BadRequestResponse("URL cannot be empty.", "EmptyUrl");
+        if (string.IsNullOrEmpty(videoUrl) && string.IsNullOrEmpty(query)) 
+            return BadRequestResponse("Video URL or Search Query must be provided.", "InvalidParams");
 
         try
         {
-            var result = await _playbackFacade.GetStreamAsync(videoUrl, title, artist, CurrentUserId);
+            PlaybackStreamDto result;
+            if (!string.IsNullOrEmpty(query))
+            {
+                result = await _playbackFacade.ResolveAndGetStreamAsync(query, title, artist, CurrentUserId);
+            }
+            else
+            {
+                result = await _playbackFacade.GetStreamAsync(videoUrl!, title, artist, CurrentUserId);
+            }
             
             if (!string.IsNullOrEmpty(result.Error))
             {
-                return SuccessResponse(new { error = result.Error, message = result.Message });
+                return BadRequestResponse(result.Message ?? "Không thể tìm thấy luồng âm thanh.", result.Error);
             }
 
             return SuccessResponse(new { 
                 streamUrl = result.StreamUrl, 
                 songId = result.SongId, 
                 isLiked = result.IsLiked, 
-                showAd = result.ShowAd 
+                showAd = result.ShowAd,
+                videoId = result.VideoId ?? videoUrl 
             });
         }
         catch (Exception ex)
@@ -82,13 +92,28 @@ public class HomeController : BaseController
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetRichMetadata(string videoId)
+    public async Task<IActionResult> GetRichMetadata(string videoId, string? lang = null)
     {
-        var metadata = await _playbackFacade.GetRichMetadataAsync(videoId);
+        var metadata = await _playbackFacade.GetRichMetadataAsync(videoId, lang);
         return SuccessResponse(new {
+            status = metadata.Status,
             lyrics = metadata.Lyrics,
-            bio = metadata.Bio
+            timedLyrics = metadata.TimedLyrics?.Select(l => new {
+                startTime = l.StartTime,
+                endTime = l.StartTime + l.Duration,
+                duration = l.Duration,
+                text = l.Text
+            }),
+            bio = metadata.Bio,
+            availableCaptions = metadata.AvailableCaptions
         });
+    }
+    
+    [HttpGet]
+    public async Task<IActionResult> GetSongsByArtist(string name)
+    {
+        var songs = await _homeFacade.GetSongsByArtistAsync(name);
+        return SuccessResponse(songs);
     }
 
     public IActionResult Privacy() => View();

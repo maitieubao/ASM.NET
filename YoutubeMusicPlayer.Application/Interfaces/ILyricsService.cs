@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+using YoutubeMusicPlayer.Application.DTOs;
 
 namespace YoutubeMusicPlayer.Application.Interfaces;
 
@@ -7,5 +7,5 @@ public interface ILyricsService
     /// <summary>
     /// Fetches lyrics for a given song and artist.
     /// </summary>
-    Task<string?> GetLyricsAsync(string artist, string title);
+    Task<LyricsResult> GetLyricsAsync(string artist, string title, string? videoId = null);
 }

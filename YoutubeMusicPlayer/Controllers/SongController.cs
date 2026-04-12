@@ -6,12 +6,6 @@ using System.Collections.Generic;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Models.ViewModels;
-
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Models;
 
 namespace YoutubeMusicPlayer.Controllers;

@@ -1,0 +1,144 @@
+@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.SubscriptionPlanDto>
+@{
+    ViewData["Title"] = "Quản lý Gói hội viên";
+}
+
+<div class="container-fluid mt-4 pb-5 px-lg-5 text-white animate-fade-in" style="padding-right: 160px !important;">
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="glass-panel p-4 rounded-5 border-0 shadow-lg position-relative overflow-hidden">
+                <div class="text-dim uppercase small fw-bold mb-1">Tổng số gói</div>
+                <div class="fs-1 fw-black">@Model.Count()</div>
+                <i class="fa-solid fa-gem position-absolute text-white opacity-5" style="font-size: 80px; bottom: -10px; right: 10px;"></i>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-panel p-4 rounded-5 border-0 shadow-lg position-relative overflow-hidden border-start border-warning border-4">
+                <div class="text-warning-emphasis uppercase small fw-bold mb-1">Gói Active</div>
+                <div class="fs-1 fw-black text-warning">@Model.Count()</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-black m-0">Gói Hội Viên Premium</h2>
+            <p class="text-white-50 small">Quản lý các lựa chọn nâng cấp tài khoản cho người dùng.</p>
+        </div>
+        <button type="button" class="btn btn-warning rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#createPlanModal">
+            <i class="fa-solid fa-plus me-2"></i>Thêm gói mới
+        </button>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success bg-success bg-opacity-10 border-success border-opacity-25 text-success rounded-4 mb-4">
+            <i class="fa-solid fa-circle-check me-2"></i>@TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger bg-danger bg-opacity-10 border-danger border-opacity-25 text-danger rounded-4 mb-4">
+            <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["Error"]
+        </div>
+    }
+
+    <div class="glass-panel p-0 overflow-hidden shadow-2xl">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle">
+                <thead>
+                    <tr class="text-white-50 border-bottom border-secondary border-opacity-10">
+                        <th class="ps-4 py-3">Tên gói</th>
+                        <th>Giá (VNĐ)</th>
+                        <th>Thời hạn</th>
+                        <th>Mô tả</th>
+                        <th class="text-end pe-4">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var plan in Model)
+                    {
+                        <tr class="border-bottom border-secondary border-opacity-10">
+                            <td class="ps-4">
+                                <div class="fw-bold text-white">@plan.Name</div>
+                                <div class="text-muted extra-small">ID: #@plan.PlanId</div>
+                            </td>
+                            <td><span class="text-accent fw-bold text-warning">@plan.Price.ToString("N0")</span></td>
+                            <td><span class="badge bg-secondary bg-opacity-25 rounded-pill">@plan.DurationDays ngày</span></td>
+                            <td class="small text-white-50">@plan.Description</td>
+                            <td class="text-end pe-4">
+                                <form asp-action="Delete" asp-route-id="@plan.PlanId" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn ngưng hoạt động gói này?')" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-3" title="Ngưng hoạt động">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create Plan Modal -->
+<div class="modal fade" id="createPlanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-secondary border-opacity-25 shadow-2xl rounded-5 p-2">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-black fs-3">Tạo Gói Mới</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label class="form-label x-small uppercase fw-bold text-dim">Tên gói</label>
+                        <input name="Name" class="form-control-pro" placeholder="VD: Premium Monthly" required />
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label x-small uppercase fw-bold text-dim">Giá (VNĐ)</label>
+                            <input type="number" name="Price" class="form-control-pro" placeholder="29000" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label x-small uppercase fw-bold text-dim">Thời hạn (Ngày)</label>
+                            <input type="number" name="DurationDays" class="form-control-pro" placeholder="30" required />
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label x-small uppercase fw-bold text-dim">Mô tả đặc quyền</label>
+                        <textarea name="Description" class="form-control-pro" rows="3" placeholder="VD: Không quảng cáo, nghe offline..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control-pro {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        color: white;
+        padding: 12px 16px;
+        width: 100%;
+        transition: 0.2s;
+    }
+    .form-control-pro:focus {
+        background: rgba(255,255,255,0.08);
+        border-color: var(--accent-color);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(255,193,7,0.1);
+    }
+    .text-dim { color: rgba(255,255,255,0.5); }
+    .x-small { font-size: 11px; }
+    .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+    .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+</style>

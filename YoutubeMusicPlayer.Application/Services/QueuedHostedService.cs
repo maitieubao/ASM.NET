@@ -24,18 +24,38 @@ public class QueuedHostedService : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            _logger.LogInformation("Waiting for next background work item...");
             var workItem = await _taskQueue.DequeueAsync(stoppingToken);
 
-            try
-            {
-                _logger.LogInformation("Executing background task.");
+            // Retry logic for transient failures (e.g. DB connection)
+            int retryCount = 0;
+            const int maxRetries = 3;
+            bool success = false;
 
-                using var scope = _serviceProvider.CreateScope();
-                await workItem(scope.ServiceProvider);
-            }
-            catch (Exception ex)
+            while (!success && retryCount <= maxRetries && !stoppingToken.IsCancellationRequested)
             {
-                _logger.LogError(ex, "Error occurred executing background task.");
+                try
+                {
+                    _logger.LogInformation("Starting execution of background task (Attempt {Attempt}).", retryCount + 1);
+
+                    using var scope = _serviceProvider.CreateScope();
+                    await workItem(scope.ServiceProvider);
+                    
+                    success = true;
+                    _logger.LogInformation("Finished execution of background task.");
+                }
+                catch (Exception ex)
+                {
+                    retryCount++;
+                    _logger.LogError(ex, "Error executing background task (Attempt {Attempt}/{Max}).", retryCount, maxRetries + 1);
+                    
+                    if (retryCount <= maxRetries)
+                    {
+                        var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount)); // Exponential backoff: 2s, 4s, 8s
+                        _logger.LogInformation("Retrying in {Delay}s...", delay.TotalSeconds);
+                        await Task.Delay(delay, stoppingToken);
+                    }
+                }
             }
         }
 

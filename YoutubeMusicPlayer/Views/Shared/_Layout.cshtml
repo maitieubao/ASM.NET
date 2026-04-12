@@ -1,3 +1,5 @@
+@using YoutubeMusicPlayer.Application.Interfaces
+@inject ISubscriptionService SubService
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +10,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Frameworks & Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
@@ -69,7 +71,7 @@
                 </a>
                 @if (User.IsInRole("Admin"))
                 {
-                    <a class="nav-item" asp-controller="Admin" asp-action="Index">
+                    <a class="nav-item" asp-controller="AdminDashboard" asp-action="Index">
                         <i class="fa-solid fa-shield-halved text-danger"></i>
                         <span>Admin Dashboard</span>
                     </a>
@@ -170,7 +172,17 @@
             </div>
 
             <!-- Settings -->
-            <div class="d-flex align-items-center justify-content-end gap-3">
+            <div class="d-flex align-items-center justify-content-end gap-3 px-3">
+                <div class="d-none d-lg-flex align-items-center me-2">
+                    <select id="playbackSpeed" class="form-select form-select-sm bg-transparent border-0 text-white-50 p-0" style="width: 60px; font-size: 0.8rem;" onchange="setPlaybackSpeed(this.value)">
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1" selected>1.0x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2.0x</option>
+                    </select>
+                </div>
                 <button class="btn btn-link text-white-50 p-0" title="Lời bài hát & Nghệ sĩ" onclick="toggleMetadata()">
                     <i class="fa-solid fa-microphone-lines"></i>
                 </button>
@@ -179,6 +191,9 @@
                 </button>
                 <button class="btn btn-link text-white-50 p-0" id="queueBtn" onclick="toggleQueue()">
                     <i class="fa-solid fa-list-ul"></i>
+                </button>
+                <button class="btn btn-link text-white-50 p-0" title="Thêm vào danh sách phát" onclick="showAddToPlaylistModal(playQueue[currentIndex]?.videoId)">
+                    <i class="fa-solid fa-folder-plus"></i>
                 </button>
                 <div class="d-flex align-items-center gap-2" style="width: 150px;">
                     <i class="fa-solid fa-volume-high text-muted"></i>
@@ -214,12 +229,15 @@
             <div class="full-player-visuals">
                 <img id="fullPlayerThumb" src="" class="full-player-thumb" alt="Album Art">
                 <div class="full-player-info mt-3 w-100">
-                    <h1 id="fullPlayerTitle" class="title text-truncate">Sẵn sàng phát nhạc</h1>
-                    <p id="fullPlayerArtist" class="artist text-truncate">Chọn bài hát bạn yêu thích</p>
+                    <h1 id="fullPlayerTitle" class="title">Sẵn sàng phát nhạc</h1>
+                    <p id="fullPlayerArtist" class="artist">Chọn bài hát bạn yêu thích</p>
                     
                     <div class="mt-5 d-flex gap-4">
                         <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" onclick="togglePlayerLike()">
                             <i class="fa-regular fa-heart me-2"></i> Yêu thích
+                        </button>
+                        <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" onclick="showAddToPlaylistModal(playQueue[currentIndex]?.videoId)">
+                            <i class="fa-solid fa-folder-plus me-2"></i> Playlist
                         </button>
                         <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" data-bs-toggle="collapse" data-bs-target="#bioCollapse">
                             <i class="fa-solid fa-user-tag me-2"></i> Nghệ sĩ
@@ -236,6 +254,9 @@
 
             <!-- Lyrics Side -->
             <div class="lyrics-container scrollbar-hide">
+                <div id="lyricsHeader" class="d-flex justify-content-end p-3 sticky-top">
+                    <!-- Caption Switcher dynamically inserted here -->
+                </div>
                 <div id="lyricsContent" class="lyrics-text" style="white-space: pre-line;">
                     Chọn bài hát để xem lời...
                 </div>
@@ -285,16 +306,33 @@
             </div>
         </div>
 
+
+
     <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     
     <!-- YTM Logic -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <!-- Core Music Logic Modules -->
-    <script src="~/js/ui.js" asp-append-version="true"></script>
-    <script src="~/js/player.js" asp-append-version="true"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    
+    <!-- Player Module -->
+    <script src="~/js/app/player/state.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/visuals.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/engine.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/queue.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/sync.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/core.js" asp-append-version="true"></script>
+
+    <!-- UI Module -->
+    <script src="~/js/app/ui/navigation.js" asp-append-version="true"></script>
+    <script src="~/js/app/ui/modals.js" asp-append-version="true"></script>
+    <script src="~/js/app/ui/interactions.js" asp-append-version="true"></script>
+    <script src="~/js/app/ui/ads.js" asp-append-version="true"></script>
+    <script src="~/js/app/ui/metadata.js" asp-append-version="true"></script>
+
+    <!-- Other Utils -->
     <script src="~/js/search.js" asp-append-version="true"></script>
     <script src="~/js/playlist-sort.js" asp-append-version="true"></script>
     <script src="~/js/admin_notifications.js" asp-append-version="true"></script>
@@ -303,7 +341,7 @@
         // Global Auth state for JS access if needed
         window.YTM_CONFIG = {
             isAuthenticated: @(User.Identity?.IsAuthenticated == true ? "true" : "false"),
-            isPremium: @(User.Identity?.IsAuthenticated == true ? "true" : "false") // Placeholder for actual check
+            isPremium: @(User.Identity?.IsAuthenticated == true ? (await SubService.IsUserPremiumAsync(int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0"))).ToString().ToLower() : "false")
         };
     </script>
     

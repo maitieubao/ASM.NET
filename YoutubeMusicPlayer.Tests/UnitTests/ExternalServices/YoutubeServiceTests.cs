@@ -5,6 +5,7 @@ using YoutubeMusicPlayer.Infrastructure.External;
 using YoutubeMusicPlayer.Application.Interfaces;
 using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace YoutubeMusicPlayer.Tests.UnitTests.ExternalServices;
 
@@ -13,6 +14,7 @@ public class YoutubeServiceTests
 {
     private Mock<IMemoryCache> _mockCache;
     private Mock<IDeezerService> _mockDeezer;
+    private Mock<ILogger<YoutubeService>> _mockLogger;
     private YoutubeService _youtubeService;
 
     [SetUp]
@@ -20,7 +22,8 @@ public class YoutubeServiceTests
     {
         _mockCache = new Mock<IMemoryCache>();
         _mockDeezer = new Mock<IDeezerService>();
-        _youtubeService = new YoutubeService(_mockCache.Object, _mockDeezer.Object);
+        _mockLogger = new Mock<ILogger<YoutubeService>>();
+        _youtubeService = new YoutubeService(_mockCache.Object, _mockDeezer.Object, _mockLogger.Object);
     }
 
     [Test]

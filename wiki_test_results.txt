@@ -1,0 +1,26 @@
+Wiki Test Results - 4/11/2026 8:15:41 AM
+========================================
+Artist: Sơn Tùng M-TP
+Image: https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Son_Tung_M-TP_1_%282021%29.png/330px-Son_Tung_M-TP_1_%282021%29.png
+Full Bio: Nguyễn Thanh Tùng, thường được biết đến với nghệ danh Sơn Tùng M-TP, là một nam ca sĩ kiêm nhạc sĩ sáng tác bài hát, nhà sản xuất thu âm, rapper và diễn viên người Việt Nam. Nổi tiếng vì tầm ảnh hưởng sâu rộng đối với âm nhạc Việt Nam, anh được mệnh danh là "Hoàng tử V-pop" bởi Giải thưởng Âm nhạc Thế giới và BroadwayWorld, và được giới chuyên môn đánh giá là một trong những nghệ sĩ âm nhạc Việt Nam xuất sắc nhất trong thế hệ của mình.
+----------------------------------------
+Artist: Hoàng Thùy Linh
+Image: https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/HOANG_THUY_LINH.jpg/330px-HOANG_THUY_LINH.jpg
+Full Bio: Hoàng Thùy Linh là một nữ ca sĩ, diễn viên kiêm người mẫu người Việt Nam. Bắt đầu được biết đến sau khi tham gia đóng chính trong phim truyền hình Nhật ký Vàng Anh, cô chuyển hướng sang con đường ca hát chuyên nghiệp vào năm 2010.
+----------------------------------------
+Artist: Taylor Swift
+Image: https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Taylor_Swift_at_the_2023_MTV_Video_Music_Awards_%283%29.png/330px-Taylor_Swift_at_the_2023_MTV_Video_Music_Awards_%283%29.png
+Full Bio: Taylor Alison Swift là một nữ ca sĩ kiêm nhạc sĩ sáng tác bài hát người Mỹ. Cô sở hữu phong cách sáng tác nhạc mang đậm chất tự sự, khả năng biến hóa không ngừng trong nghệ thuật và tầm ảnh hưởng văn hóa sâu rộng. Swift được đánh giá là một nhân vật tiêu biểu trong nền âm nhạc đại chúng và là tâm điểm thu hút mọi sự chú ý của công chúng.
+----------------------------------------
+Artist: Imagine Dragons
+Image: https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Imagine_Dragons_2013.jpg/330px-Imagine_Dragons_2013.jpg
+Full Bio: Imagine Dragons là nhóm nhạc alternative rock Mỹ đến từ Las Vegas, Nevada gồm 4 thành viên với Dan Reynolds hát chính, Wayne Sermon chơi ghi ta, Ben McKee đánh bass và Daniel Platzman chơi trống. Âm nhạc của họ thường được so sánh với The Killers và Arcade Fire, trong khi giai điệu và nội dung trữ tình đã thường được mô tả là tích cực và lạc quan. Tên nhóm, Imagine Dragons, được tạo ra từ phép đảo chữ Anagram, nhưng ý nghĩa thật sự của nó là gì thì chỉ có những thành viên trong nhóm mới biết. Sở hữu chất nhạc cuồng nhiệt, đầy cảm xúc chân thật và khiến người khác phải nhún nhảy theo, với bài hit "It's time" (Đến lúc rồi) đã khiến cho nhóm trở thành hiện tượng âm nhạc Mỹ cuối năm 2012. Ca khúc này cũng định hình phong cách âm nhạc cho album đầu tay của nhóm "Night Visions" và được một đề cử trong hạng mục Video Rock xuất sắc nhất của Giải Video âm nhạc của MTV năm 2012.
+----------------------------------------
+Artist: Vũ Thanh Vân
+Image: https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/V%C5%A9_Thanh_V%C3%A2n.png/330px-V%C5%A9_Thanh_V%C3%A2n.png
+Full Bio: Vũ Thanh Vân là một nữ ca sĩ kiêm sáng tác nhạc người Việt Nam, được biết đến là nghệ sĩ indie nổi bật với nhiều sản phẩm được công chúng đón nhận. Cô đã phát hành EP đầu tay After Party vào năm 2021, và album đầu tay năm 2026 với tựa Cuộc đào tẩu của Vũ Thanh Vân. Hiện cô đang trực thuộc sự quản lý của InQ International.
+----------------------------------------
+Artist: Chi Pu
+Image: https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Chi_Pu_as_H%E1%BA%A1_Linh_in_She_Was_Pretty_%28M%E1%BB%91i_t%C3%ACnh_%C4%91%E1%BA%A7u_c%E1%BB%A7a_t%C3%B4i%29.jpg/330px-Chi_Pu_as_H%E1%BA%A1_Linh_in_She_Was_Pretty_%28M%E1%BB%91i_t%C3%ACnh_%C4%91%E1%BA%A7u_c%E1%BB%A7a_t%C3%B4i%29.jpg
+Full Bio: Nguyễn Thùy Chi, thường được biết đến với nghệ danh Chi Pu, là một nữ ca sĩ, diễn viên, nhân vật truyền hình kiêm người mẫu người Việt Nam. Cô được công chúng biết đến sau khi lọt vào Top 20 Miss Teen Vietnam 2009, và là hot girl Việt Nam có lượng người theo dõi và quan tâm nhiều nhất trên mạng xã hội vào năm 2015.
+----------------------------------------

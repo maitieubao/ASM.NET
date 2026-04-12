@@ -55,7 +55,9 @@ public class ArtistService : IArtistService
 
     public async Task<(IEnumerable<ArtistDto> Artists, int TotalCount)> GetPaginatedArtistsAsync(int page, int pageSize, string? searchTerm = null, CancellationToken ct = default)
     {
-        var query = _unitOfWork.Repository<Artist>().Query().Where(a => !a.IsDeleted);
+        var query = _unitOfWork.Repository<Artist>().Query()
+            .AsNoTracking()
+            .Where(a => !a.IsDeleted);
 
         if (!string.IsNullOrEmpty(searchTerm))
         {
@@ -94,53 +96,85 @@ public class ArtistService : IArtistService
             .AsNoTracking()
             .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted);
 
-        var topSongs = await songsQuery
-            .OrderByDescending(s => s.PlayCount)
-            .Take(10)
-            .ToListAsync(ct);
+        // EXECUTE ALL QUERIES IN PARALLEL USING ISOLATED SCOPES
+        var topSongsTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            return await uow.Repository<Song>().Query()
+                .AsNoTracking()
+                .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted)
+                .OrderByDescending(s => s.PlayCount)
+                .Take(10)
+                .ToListAsync(ct);
+        });
 
-        var latestSongs = await songsQuery
-            .OrderByDescending(s => s.ReleaseDate ?? DateTime.MinValue)
-            .ThenByDescending(s => s.SongId)
-            .Take(10)
-            .ToListAsync(ct);
+        var latestSongsTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            return await uow.Repository<Song>().Query()
+                .AsNoTracking()
+                .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted)
+                .OrderByDescending(s => s.ReleaseDate ?? DateTime.MinValue)
+                .ThenByDescending(s => s.SongId)
+                .Take(10)
+                .ToListAsync(ct);
+        });
 
-        var paginatedSongs = await songsQuery
-            .OrderBy(s => s.Title)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(ct);
+        var paginatedSongsTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            return await uow.Repository<Song>().Query()
+                .AsNoTracking()
+                .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted)
+                .OrderBy(s => s.Title)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+        });
 
-        var totalSongsCount = await songsQuery.CountAsync(ct);
+        var countTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            return await uow.Repository<Song>().Query()
+                .AsNoTracking()
+                .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted)
+                .CountAsync(ct);
+        });
 
-        var albums = await _unitOfWork.Repository<Album>().Query()
-            .AsNoTracking()
-            .Where(al => al.AlbumArtists.Any(aa => aa.ArtistId == id) && !al.IsDeleted)
-            .OrderByDescending(al => al.ReleaseDate ?? DateTime.MinValue)
-            .Take(20)
-            .ToListAsync(ct);
+        var albumsTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            return await uow.Repository<Album>().Query()
+                .AsNoTracking()
+                .Where(al => al.AlbumArtists.Any(aa => aa.ArtistId == id) && !al.IsDeleted)
+                .OrderByDescending(al => al.ReleaseDate ?? DateTime.MinValue)
+                .Take(20)
+                .ToListAsync(ct);
+        });
 
-        // Metadata Sync Optimization - Trigger background if needed
-        bool hasSongs = totalSongsCount > 0;
-        if (string.IsNullOrEmpty(a.Bio) || string.IsNullOrEmpty(a.AvatarUrl) || !hasSongs) 
-        {
-             await _backgroundQueue.QueueBackgroundWorkItemAsync(async sp => {
-                 var syncService = sp.GetRequiredService<IArtistService>();
-                 await syncService.SyncArtistMetadataAsync(id);
-             });
-        }
+        var relatedArtistsTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            return await (from ra in uow.Repository<Artist>().Query().AsNoTracking()
+                                 join rsa in uow.Repository<SongArtist>().Query().AsNoTracking() on ra.ArtistId equals rsa.ArtistId
+                                 join rsg in uow.Repository<SongGenre>().Query().AsNoTracking() on rsa.SongId equals rsg.SongId
+                                 where !ra.IsDeleted && ra.ArtistId != id &&
+                                       uow.Repository<SongGenre>().Query().Any(sg => sg.Song.SongArtists.Any(sa => sa.ArtistId == id) && sg.GenreId == rsg.GenreId)
+                                 select ra)
+                                 .Distinct()
+                                 .OrderByDescending(ra => ra.SubscriberCount)
+                                 .Take(6)
+                                 .ToListAsync(ct);
+        });
 
-        // Optimized Related Artists (JOIN query instead of IN clause)
-        var relatedArtists = await (from ra in _unitOfWork.Repository<Artist>().Query().AsNoTracking()
-                                   join rsa in _unitOfWork.Repository<SongArtist>().Query().AsNoTracking() on ra.ArtistId equals rsa.ArtistId
-                                   join rsg in _unitOfWork.Repository<SongGenre>().Query().AsNoTracking() on rsa.SongId equals rsg.SongId
-                                   where !ra.IsDeleted && ra.ArtistId != id &&
-                                         _unitOfWork.Repository<SongGenre>().Query().Any(sg => sg.Song.SongArtists.Any(sa => sa.ArtistId == id) && sg.GenreId == rsg.GenreId)
-                                   select ra)
-                                   .Distinct()
-                                   .OrderByDescending(ra => ra.SubscriberCount)
-                                   .Take(6)
-                                   .ToListAsync(ct);
+        await Task.WhenAll(topSongsTask, latestSongsTask, paginatedSongsTask, countTask, albumsTask, relatedArtistsTask);
+
+        var topSongs = await topSongsTask;
+        var latestSongs = await latestSongsTask;
+        var paginatedSongs = await paginatedSongsTask;
+        var totalSongsCount = await countTask;
+        var albums = await albumsTask;
+        var relatedArtists = await relatedArtistsTask;
 
         bool isFollowing = false;
         if (currentUserId.HasValue) isFollowing = await IsFollowingAsync(currentUserId.Value, id, ct);
@@ -403,6 +437,7 @@ public class ArtistService : IArtistService
         if (string.IsNullOrEmpty(query)) return Enumerable.Empty<ArtistDto>();
 
         var artists = await _unitOfWork.Repository<Artist>().Query()
+            .AsNoTracking()
             .Where(a => !a.IsDeleted && EF.Functions.Like(a.Name, $"%{query}%"))
             .OrderByDescending(a => a.SubscriberCount)
             .Take(count)

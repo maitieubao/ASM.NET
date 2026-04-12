@@ -34,18 +34,18 @@ public class DashboardService : IDashboardService
         var sevenDaysAgo = now.AddDays(-7).Date;
         var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        // Define parallel tasks
-        var totalUsersTask = repoUser.CountAsync(ct);
-        var newUsers24hTask = repoUser.CountAsync(u => u.CreatedAt >= twentyFourHoursAgo, ct);
-        var premiumUsersTask = repoUser.CountAsync(u => u.IsPremium, ct);
-        var totalSongsTask = repoSong.CountAsync(s => !s.IsDeleted, ct);
-        var totalPlaylistsTask = repoPlaylist.CountAsync(p => !p.IsDeleted, ct);
-        var totalPlaysTask = repoHistory.CountAsync(ct);
-        var pendingReportsTask = repoReport.CountAsync(r => r.Status == ReportStatus.Pending, ct);
-        var totalRevenueTask = repoPayment.Where(p => p.Status == PaymentStatus.Success).SumAsync(p => p.Amount, ct);
-        var monthlyRevenueTask = repoPayment.Where(p => p.Status == PaymentStatus.Success && p.PaymentDate >= startOfMonth).SumAsync(p => p.Amount, ct);
+        // Execute parallel-unsafe queries sequentially to avoid DbContext concurrency issues
+        var totalUsers = await repoUser.CountAsync(ct);
+        var newUsers24h = await repoUser.CountAsync(u => u.CreatedAt >= twentyFourHoursAgo, ct);
+        var premiumUsers = await repoUser.CountAsync(u => u.IsPremium, ct);
+        var totalSongs = await repoSong.CountAsync(s => !s.IsDeleted, ct);
+        var totalPlaylists = await repoPlaylist.CountAsync(p => !p.IsDeleted, ct);
+        var totalPlays = await repoHistory.CountAsync(ct);
+        var pendingReports = await repoReport.CountAsync(r => r.Status == ReportStatus.Pending, ct);
+        var totalRevenue = await repoPayment.Where(p => p.Status == PaymentStatus.Success).SumAsync(p => p.Amount, ct);
+        var monthlyRevenue = await repoPayment.Where(p => p.Status == PaymentStatus.Success && p.PaymentDate >= startOfMonth).SumAsync(p => p.Amount, ct);
 
-        var recentPaymentsTask = repoPayment
+        var recentPayments = await repoPayment
             .Where(p => p.Status == PaymentStatus.Success)
             .OrderByDescending(p => p.PaymentDate)
             .Take(10)
@@ -60,7 +60,7 @@ public class DashboardService : IDashboardService
             })
             .ToListAsync(ct);
 
-        var topSongsTask = repoSong
+        var topSongs = await repoSong
             .Where(s => !s.IsDeleted)
             .OrderByDescending(s => s.PlayCount)
             .Take(10)
@@ -74,7 +74,7 @@ public class DashboardService : IDashboardService
             })
             .ToListAsync(ct);
 
-        var topArtistsTask = repoSongArtist
+        var topArtists = await repoSongArtist
             .Include(sa => sa.Song)
             .Include(sa => sa.Artist)
             .GroupBy(sa => new { sa.ArtistId, sa.Artist.Name })
@@ -88,7 +88,7 @@ public class DashboardService : IDashboardService
             .Take(10)
             .ToListAsync(ct);
 
-        var playHistoryTask = repoHistory
+        var playHistory = await repoHistory
             .Where(h => h.ListenedAt >= sevenDaysAgo)
             .GroupBy(h => h.ListenedAt.Date)
             .Select(g => new DailyPlayCountDto
@@ -99,7 +99,7 @@ public class DashboardService : IDashboardService
             .OrderBy(h => h.Date)
             .ToListAsync(ct);
 
-        var registrationHistoryTask = repoUser
+        var registrationHistory = await repoUser
             .Where(u => u.CreatedAt >= sevenDaysAgo)
             .GroupBy(u => u.CreatedAt.Date)
             .Select(g => new DailyPlayCountDto
@@ -110,31 +110,22 @@ public class DashboardService : IDashboardService
             .OrderBy(u => u.Date)
             .ToListAsync(ct);
 
-        // Wait for all tasks to complete parallelly
-        await Task.WhenAll(
-            totalUsersTask, newUsers24hTask, premiumUsersTask, 
-            totalSongsTask, totalPlaylistsTask, totalPlaysTask, 
-            pendingReportsTask, totalRevenueTask, monthlyRevenueTask,
-            recentPaymentsTask, topSongsTask, topArtistsTask, 
-            playHistoryTask, registrationHistoryTask
-        );
-
         return new DashboardDto
         {
-            TotalUsers = await totalUsersTask,
-            NewUsers24h = await newUsers24hTask,
-            PremiumUsersCount = await premiumUsersTask,
-            TotalSongs = await totalSongsTask,
-            TotalPlaylists = await totalPlaylistsTask,
-            TotalPlays = await totalPlaysTask,
-            PendingReports = await pendingReportsTask,
-            TotalRevenue = await totalRevenueTask,
-            MonthlyRevenue = await monthlyRevenueTask,
-            RecentPayments = await recentPaymentsTask,
-            TopSongs = await topSongsTask,
-            TopArtists = await topArtistsTask,
-            PlayHistory = await playHistoryTask,
-            RegistrationHistory = await registrationHistoryTask
+            TotalUsers = totalUsers,
+            NewUsers24h = newUsers24h,
+            PremiumUsersCount = premiumUsers,
+            TotalSongs = totalSongs,
+            TotalPlaylists = totalPlaylists,
+            TotalPlays = totalPlays,
+            PendingReports = pendingReports,
+            TotalRevenue = totalRevenue,
+            MonthlyRevenue = monthlyRevenue,
+            RecentPayments = recentPayments,
+            TopSongs = topSongs,
+            TopArtists = topArtists,
+            PlayHistory = playHistory,
+            RegistrationHistory = registrationHistory
         };
     }
 

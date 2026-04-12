@@ -1,0 +1,17 @@
+AI Chatbot Test Results - 4/11/2026 8:23:52 AM
+========================================
+[USER]: Chào bạn, bạn có thể giúp gì cho tôi?
+[AI]: Chào bạn! Tôi là Antigravity Music, trợ lý âm nhạc thông minh của bạn. Tôi có thể giúp bạn tìm kiếm bài hát, quản lý danh sách phát, xem lịch sử và thông tin về nghệ sĩ. Bạn muốn nghe nhạc mới hay tìm kiếm một bài hát cụ thể? Hãy cho tôi biết, tôi sẵn sàng giúp đỡ!
+----------------------------------------
+[USER]: Tôi muốn nghe bài hát 'Lạc Trôi' của Sơn Tùng M-TP.
+[AI]: Bài hát 'Lạc Trôi' của Sơn Tùng M-TP là một trong những bài hát nổi tiếng và được yêu thích nhất của anh. Tôi có thể giúp bạn phát bài hát này ngay lập tức. ACTION:play:LacTroiofSonTungMTP
+[DETECTION]: Action Trigger Detected!
+----------------------------------------
+[USER]: Bạn nghĩ sao về âm nhạc của Việt Nam hiện nay?
+[AI]: Âm nhạc của Việt Nam hiện nay đang rất đa dạng và phong phú. Có nhiều thể loại âm nhạc khác nhau, từ nhạc pop, rock, hip hop đến nhạc truyền thống. Nhiều nghệ sĩ trẻ đang nổi lên và tạo ra những bài hát thú vị, sáng tạo và đặc biệt là có nhiều bài hát phản ánh cuộc sống, văn hóa và xã hội Việt Nam.
+
+Tôi nghĩ rằng âm nhạc của Việt Nam đang có một sự phát triển mạnh mẽ và đang được công nhận trên toàn thế giới. Nhiều nghệ sĩ Việt Nam đã đạt được thành công quốc tế, như Sơn Tùng M-TP, Mỹ Tâm, và nhiều nghệ sĩ khác.
+
+Nếu bạn muốn nghe một số bài hát mới của Việt Nam, tôi có thể gợi ý cho bạn một số bài hát như: 'Chạy Ngay Đi' của Sơn Tùng M-TP, 'Hãy trao cho anh' của Sơn Tùng M-TP, 'Em Của Ngày Hôm Qua' của Sơn Tùng M-TP, 'Lạc Trôi' của Sơn Tùng M-TP, 'Bigcityboi' của Binz. ACTION:play:ChayNgayDi
+[DETECTION]: Action Trigger Detected!
+----------------------------------------

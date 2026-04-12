@@ -167,6 +167,12 @@ public class AppDbContext : DbContext
             foreach (var property in entity.GetProperties())
             {
                 property.SetColumnName(property.GetColumnName().ToLower());
+
+                // 3. Standardize DateTime to 'timestamp with time zone'
+                if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
+                {
+                    property.SetColumnType("timestamp with time zone");
+                }
             }
         }
     }

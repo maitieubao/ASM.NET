@@ -39,11 +39,13 @@
 
     <!-- 2. ACTION BAR -->
     <div class="container-fluid px-5 py-4 d-flex align-items-center gap-4">
-        <button class="btn-play-rounded shadow-accent" onclick="playPlaylist(@Json.Serialize(Model.Songs))">
+        <button class="btn-play-rounded shadow-accent" onclick="playPlaylist(@Json.Serialize(Model.Songs), false, '@Model.CoverImageUrl')">
             <i class="fa-solid fa-play"></i>
         </button>
         <button class="btn btn-outline-light rounded-pill px-4 fw-bold uppercase">Lưu vào thư viện</button>
-        <button class="btn btn-link text-white-50 p-2"><i class="fa-solid fa-download fs-5"></i></button>
+        <button class="btn btn-link text-white-50 p-2" onclick="toastr.info('Tính năng tải toàn bộ album đang được phát triển.')" title="Tải xuống toàn bộ">
+            <i class="fa-solid fa-download fs-5"></i>
+        </button>
         <button class="btn btn-link text-white-50 p-2"><i class="fa-solid fa-ellipsis fs-4"></i></button>
     </div>
 
@@ -65,7 +67,9 @@
                     {
                         var isMatching = string.IsNullOrEmpty(song.YoutubeVideoId);
                         <tr class="track-row group @(isMatching ? "track-matching" : "")" 
-                            onclick="@(isMatching ? "showSyncingMessage()" : $"playSingleTrack('{song.YoutubeVideoId}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.Title)}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.AuthorName)}', '{song.ThumbnailUrl}')")">
+                            onclick="@(isMatching 
+                                ? $"playAnyTrack('{System.Web.HttpUtility.JavaScriptStringEncode(song.Title)}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.AuthorName)}', '{song.ThumbnailUrl}')" 
+                                : $"playSingleTrack('{song.YoutubeVideoId}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.Title)}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.AuthorName)}', '{song.ThumbnailUrl}')")">
                             <td class="text-center text-dim">
                                 <span class="track-number group-hover-hide">@i</span>
                                 <i class="fa-solid fa-play track-play-icon group-hover-show text-white"></i>
@@ -92,8 +96,11 @@
                                         <i class="fa-regular fa-heart"></i>
                                     </button>
                                     <span class="text-dim small">@(song.Duration.HasValue ? TimeSpan.FromSeconds(song.Duration.Value).ToString(@"m\:ss") : "--:--")</span>
-                                    <button class="btn-icon group-hover-visible" onclick="event.stopPropagation(); openAddToPlaylist(@song.SongId, '@song.YoutubeVideoId')">
-                                        <i class="fa-solid fa-ellipsis"></i>
+                                    <button class="btn-icon" title="Thêm vào Playlist" onclick="event.stopPropagation(); showAddToPlaylistModal('@song.YoutubeVideoId')">
+                                        <i class="fa-solid fa-folder-plus text-accent"></i>
+                                    </button>
+                                    <button class="btn-icon" title="Tải xuống" onclick="event.stopPropagation(); gracefulDownload('@song.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(song.Title)')">
+                                        <i class="fa-solid fa-download"></i>
                                     </button>
                                 </div>
                             </td>
@@ -163,6 +170,14 @@
                     }
                 }
             } catch(e) {}
+        }
+
+        function gracefulDownload(videoId, title) {
+            if (window.YTM_CONFIG && window.YTM_CONFIG.isPremium) {
+                window.location.href = `/Subscription/Download?youtubeId=${videoId}&title=${encodeURIComponent(title)}`;
+            } else {
+                toastr.warning("Chỉ hội viên Premium mới có thể tải nhạc. Hãy nâng cấp ngay!");
+            }
         }
     </script>
 }

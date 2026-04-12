@@ -17,6 +17,8 @@ public class HomeFacade : IHomeFacade
     private readonly IYoutubeService _youtubeService;
     private readonly IAlbumService _albumService;
     private readonly IRecommendationService _recommendationService;
+    private readonly IDeezerService _deezerService;
+    private readonly IITunesService _itunesService;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<HomeFacade> _logger;
 
@@ -28,6 +30,8 @@ public class HomeFacade : IHomeFacade
         IYoutubeService youtubeService,
         IAlbumService albumService,
         IRecommendationService recommendationService,
+        IDeezerService deezerService,
+        IITunesService itunesService,
         IServiceScopeFactory scopeFactory,
         ILogger<HomeFacade> logger)
     {
@@ -38,6 +42,8 @@ public class HomeFacade : IHomeFacade
         _youtubeService = youtubeService;
         _albumService = albumService;
         _recommendationService = recommendationService;
+        _deezerService = deezerService;
+        _itunesService = itunesService;
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
@@ -48,40 +54,60 @@ public class HomeFacade : IHomeFacade
         int hour = DateTime.Now.Hour;
         model.Greeting = hour < 12 ? "Chào buổi sáng" : (hour < 18 ? "Chào buổi chiều" : "Chào buổi tối");
 
-        // 1. Fetch Artists and Genres (Parallel DB Queries using Scopes)
-        // Note: Sequential is also fine for small data, but let's fulfill the user request for parallelism
-        using (var scope1 = _scopeFactory.CreateScope())
-        using (var scope2 = _scopeFactory.CreateScope())
-        {
-            var artistSvc = scope1.ServiceProvider.GetRequiredService<IArtistService>();
-            var genreSvc = scope2.ServiceProvider.GetRequiredService<IGenreService>();
+        // FIRE ALL TASKS CONCURRENTLY
+        var tasks = new List<Task>();
 
-            var artistTask = artistSvc.GetPaginatedArtistsAsync(1, 50);
-            var genreTask = genreSvc.GetAllGenresAsync();
+        // Task 1: Artists (Isolated Scope)
+        var artistTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
+            var result = await artistSvc.GetPaginatedArtistsAsync(1, 50);
+            model.TopArtists = result.Artists.OrderBy(_ => Random.Shared.Next()).Take(12).ToList();
+        });
+        tasks.Add(artistTask);
 
-            await Task.WhenAll(artistTask, genreTask);
+        // Task 2: Genres (Isolated Scope)
+        var genreTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var genreSvc = scope.ServiceProvider.GetRequiredService<IGenreService>();
+            var result = await genreSvc.GetAllGenresAsync();
+            model.Genres = result.OrderBy(_ => Random.Shared.Next()).ToList();
+        });
+        tasks.Add(genreTask);
 
-            var random = Random.Shared;
-            model.TopArtists = (await artistTask).Artists.OrderBy(_ => random.Next()).Take(12).ToList();
-            model.Genres = (await genreTask).OrderBy(_ => random.Next()).ToList();
-        }
-
+        // Task 3: User Personalization (Isolated Scopes)
         if (userId.HasValue)
         {
-            model.FollowedArtists = await _artistService.GetFollowedArtistsAsync(userId.Value);
-            var recentHistoryIds = await _interactionService.GetRecentListeningHistoryAsync(userId.Value, 6);
-            
-            if (recentHistoryIds != null && recentHistoryIds.Any())
-            {
-                var historySongs = await _songService.GetSongsByIdsAsync(recentHistoryIds);
-                model.RecentListened = historySongs.Select(s => new YoutubeVideoDetails {
-                    YoutubeVideoId = s.YoutubeVideoId,
-                    Title = s.Title,
-                    ThumbnailUrl = s.ThumbnailUrl,
-                    AuthorName = s.AuthorName ?? "Nghệ sĩ"
-                }).ToList();
-            }
+            // 3.1 Followed Artists
+            var followedTask = Task.Run(async () => {
+                using var scope = _scopeFactory.CreateScope();
+                var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
+                model.FollowedArtists = await artistSvc.GetFollowedArtistsAsync(userId.Value);
+            });
+            tasks.Add(followedTask);
+
+            // 3.2 Listening History & Recent Listened
+            var historyTask = Task.Run(async () => {
+                using var scope = _scopeFactory.CreateScope();
+                var interactionSvc = scope.ServiceProvider.GetRequiredService<IInteractionService>();
+                var songSvc = scope.ServiceProvider.GetRequiredService<ISongService>();
+
+                var historyIds = await interactionSvc.GetRecentListeningHistoryAsync(userId.Value, 6);
+                if (historyIds != null && historyIds.Any())
+                {
+                    var historySongs = await songSvc.GetSongsByIdsAsync(historyIds);
+                    model.RecentListened = historySongs.Select(s => new YoutubeVideoDetails {
+                        YoutubeVideoId = s.YoutubeVideoId,
+                        Title = s.Title,
+                        ThumbnailUrl = s.ThumbnailUrl,
+                        AuthorName = s.AuthorName ?? "Nghệ sĩ"
+                    }).ToList();
+                }
+            });
+            tasks.Add(historyTask);
         }
+
+        await Task.WhenAll(tasks);
         return model;
     }
 
@@ -166,38 +192,51 @@ public class HomeFacade : IHomeFacade
     {
         if (userId.HasValue)
         {
-            await _interactionService.RecordSearchHistoryAsync(userId.Value, query);
+            // Record search history in background with isolated scope to prevent DbContext collisions
+            _ = Task.Run(async () => {
+                try {
+                    using var scope = _scopeFactory.CreateScope();
+                    var interactionSvc = scope.ServiceProvider.GetRequiredService<IInteractionService>();
+                    await interactionSvc.RecordSearchHistoryAsync(userId.Value, query);
+                } catch { /* Silent fail for history tracking */ }
+            });
         }
 
-        string optimizedQuery = query;
-        // Search Logic: Just use the raw query for YouTube to get default behavior as requested
+        _logger.LogInformation("[SEARCH] Initiating ULTIMATE PARALLEL search for query: {Query}", query);
         
-        // Parallel Search: YouTube + Parallel DB Tasks (Scope-based)
-        var ytTask = _youtubeService.SearchVideosAsync(optimizedQuery);
+        // 1. YouTube Search
+        var ytTask = _youtubeService.SearchVideosAsync(query);
         
-        IEnumerable<ArtistDto> artistResults;
-        IEnumerable<AlbumDto> albumResults;
+        // 2. Internal Search (Isolated Scopes for Artist and Album)
+        var artistSearchTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
+            return await artistSvc.SearchArtistsAsync(query);
+        });
 
-        using (var scope1 = _scopeFactory.CreateScope())
-        using (var scope2 = _scopeFactory.CreateScope())
-        {
-            var artistSvc = scope1.ServiceProvider.GetRequiredService<IArtistService>();
-            var albumSvc = scope2.ServiceProvider.GetRequiredService<IAlbumService>();
+        var albumSearchTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var albumSvc = scope.ServiceProvider.GetRequiredService<IAlbumService>();
+            return await albumSvc.SearchAlbumsAsync(query);
+        });
 
-            var artistTask = artistSvc.SearchArtistsAsync(query);
-            var albumTask = albumSvc.SearchAlbumsAsync(query);
+        // 3. External Search (Deezer & iTunes)
+        var deezerTask = _deezerService.SearchAlbumsAsync(query, 5);
+        var itunesTask = _itunesService.SearchAlbumsAsync(query, 5);
 
-            await Task.WhenAll(ytTask, artistTask, albumTask);
-
-            artistResults = await artistTask;
-            albumResults = await albumTask;
-        }
+        // WAIT FOR EVERYTHING AT ONCE
+        await Task.WhenAll(ytTask, artistSearchTask, albumSearchTask, deezerTask, itunesTask);
 
         var ytResults = await ytTask;
+        var internalArtists = await artistSearchTask;
+        var internalAlbums = await albumSearchTask;
+        var deezerAlbums = await deezerTask;
+        var itunesAlbums = await itunesTask;
+
         var finalResults = new List<SearchResultDto>();
 
         // Add artists
-        finalResults.AddRange(artistResults.Select(a => new SearchResultDto {
+        finalResults.AddRange(internalArtists.Select(a => new SearchResultDto {
             Title = a.Name,
             Author = "Nghệ sĩ",
             Thumbnail = a.AvatarUrl ?? "https://ui-avatars.com/api/?name=" + a.Name,
@@ -206,25 +245,76 @@ public class HomeFacade : IHomeFacade
             IsVerified = a.IsVerified
         }));
 
-        // Add albums
-        finalResults.AddRange(albumResults.Take(5).Select(a => new SearchResultDto {
+        // Add internal albums
+        finalResults.AddRange(internalAlbums.Take(3).Select(a => new SearchResultDto {
             Title = a.Title,
-            Author = "Album", // AlbumDto might not have AuthorName yet, use default
+            Author = "Album",
             Thumbnail = a.CoverImageUrl ?? string.Empty,
             Type = "Album",
-            AlbumId = a.AlbumId
+            AlbumId = a.AlbumId,
+            Source = "Internal"
         }));
 
-        // Add songs (No filtering for global search as per user request)
-        finalResults.AddRange(ytResults
-            .Select(v => new SearchResultDto {
-                Title = v.Title,
-                Author = v.AuthorName,
-                Thumbnail = v.ThumbnailUrl ?? string.Empty,
-                Type = "Song",
-                VideoId = v.YoutubeVideoId
-            }));
+        // Add Deezer Albums (Treat Singles as Songs)
+        foreach (var a in deezerAlbums)
+        {
+            if (a.AlbumType?.ToLower() == "single")
+            {
+                finalResults.Add(new SearchResultDto {
+                    Title = a.Title,
+                    Author = a.ArtistName ?? "Nghệ sĩ",
+                    Thumbnail = a.CoverImageUrl ?? string.Empty,
+                    Type = "Song",
+                    ExternalId = a.DeezerId,
+                    Source = "Deezer"
+                });
+            }
+            else
+            {
+                finalResults.Add(new SearchResultDto {
+                    Title = a.Title,
+                    Author = a.ArtistName ?? "Nghệ sĩ",
+                    Thumbnail = a.CoverImageUrl ?? string.Empty,
+                    Type = "Album",
+                    ExternalId = a.DeezerId,
+                    Source = "Deezer"
+                });
+            }
+        }
+
+        // Add iTunes Albums
+        finalResults.AddRange(itunesAlbums.Select(a => new SearchResultDto {
+            Title = a.CollectionName,
+            Author = a.ArtistName,
+            Thumbnail = a.ArtworkUrl,
+            Type = "Album", // iTunes API "album" matches are usually albums, but we could lookup tracks count if needed. For now, keep as Album or check single track info if available.
+            ExternalId = a.CollectionId,
+            Source = "iTunes"
+        }));
+
+        // Add songs
+        finalResults.AddRange(ytResults.Select(v => new SearchResultDto {
+            Title = v.Title,
+            Author = v.AuthorName,
+            Thumbnail = v.ThumbnailUrl ?? string.Empty,
+            Type = "Song",
+            VideoId = v.YoutubeVideoId
+        }));
 
         return finalResults;
+    }
+    public async Task<IEnumerable<SongDto>> GetSongsByArtistAsync(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return Enumerable.Empty<SongDto>();
+
+        // We search for the artist by name (case-insensitive)
+        var artist = await _artistService.SearchArtistsAsync(name, 1);
+        var artistDto = artist.FirstOrDefault();
+
+        if (artistDto == null) return Enumerable.Empty<SongDto>();
+
+        // Use the existing GetArtistByIdAsync which returns top songs
+        var details = await _artistService.GetArtistByIdAsync(artistDto.ArtistId);
+        return details?.TopSongs ?? Enumerable.Empty<SongDto>();
     }
 }

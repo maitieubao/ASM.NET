@@ -143,3 +143,30 @@
 .extra-small { font-size: 0.7rem; }
 .cursor-pointer { cursor: pointer; }
 .inset-0 { top: 0; left: 0; right: 0; bottom: 0; }
+
+/* PLAYLIST MODAL SELECTION */
+.playlist-selection-item {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    transition: background 0.2s ease;
+}
+
+.playlist-selection-item:last-child {
+    border-bottom: none;
+}
+
+.playlist-selection-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.playlist-selection-item .form-check-input {
+    width: 1.2rem;
+    height: 1.2rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+}
+
+.playlist-selection-item .form-check-input:checked {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}

@@ -23,4 +23,5 @@ public interface ISongService
     Task EnrichSongAsync(int songId, CancellationToken ct = default);
     Task<bool> TogglePremiumStatusAsync(int id, CancellationToken ct = default);
     Task<bool> ToggleExplicitStatusAsync(int id, CancellationToken ct = default);
+    Task<(string? Lyrics, string? Bio)> GetLyricsAndBioAsync(string videoId, CancellationToken ct = default);
 }

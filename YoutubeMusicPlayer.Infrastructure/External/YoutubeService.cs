@@ -10,6 +10,10 @@ using YoutubeExplode.Search;
 using YoutubeExplode.Videos;
 using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Application.Common;
+using YoutubeMusicPlayer.Application.DTOs;
+using YoutubeExplode.Videos.ClosedCaptions;
+using Microsoft.Extensions.Logging;
+
 
 namespace YoutubeMusicPlayer.Infrastructure.External;
 
@@ -19,11 +23,15 @@ public class YoutubeService : IYoutubeService
     private readonly YoutubeClient _youtube;
     private readonly IMemoryCache _cache;
     private readonly IDeezerService _deezerService;
+    private readonly ILogger<YoutubeService> _logger;
 
-    public YoutubeService(IMemoryCache cache, IDeezerService deezerService)
+
+    public YoutubeService(IMemoryCache cache, IDeezerService deezerService, ILogger<YoutubeService> logger)
     {
         _cache = cache;
         _deezerService = deezerService;
+        _logger = logger;
+
 
         // ISOLATED HTTP CLIENT WITH MODERN HEADERS (Chrome 121)
         _httpClient = new HttpClient();
@@ -89,40 +97,50 @@ public class YoutubeService : IYoutubeService
 
     private async Task<string> GetUrlInternalAsync(string youtubeId, string cacheKey, bool isPremium)
     {
-        // Sử dụng GetManifestAsync với retry logic nội bộ nếu cần
+        _logger.LogInformation("[YoutubeService] Resolving manifest for: {VideoId}", youtubeId);
+        
+        // Use exponential backoff for manifest fetching if needed, but for now simple try/catch
         var manifest = await _youtube.Videos.Streams.GetManifestAsync(youtubeId);
         
-        // Ưu tiên Audio-only streams với Bitrate tốt nhất
-        var audioStreams = manifest.GetAudioOnlyStreams();
+        // Priority: M4A Audio-only (best bit rate) -> Other Audio-only -> Best available
+        var audioStreams = manifest.GetAudioOnlyStreams().ToList();
         
-        // Lọc bỏ các stream có thể gây lỗi hoặc không phù hợp
-        var streamOptions = audioStreams
-            .OrderByDescending(s => s.Bitrate)
-            .ToList();
+        IStreamInfo? selectedStream = audioStreams
+            .OrderByDescending(s => s.Container.Name == "m4a") // Favor m4a for stability in browsers
+            .ThenByDescending(s => s.Bitrate)
+            .FirstOrDefault();
         
-        if (!streamOptions.Any()) throw new Exception("Không tìm thấy luồng âm thanh nào khả dụng.");
-
-        // Lựa chọn chất lượng stream dựa trên gói thành viên
-        IStreamInfo selectedStream = streamOptions.First(); 
-        
-        if (!isPremium && streamOptions.Count > 1)
+        if (selectedStream == null)
         {
-            // Đối với người dùng free, chọn stream ở giữa để tiết kiệm băng thông và tăng độ ổn định
-            int index = Math.Min(1, streamOptions.Count - 1); 
-            selectedStream = streamOptions[index];
+            _logger.LogWarning("[YoutubeService] No audio-only streams found for {VideoId}. Falling back to muxed.", youtubeId);
+            selectedStream = manifest.GetMuxedStreams().OrderByDescending(s => s.VideoQuality).FirstOrDefault();
         }
 
+        if (selectedStream == null) throw new Exception("Không tìm thấy luồng âm thanh nào khả dụng.");
+
         var url = selectedStream.Url;
-        Console.WriteLine($"[YoutubeService] Thành công! ID: {youtubeId}, Bitrate: {selectedStream.Bitrate}, Size: {selectedStream.Size}");
+        _logger.LogInformation("[YoutubeService] Selected stream: {Container} ({Bitrate}) for {VideoId}", selectedStream.Container, selectedStream.Bitrate, youtubeId);
         
-        // Cache link trong 60 phút (link YouTube thường hết hạn sau 6h, nhưng 60p là an toàn nhất)
-        _cache.Set(cacheKey, url, TimeSpan.FromHours(1));
+        // Cache link (Standardized to 30 mins for safety against signature expiry)
+        _cache.Set(cacheKey, url, TimeSpan.FromMinutes(30));
         return url;
     }
 
     public async Task<YoutubeVideoDetails> GetVideoDetailsAsync(string videoUrl)
     {
-        string cacheKey = $"details_{videoUrl}";
+        return await GetVideoDetailsInternalAsync(videoUrl, true);
+    }
+
+    public async Task<YoutubeVideoDetails> GetBasicVideoDetailsAsync(string videoUrl)
+    {
+        return await GetVideoDetailsInternalAsync(videoUrl, false);
+    }
+
+    private async Task<YoutubeVideoDetails> GetVideoDetailsInternalAsync(string videoUrl, bool enrich)
+    {
+        string cacheType = enrich ? "details" : "basic";
+        string cacheKey = $"{cacheType}_{videoUrl}";
+        
         if (_cache.TryGetValue(cacheKey, out YoutubeVideoDetails? cachedDetails))
         {
             return cachedDetails!;
@@ -155,9 +173,20 @@ public class YoutubeService : IYoutubeService
             Genre = genre
         };
 
-        details = await EnrichVideoDetailsAsync(details);
+        if (enrich)
+        {
+            details = await EnrichVideoDetailsAsync(details);
+        }
+        else 
+        {
+            // Basic enrichment: Parse artists and titles but skip external API calls (Deezer/AI Tags)
+            var parsed = ParseTitle(details.Title, details.AuthorName);
+            details.CleanedTitle = CleanTitleString(parsed.Song);
+            details.CleanedArtist = NormalizeArtist(parsed.Artist);
+            details.TrackType = DetectTrackType(details.Title);
+        }
 
-        _cache.Set(cacheKey, details, TimeSpan.FromHours(1));
+        _cache.Set(cacheKey, details, TimeSpan.FromHours(enrich ? 1 : 24));
         return details;
     }
 
@@ -314,7 +343,7 @@ public class YoutubeService : IYoutubeService
         return (author, title);
     }
 
-    private bool IsTooSimilar(string s1, string s2, double threshold = 0.5)
+    public bool IsTooSimilar(string s1, string s2, double threshold = 0.5)
     {
         string Clean(string s) => System.Text.RegularExpressions.Regex.Replace(s.ToLower(), @"\(.*?\)|\[.*?\]|official|music|video|audio|lyrics|mv| - topic|vevo", "").Trim();
         
@@ -341,15 +370,22 @@ public class YoutubeService : IYoutubeService
     public bool IsCompilation(YoutubeVideoDetails details)
     {
         var title = details.Title.ToLower();
-        bool hasCompKeywords = title.Contains("tổng hợp") || title.Contains("full album") || 
-                               title.Contains("nonstop") || title.Contains("mix") || 
-                               title.Contains("collection") || title.Contains("best of") ||
-                               title.Contains("tuyển tập") || title.Contains("playlist") ||
-                               title.Contains("tổng hợp nhạc") || title.Contains("nhạc tuyển tập");
+        
+        // Comprehensive list of ranking/countdown/collection keywords
+        var rankingKeywords = new[] { 
+            "top 10", "top 20", "top 50", "top 100", 
+            "bxh", "bảng xếp hạng", "chart", "ranking", "countdown",
+            "top bài hát", "top music", "top hits", "tổng hợp",
+            "full album", "nonstop", "mix", "collection", "best of",
+            "tuyển tập", "playlist", "tổng hợp nhạc", "nhạc tuyển tập"
+        };
+
+        bool isRankingOrComp = rankingKeywords.Any(k => title.Contains(k));
                                
+        // If it's a ranking or longer than 7 mins, it's a compilation/non-single-track
         if (details.Duration.HasValue && details.Duration.Value.TotalMinutes >= 7.0) return true;
         
-        return hasCompKeywords;
+        return isRankingOrComp;
     }
 
     public bool IsKaraoke(YoutubeVideoDetails details)
@@ -366,25 +402,34 @@ public class YoutubeService : IYoutubeService
     private bool IsLikelyMusicCore(string title, string author, TimeSpan? duration, bool searchCompilations = false)
     {
         var t = title.ToLower();
-        bool hasCompKeywords = t.Contains("tổng hợp") || t.Contains("full album") || 
-                               t.Contains("nonstop") || t.Contains("mix") || 
-                               t.Contains("collection") || t.Contains("best of") ||
-                               t.Contains("tuyển tập") || t.Contains("playlist") ||
-                               t.Contains("tổng hợp nhạc") || t.Contains("nhạc tuyển tập");
+        
+        var rankingKeywords = new[] { 
+            "top 10", "top 20", "top 50", "top 100", 
+            "bxh", "bảng xếp hạng", "chart", "ranking", "countdown",
+            "top bài hát", "top music", "top hits", "tổng hợp",
+            "full album", "nonstop", "mix", "collection", "best of",
+            "tuyển tập", "playlist", "tổng hợp nhạc", "nhạc tuyển tập"
+        };
 
         if (searchCompilations)
         {
-            // For compilations, we WANT long videos or compilation keywords
+            // For explicitly searching albums/compilations, we allow them
             return true;
         }
 
-        // For regular sections (Discovery, Charts), we want single tracks.
-        if (duration.HasValue && duration.Value.TotalMinutes > 7.0) return false; 
+        // For regular discovery/search, strictly exclude non-single tracks
+        // INCREASED LIMIT: Pop MVs with long intros can be up to 10 mins (e.g. Son Tung M-TP, Jack)
+        if (duration.HasValue && duration.Value.TotalMinutes > 10.0 && !t.Contains("official") && !t.Contains("mv")) return false; 
         
-        // RELIABILITY GATE: If keywords say it's a compilation, it's NOT a single track
-        if (hasCompKeywords) return false;
+        if (rankingKeywords.Any(k => t.Contains(k))) 
+        {
+            // Rare exception: if the title is just "Top of the World" (short and common song names)
+            // But usually countdowns have "Top [Number]" or "BXH"
+            if (t.Contains("top") && t.Length < 25) return true;
+            return false;
+        }
         
-        if (t.Contains("karaoke") || t.Contains("beat") || t.Contains("không lời")) return false;
+        if (t.Contains("karaoke") || t.Contains("beat") || t.Contains("không lời") || t.Contains("tách lời")) return false;
         
         return true;
     }
@@ -523,6 +568,89 @@ public class YoutubeService : IYoutubeService
         if (v.Genre != "General") tags.Add(v.Genre);
 
         return tags.ToList();
+    }
+    public async Task<List<CaptionTrackDto>> GetAvailableCaptionTracksAsync(string videoId)
+    {
+        try
+        {
+            var trackManifest = await _youtube.Videos.ClosedCaptions.GetManifestAsync(videoId);
+            if (trackManifest == null) return new List<CaptionTrackDto>();
+
+            // The user wants primary ones: Vietnamese, English, and Auto-generated
+            return trackManifest.Tracks
+                .Where(t => t.Language.Code == "vi" || t.Language.Code == "en" || t.IsAutoGenerated)
+                .Select(t => new CaptionTrackDto
+                {
+                    LanguageCode = t.Language.Code,
+                    LanguageName = t.Language.Name,
+                    IsAutoGenerated = t.IsAutoGenerated
+                })
+                .GroupBy(x => x.LanguageCode) // Avoid duplicates if any
+                .Select(g => g.First())
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[YoutubeService] Error listing captions for {VideoId}", videoId);
+            return new List<CaptionTrackDto>();
+        }
+    }
+
+    public async Task<Application.Interfaces.ClosedCaptionTrack?> GetClosedCaptionsAsync(string videoId, string? langCode = null)
+    {
+        try
+        {
+            var trackManifest = await _youtube.Videos.ClosedCaptions.GetManifestAsync(videoId);
+            if (trackManifest == null || !trackManifest.Tracks.Any()) 
+            {
+                _logger.LogWarning("[YoutubeService] No caption tracks found for {VideoId}", videoId);
+                return null;
+            }
+            
+            ClosedCaptionTrackInfo? trackInfo = null;
+
+            if (!string.IsNullOrEmpty(langCode))
+            {
+                trackInfo = trackManifest.TryGetByLanguage(langCode);
+            }
+
+            if (trackInfo == null)
+            {
+                // Fallback to priority logic
+                trackInfo = trackManifest.TryGetByLanguage("vi") 
+                             ?? trackManifest.TryGetByLanguage("en")
+                             ?? trackManifest.Tracks.FirstOrDefault(t => t.IsAutoGenerated)
+                             ?? trackManifest.Tracks.FirstOrDefault();
+            }
+
+            if (trackInfo == null) return null;
+
+            _logger.LogInformation("[YoutubeService] Selected track: {Language} (Auto: {Auto}) for {VideoId}", trackInfo.Language.Name, trackInfo.IsAutoGenerated, videoId);
+
+            var track = await _youtube.Videos.ClosedCaptions.GetAsync(trackInfo);
+            
+            var lines = track.Captions.Select(c => new TimedLyricLine
+            {
+                StartTime = c.Offset.TotalSeconds,
+                Duration = c.Duration.TotalSeconds,
+                Text = c.Text
+            }).ToList();
+
+            var lyrics = string.Join("\n", lines.Select(l => l.Text));
+            
+            return new Application.Interfaces.ClosedCaptionTrack
+            {
+                Text = lyrics,
+                Language = trackInfo.Language.Name,
+                IsAutoGenerated = trackInfo.IsAutoGenerated,
+                Lines = lines
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[YoutubeService] Error fetching captions for {VideoId}", videoId);
+            return null;
+        }
     }
 }
 

@@ -22,15 +22,13 @@ public class AdminTaxonomyController : Controller
 
     public async Task<IActionResult> Index(CancellationToken ct = default)
     {
-        var genresTask = _genreService.GetAllGenresAsync(ct);
-        var categoriesTask = _categoryService.GetAllCategoriesAsync(ct);
-
-        await Task.WhenAll(genresTask, categoriesTask);
+        var genres = await _genreService.GetAllGenresAsync(ct);
+        var categories = await _categoryService.GetAllCategoriesAsync(ct);
 
         var model = new AdminTaxonomyViewModel
         {
-            Genres = await genresTask,
-            Categories = await categoriesTask
+            Genres = genres,
+            Categories = categories
         };
         return View(model);
     }

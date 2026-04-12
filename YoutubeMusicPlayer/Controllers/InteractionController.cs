@@ -5,16 +5,9 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using YoutubeMusicPlayer.Application.Interfaces;
 
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.Interfaces;
-
 namespace YoutubeMusicPlayer.Controllers;
 
-[Authorize]
+[AllowAnonymous]
 public class InteractionController : BaseController
 {
     private readonly IInteractionService _interactionService;
@@ -47,6 +40,7 @@ public class InteractionController : BaseController
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> ToggleLike(int songId)
     {
         if (CurrentUserId == null) return Unauthorized();
@@ -56,6 +50,7 @@ public class InteractionController : BaseController
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> ToggleLikeByYoutubeId(string youtubeId)
     {
         if (CurrentUserId == null) return Unauthorized();

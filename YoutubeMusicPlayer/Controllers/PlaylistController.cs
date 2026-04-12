@@ -1,16 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
-using System.Threading.Tasks;
-using System.Linq;
-using System;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Linq;
 using System.Threading.Tasks;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
@@ -37,8 +30,10 @@ public class PlaylistController : BaseController
     {
         if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
 
-        var playlists = await _playlistService.GetUserPlaylistsAsync(CurrentUserId.Value);
-        return View(playlists);
+        var userPlaylists = await _playlistService.GetUserPlaylistsAsync(CurrentUserId.Value);
+        ViewBag.FeaturedPlaylists = await _playlistService.GetFeaturedPlaylistsAsync();
+        
+        return View(userPlaylists);
     }
 
     [HttpGet]
@@ -136,6 +131,44 @@ public class PlaylistController : BaseController
         {
             return Forbid();
         }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> AddSongToPlaylists([FromBody] AddSongToPlaylistsRequest request)
+    {
+        if (CurrentUserId == null) return Unauthorized();
+        if (request == null || string.IsNullOrEmpty(request.YoutubeId) || request.PlaylistIds == null || !request.PlaylistIds.Any())
+            return BadRequestResponse("Dữ liệu không hợp lệ.");
+
+        try
+        {
+            var song = await _songService.GetOrCreateByYoutubeIdAsync(request.YoutubeId);
+            if (song == null) return BadRequestResponse("Không thể xử lý bài hát.");
+
+            int successCount = 0;
+            foreach (var playlistId in request.PlaylistIds)
+            {
+                try
+                {
+                    await _playlistService.AddSongToPlaylistAsync(playlistId, song.SongId, CurrentUserId.Value, IsAdmin);
+                    successCount++;
+                }
+                catch (UnauthorizedAccessException) { /* Skip if no permission for one of them */ }
+                catch (Exception) { /* Log error but continue with others */ }
+            }
+
+            return SuccessResponse(new { success = true, addedCount = successCount, songTitle = song.Title });
+        }
+        catch (Exception ex)
+        {
+            return BadRequestResponse("Lỗi hệ thống khi thêm bài hát vào danh sách phát.");
+        }
+    }
+
+    public class AddSongToPlaylistsRequest
+    {
+        public string YoutubeId { get; set; } = string.Empty;
+        public List<int> PlaylistIds { get; set; } = new();
     }
 
     [HttpGet]

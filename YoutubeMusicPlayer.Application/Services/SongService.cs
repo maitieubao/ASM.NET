@@ -9,6 +9,8 @@ using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Domain.Entities;
 using YoutubeMusicPlayer.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
+
 
 namespace YoutubeMusicPlayer.Application.Services;
 
@@ -20,8 +22,10 @@ public class SongService : ISongService
     private readonly IDeezerService _deezerService;
     private readonly ILyricsService _lyricsService;
     private readonly IBackgroundQueue _backgroundQueue;
+    private readonly Microsoft.Extensions.Logging.ILogger<SongService> _logger;
 
-    public SongService(IUnitOfWork unitOfWork, IYoutubeService youtubeService, IWikipediaService wikipediaService, IDeezerService deezerService, ILyricsService lyricsService, IBackgroundQueue backgroundQueue)
+
+    public SongService(IUnitOfWork unitOfWork, IYoutubeService youtubeService, IWikipediaService wikipediaService, IDeezerService deezerService, ILyricsService lyricsService, IBackgroundQueue backgroundQueue, Microsoft.Extensions.Logging.ILogger<SongService> logger)
     {
         _unitOfWork = unitOfWork;
         _youtubeService = youtubeService;
@@ -29,11 +33,12 @@ public class SongService : ISongService
         _deezerService = deezerService;
         _lyricsService = lyricsService;
         _backgroundQueue = backgroundQueue;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<SongDto>> GetAllSongsAsync(CancellationToken ct = default)
     {
-        var songs = await _unitOfWork.Repository<Song>().FindAsync(s => !s.IsDeleted, ct);
+        var songs = await _unitOfWork.Repository<Song>().Query().AsNoTracking().Where(s => !s.IsDeleted).ToListAsync(ct);
         return songs.Select(MapToDto);
     }
 
@@ -43,7 +48,11 @@ public class SongService : ISongService
 
         if (!string.IsNullOrEmpty(searchTerm))
         {
-            query = query.Where(s => s.Title.Contains(searchTerm));
+            query = query.AsNoTracking().Where(s => s.Title.Contains(searchTerm));
+        }
+        else
+        {
+            query = query.AsNoTracking();
         }
 
         int totalCount = await query.CountAsync(ct);
@@ -59,6 +68,7 @@ public class SongService : ISongService
     public async Task<SongDto?> GetSongByIdAsync(int id, CancellationToken ct = default)
     {
         var s = await _unitOfWork.Repository<Song>().Query()
+            .AsNoTracking()
             .Include(s => s.SongArtists)
                 .ThenInclude(sa => sa.Artist)
             .FirstOrDefaultAsync(s => s.SongId == id && !s.IsDeleted, ct);
@@ -66,6 +76,7 @@ public class SongService : ISongService
         if (s == null) return null;
 
         var genreIds = await _unitOfWork.Repository<SongGenre>().Query()
+            .AsNoTracking()
             .Where(sg => sg.SongId == id)
             .Select(sg => sg.GenreId)
             .ToListAsync(ct);
@@ -143,7 +154,7 @@ public class SongService : ISongService
 
     public async Task<SongDto?> GetOrCreateByYoutubeIdAsync(string youtubeId, CancellationToken ct = default)
     {
-        var existing = await _unitOfWork.Repository<Song>().FirstOrDefaultAsync(s => s.YoutubeVideoId == youtubeId && !s.IsDeleted, ct);
+        var existing = await _unitOfWork.Repository<Song>().Query().AsNoTracking().FirstOrDefaultAsync(s => s.YoutubeVideoId == youtubeId && !s.IsDeleted, ct);
         if (existing != null) 
         {
             if (string.IsNullOrEmpty(existing.LyricsText))
@@ -164,14 +175,23 @@ public class SongService : ISongService
 
     public async Task EnrichSongAsync(int songId, CancellationToken ct = default)
     {
+        _logger.LogInformation("Starting enrichment for Song ID: {SongId}", songId);
         var song = await _unitOfWork.Repository<Song>().Query()
             .Include(s => s.SongArtists).ThenInclude(sa => sa.Artist)
             .FirstOrDefaultAsync(s => s.SongId == songId && !s.IsDeleted, ct);
         
-        if (song == null) return;
+        if (song == null) {
+            _logger.LogWarning("Song ID: {SongId} not found for enrichment", songId);
+            return;
+        }
         
-        var details = await _youtubeService.GetVideoDetailsAsync($"https://youtube.com/watch?v={song.YoutubeVideoId}");
-        await PerformEnrichmentAsync(_unitOfWork, _deezerService, _lyricsService, _wikipediaService, songId, details, ct);
+        try {
+            var details = await _youtubeService.GetVideoDetailsAsync($"https://youtube.com/watch?v={song.YoutubeVideoId}");
+            await PerformEnrichmentAsync(_unitOfWork, _deezerService, _lyricsService, _wikipediaService, songId, details, ct);
+            _logger.LogInformation("Enrichment completed for Song ID: {SongId}", songId);
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Enrichment failed for Song ID: {SongId}", songId);
+        }
     }
 
     public async Task<SongDto?> ImportAndReturnSongAsync(string videoUrl, CancellationToken ct = default)
@@ -337,20 +357,29 @@ public class SongService : ISongService
 
         try {
             var dt = await dz.SearchTrackAsync(details.CleanedTitle, details.CleanedArtist);
-            if (dt != null) {
-                song.Title = dt.TrackName;
-                song.IsExplicit = dt.IsExplicit;
-                // Update release date if available
-                if (DateTime.TryParse(dt.ReleaseDate, out var rd))
-                    song.ReleaseDate = DateTime.SpecifyKind(rd, DateTimeKind.Utc);
+            if (dt == null) {
+                _logger.LogInformation("[SongService] Track {SongId} not found on Deezer. Skipping further enrichment to save resources.", songId);
+                return;
             }
-            // Lyrics enrichment
-            string? lyrics = await ls.GetLyricsAsync(details.CleanedArtist, details.CleanedTitle);
-            if (!string.IsNullOrEmpty(lyrics)) song.LyricsText = lyrics;
+
+            // Update with high-quality metadata from Deezer
+            song.Title = dt.TrackName;
+            song.IsExplicit = dt.IsExplicit;
+            if (DateTime.TryParse(dt.ReleaseDate, out var rd))
+                song.ReleaseDate = DateTime.SpecifyKind(rd, DateTimeKind.Utc);
+
+            // Lyrics enrichment using both metadata and direct subtitle extraction
+            var lyricsResult = await ls.GetLyricsAsync(details.CleanedArtist, details.CleanedTitle, details.YoutubeVideoId);
+            if (lyricsResult.Status == "SUCCESS" && !string.IsNullOrEmpty(lyricsResult.Lyrics)) {
+                song.LyricsText = lyricsResult.Lyrics;
+            }
 
             uow.Repository<Song>().Update(song);
             await uow.CompleteAsync(ct);
-        } catch {}
+            _logger.LogInformation("[SongService] Deep enrichment completed for song {SongId} ({VideoId})", songId, details.YoutubeVideoId);
+        } catch (Exception ex) {
+            _logger.LogError(ex, "[SongService] Enrichment failed for song {SongId} ({VideoId})", songId, details.YoutubeVideoId);
+        }
     }
 
     public async Task<bool> TogglePremiumStatusAsync(int id, CancellationToken ct = default)
@@ -373,5 +402,33 @@ public class SongService : ISongService
         _unitOfWork.Repository<Song>().Update(song);
         await _unitOfWork.CompleteAsync(ct);
         return true;
+    }
+    public async Task<(string? Lyrics, string? Bio)> GetLyricsAndBioAsync(string videoId, CancellationToken ct = default)
+    {
+        var data = await _unitOfWork.Repository<Song>().Query()
+            .AsNoTracking()
+            .Where(s => s.YoutubeVideoId == videoId && !s.IsDeleted)
+            .Select(s => new {
+                s.SongId,
+                s.LyricsText,
+                Bio = s.SongArtists.OrderBy(sa => sa.ArtistId).Select(sa => sa.Artist.Bio).FirstOrDefault()
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (data == null) return (null, null);
+
+        // Background enrichment if data is stale or missing
+        if (string.IsNullOrEmpty(data.LyricsText) || 
+            (data.Bio != null && (data.Bio.Contains("automatically imported") || data.Bio.Contains("đang được cập nhật"))))
+        {
+            var targetId = data.SongId;
+            await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) =>
+            {
+                var scopeSongService = sp.GetRequiredService<ISongService>();
+                await scopeSongService.EnrichSongAsync(targetId);
+            });
+        }
+
+        return (data.LyricsText, data.Bio);
     }
 }

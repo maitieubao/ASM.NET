@@ -90,7 +90,8 @@ public class PlaylistService : IPlaylistService
                         // Optimized: Inline Like status check
                         IsLiked = userId.HasValue && ps.Song.SongLikes.Any(l => l.UserId == userId.Value)
                     }).ToList(),
-                SongIds = p.PlaylistSongs.OrderBy(ps => ps.Position).Select(ps => ps.SongId).ToList()
+                SongIds = p.PlaylistSongs.OrderBy(ps => ps.Position).Select(ps => ps.SongId).ToList(),
+                TotalDurationSeconds = p.PlaylistSongs.Sum(ps => ps.Song.Duration ?? 0)
             })
             .FirstOrDefaultAsync(ct);
     }

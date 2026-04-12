@@ -4,15 +4,53 @@
 }
 
 <div class="library-container animate-fade-in">
-    <div class="d-flex justify-content-between align-items-end mb-5">
+    <div class="d-flex justify-content-between align-items-end mb-4">
         <div>
-            <h1 class="display-4 fw-black m-0 text-white">Thư viện của tôi</h1>
-            <p class="text-dim m-0">Quản lý và thưởng thức các danh sách phát của bạn</p>
+            <h1 class="display-4 fw-black m-0 text-white">Thư viện</h1>
+            <p class="text-dim m-0">Không gian âm nhạc riêng của bạn</p>
         </div>
-        <button class="btn btn-accent rounded-pill px-4 py-2 fw-bold shadow-lg shadow-accent/20" data-bs-toggle="modal" data-bs-target="#createPlaylistModal">
+        <button class="btn btn-accent rounded-pill px-4 py-2 fw-bold shadow-lg" data-bs-toggle="modal" data-bs-target="#createPlaylistModal">
             <i class="fa-solid fa-plus me-2"></i> Tạo Playlist mới
         </button>
     </div>
+
+    <!-- DISCOVERY HUB -->
+    @{
+        var featured = ViewBag.FeaturedPlaylists as IEnumerable<YoutubeMusicPlayer.Application.DTOs.PlaylistDto>;
+    }
+    @if (featured != null && featured.Any())
+    {
+        <section class="mb-5">
+            <div class="d-flex align-items-center mb-4">
+                <i class="fa-solid fa-compass fs-4 text-accent me-3"></i>
+                <h3 class="m-0 fw-bold">Khám phá Playlist</h3>
+            </div>
+            
+            <div class="horizontal-container">
+                <div class="horizontal-carousel">
+                    @foreach (var p in featured)
+                    {
+                        <div class="music-card group mini-card" onclick="window.location.href='/Playlist/Details/@p.PlaylistId'">
+                            <div class="card-thumb-wrapper">
+                                <img src="@(string.IsNullOrEmpty(p.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + p.Title + "&background=6C5CE7&color=fff&size=512" : p.CoverImageUrl)" alt="@p.Title">
+                                <div class="card-play-btn" onclick="event.stopPropagation(); playPlaylist(@p.PlaylistId)">
+                                    <i class="fa-solid fa-play"></i>
+                                </div>
+                            </div>
+                            <div class="card-content mt-2">
+                                <h6 class="card-title text-main fw-bold mb-0 text-truncate">@p.Title</h6>
+                                <p class="text-dim extra-small mb-0">@(p.FeaturedType ?? "Đề xuất")</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+        <hr class="border-white border-opacity-5 mb-5" />
+    }
+
+    <div class="mb-4">
+        <h3 class="fw-bold mb-4">Playlist của tôi</h3>
 
     <!-- PLAYLISTS GRID -->
     <div class="music-grid">
@@ -126,5 +164,28 @@
     @@keyframes fadeIn {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
+    }
+
+    .horizontal-container {
+        overflow-x: auto;
+        padding-bottom: 10px;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .horizontal-container::-webkit-scrollbar { display: none; }
+    
+    .horizontal-carousel {
+        display: flex;
+        gap: 20px;
+        width: max-content;
+    }
+    
+    .mini-card {
+        width: 180px;
+        flex-shrink: 0;
+    }
+    .mini-card .card-thumb-wrapper {
+        aspect-ratio: 1/1;
+        width: 100%;
     }
 </style>

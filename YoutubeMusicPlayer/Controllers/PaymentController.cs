@@ -7,13 +7,6 @@ using Microsoft.Extensions.Logging;
 using PayOS.Models.Webhooks;
 using PayOS.Models.V2.PaymentRequests;
 using YoutubeMusicPlayer.Application.Interfaces;
-
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.Interfaces;
 using YoutubeMusicPlayer.Application.DTOs;
 
 namespace YoutubeMusicPlayer.Controllers;

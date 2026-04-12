@@ -142,6 +142,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("subscribercount");
 
+                    b.Property<string>("WikipediaUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("wikipedia_url");
+
                     b.HasKey("ArtistId");
 
                     b.HasIndex("Name")

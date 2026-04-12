@@ -1,0 +1,155 @@
+@model YoutubeMusicPlayer.Application.DTOs.ExternalAlbumViewModel
+@{
+    ViewData["Title"] = Model.Title + " - " + Model.Source;
+    Layout = "_Layout";
+}
+
+<div class="container-fluid py-5 px-lg-5">
+    <!-- Header Section -->
+    <div class="row align-items-end mb-5 gap-4">
+        <div class="col-auto">
+            <div class="album-art-container shadow-lg position-relative">
+                <img src="@Model.CoverImageUrl" alt="@Model.Title" class="rounded-4 img-fluid shadow" style="width: 250px; height: 250px; object-fit: cover;">
+                <div class="album-badge">@Model.Source</div>
+            </div>
+        </div>
+        <div class="col">
+            <p class="text-uppercase fw-bold text-dim mb-1" style="letter-spacing: 2px; font-size: 0.8rem;">Album từ @Model.Source</p>
+            <h1 class="display-3 fw-black mb-3 text-white">@Model.Title</h1>
+            <div class="d-flex align-items-center gap-3">
+                <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(Model.ArtistName)&background=random&color=fff" class="rounded-circle" style="width: 32px; height: 32px;" />
+                <span class="fw-bold">@Model.ArtistName</span>
+                <span class="text-dim">• @Model.Tracks.Count bài hát</span>
+                @if (!string.IsNullOrEmpty(Model.ReleaseDate))
+                {
+                    <span class="text-dim">• @Model.ReleaseDate.Split('-')[0]</span>
+                }
+            </div>
+            
+            <div class="mt-4 d-flex gap-3">
+                <button class="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-sm" onclick="playAlbumTracks()">
+                    <i class="fa-solid fa-play me-2"></i> Phát tất cả
+                </button>
+                <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold border-opacity-25 glass-hover">
+                    <i class="fa-regular fa-heart me-2"></i> Thêm vào thư viện
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tracks Section -->
+    <div class="glass-card rounded-4 overflow-hidden border-0 shadow-sm border-white border-opacity-5">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle custom-track-table">
+                <thead>
+                    <tr class="text-dim border-bottom border-white border-opacity-10">
+                        <th class="ps-4 py-3 fw-normal" style="width: 50px;">#</th>
+                        <th class="py-3 fw-normal">Tiêu đề</th>
+                        <th class="py-3 fw-normal d-none d-md-table-cell">Album</th>
+                        <th class="pe-4 py-3 fw-normal text-end"><i class="fa-regular fa-clock"></i></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var track in Model.Tracks)
+                    {
+                        <tr class="track-row border-0" onclick="playSong('@track.Title', '@track.ArtistName', '@Model.CoverImageUrl')">
+                            <td class="ps-4 text-dim">@track.TrackNumber</td>
+                            <td>
+                                <div class="fw-bold text-white mb-0">@track.Title</div>
+                                <div class="small text-dim">@track.ArtistName</div>
+                            </td>
+                            <td class="d-none d-md-table-cell text-dim">@track.AlbumName</td>
+                            <td class="pe-4 text-end text-dim">
+                                @{
+                                    var duration = TimeSpan.FromMilliseconds(track.DurationMs);
+                                    @(string.Format("{0}:{1:D2}", (int)duration.TotalMinutes, duration.Seconds))
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .fw-black { font-weight: 900; }
+    .text-dim { color: rgba(255,255,255,0.6); }
+    .album-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(10px);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 100px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .custom-track-table {
+        background: transparent !important;
+    }
+    .custom-track-table thead {
+        background: rgba(255,255,255,0.02);
+    }
+    .track-row {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .track-row:hover {
+        background: rgba(255,255,255,0.05) !important;
+    }
+    .glass-hover:hover {
+        background: rgba(255,255,255,0.1);
+    }
+</style>
+
+<script>
+    const albumData = @Html.Raw(Json.Serialize(Model.Tracks));
+
+    async function playSong(title, artist, thumb) {
+        // We use the search endpoint to find the video on YouTube dynamically
+        const query = `${artist} - ${title}`;
+        toastr.info("Đang xử lý âm thanh...", "", { timeOut: 0, extendedTimeOut: 0 });
+        
+        try {
+            // Using query instead of videoUrl to trigger backend resolution with similarity check
+            const res = await fetch(`/Home/GetStreamUrl?query=${encodeURIComponent(query)}&title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`);
+            const json = await res.json();
+            const data = json.success ? json.data : json;
+            
+            toastr.clear(); 
+            
+            if (data && data.streamUrl) {
+                window.playerModule.playDirect(data.streamUrl, {
+                    title: title,
+                    author: artist,
+                    thumbnail: thumb,
+                    videoId: data.videoId || '' 
+                });
+            } else {
+                const errorMsg = data.message || "Không tìm thấy luồng phát cho bài hát này trên YouTube.";
+                toastr.warning(errorMsg);
+            }
+        } catch (err) {
+            console.error("Playback resolution error:", err);
+            toastr.clear();
+            toastr.error("Có lỗi xảy ra khi kết nối máy chủ.");
+        }
+    }
+
+    function playAlbumTracks() {
+        if (albumData.length === 0) return;
+        
+        // Add all tracks to queue and play first
+        // This requires an update to window.playerModule to handle playlist addition by metadata
+        toastr.info("Đang chuẩn bị danh sách phát album...");
+        
+        // For now, play first song
+        const first = albumData[0];
+        playSong(first.title, first.artistName, '@Model.CoverImageUrl');
+    }
+</script>

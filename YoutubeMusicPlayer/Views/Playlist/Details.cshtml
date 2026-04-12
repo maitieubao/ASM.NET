@@ -21,18 +21,27 @@
                     <span>•</span>
                     <span>@Model.Songs.Count() bài hát</span>
                     <span>•</span>
-                    <span>Hơn 1 giờ</span>
+                    <span>@{
+                        var totalSeconds = Model.TotalDurationSeconds;
+                        var hours = totalSeconds / 3600;
+                        var minutes = (totalSeconds % 3600) / 60;
+                        if (hours > 0) {
+                            @($"{hours} giờ {minutes} phút")
+                        } else {
+                            @($"{minutes} phút")
+                        }
+                    }</span>
                 </div>
                 <div class="mt-4 d-flex align-items-center gap-3">
-                    <button class="btn btn-accent rounded-circle p-3 shadow-lg" style="width: 56px; height: 56px;" onclick="playPlaylist(@Model.PlaylistId)">
+                    <button class="btn btn-accent rounded-circle p-3 shadow-lg" style="width: 56px; height: 56px;" onclick="playPlaylist(@Model.PlaylistId)" title="Phát tất cả">
                         <i class="fa-solid fa-play fs-4 ps-1"></i>
+                    </button>
+                    <button class="btn btn-white bg-white text-dark rounded-circle p-3 shadow-lg d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;" onclick="playPlaylistShuffled(@Model.PlaylistId)" title="Phát ngẫu nhiên">
+                        <i class="fa-solid fa-shuffle fs-5"></i>
                     </button>
                     <a asp-action="Edit" asp-route-id="@Model.PlaylistId" class="btn btn-outline-light border-opacity-25 rounded-circle p-3" style="width: 50px; height: 50px;" title="Chỉnh sửa">
                         <i class="fa-solid fa-pen"></i>
                     </a>
-                    <button class="btn btn-outline-light border-opacity-25 rounded-circle p-3" style="width: 50px; height: 50px;" title="Tải về">
-                        <i class="fa-solid fa-download"></i>
-                    </button>
                 </div>
             </div>
         </div>
@@ -87,10 +96,10 @@
                                 <button class="btn btn-icon btn-like @(s.IsLiked ? "liked" : "")" onclick="event.stopPropagation(); toggleLike(@s.SongId, this)">
                                     <i class="fa-solid fa-heart"></i>
                                 </button>
-                                <button class="btn btn-icon" onclick="event.stopPropagation(); openAddToPlaylist(@s.SongId, '@s.YoutubeVideoId')">
-                                    <i class="fa-solid fa-ellipsis-v"></i>
+                                <button class="btn-icon" title="Thêm vào Playlist" onclick="event.stopPropagation(); showAddToPlaylistModal('@s.YoutubeVideoId')">
+                                    <i class="fa-solid fa-folder-plus text-accent"></i>
                                 </button>
-                                <a asp-controller="Subscription" asp-action="Download" asp-route-youtubeId="@s.YoutubeVideoId" asp-route-title="@s.Title" class="btn btn-icon text-dim hover-text-accent" title="Tải xuống">
+                                <a href="javascript:void(0)" onclick="event.stopPropagation(); gracefulDownload('@s.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(s.Title)')" class="btn btn-icon text-dim hover-text-accent" title="Tải xuống">
                                     <i class="fa-solid fa-download"></i>
                                 </a>
                                 <form asp-action="RemoveSong" method="post" onsubmit="event.stopPropagation(); return confirm('Gỡ bài hát này khỏi playlist?')" class="d-inline">
@@ -118,6 +127,7 @@
             </tbody>
         </table>
     </div>
+
 </div>
 
 <style>
@@ -210,6 +220,18 @@
 
     .cursor-move { cursor: move; }
     .outline-none { outline: none; }
+
+    .mini-song-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 12px;
+        transition: 0.3s;
+    }
+    .mini-song-card:hover {
+        background: rgba(255, 255, 255, 0.08);
+        transform: translateY(-2px);
+    }
 </style>
 
 <script>
@@ -228,25 +250,20 @@
         });
     }
 
-    async function playPlaylist(id) {
-        try {
-            const res = await fetch(`/Playlist/GetPlaylistSongs/${id}`);
-            const songs = await res.json();
-            if (songs && songs.length > 0) {
-                // Clear and add to queue
-                playQueue = songs.map(s => ({
-                    videoId: s.youtubeVideoId,
-                    title: s.title,
-                    author: s.authorName,
-                    thumbnail: s.thumbnailUrl
-                }));
-                currentIndex = 0;
-                loadAndPlay(playQueue[0]);
-                renderQueue();
-                toastr.info(`Đang phát playlist: @Model.Title`);
-            }
-        } catch(e) { toastr.error("Lỗi khi tải playlist."); }
+    function gracefulDownload(videoId, title) {
+        if (window.YTM_CONFIG && window.YTM_CONFIG.isPremium) {
+            window.location.href = `/Subscription/Download?youtubeId=${videoId}&title=${encodeURIComponent(title)}`;
+        } else {
+            toastr.warning("Chỉ hội viên Premium mới có thể tải nhạc. Hãy nâng cấp ngay!");
+        }
     }
+
+    function playPlaylistShuffled(id) {
+        if (typeof window.playPlaylist === 'function') {
+            window.playPlaylist(id, true);
+        }
+    }
+
 
     async function toggleLike(songId, btn) {
         try {
@@ -260,4 +277,8 @@
             }
         } catch(e) {}
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // loadPlaylistSuggestions removed
+    });
 </script>

@@ -17,6 +17,7 @@ public class DeezerTrackInfo
     public List<string> Genres { get; set; } = new();
     public int Popularity { get; set; }
     public int DurationMs { get; set; }
+    public int TrackNumber { get; set; }
     public bool IsExplicit { get; set; }
 }
 

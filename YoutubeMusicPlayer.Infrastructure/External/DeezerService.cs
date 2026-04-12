@@ -165,15 +165,21 @@ public class DeezerService : IDeezerService
 
     public async Task<IEnumerable<DeezerAlbumInfo>> GetArtistAlbumsAsync(string artistId, int limit = 20)
     {
+        string cacheKey = $"deezer_artist_albums_{artistId}_{limit}";
+        if (_cache.TryGetValue(cacheKey, out IEnumerable<DeezerAlbumInfo>? cached)) return cached!;
+
         try
         {
             var doc = await GetJsonAsync($"{BaseUrl}/artist/{artistId}/albums?limit={limit}");
             if (doc == null) return Enumerable.Empty<DeezerAlbumInfo>();
 
             if (!doc.Value.TryGetProperty("data", out var data)) return Enumerable.Empty<DeezerAlbumInfo>();
-            return data.EnumerateArray().Select(MapAlbum)
+            var results = data.EnumerateArray().Select(MapAlbum)
                 .Where(a => !string.IsNullOrEmpty(a.Title) && a.CoverImageUrl != null)
                 .ToList();
+            
+            _cache.Set(cacheKey, results, TimeSpan.FromHours(6));
+            return results;
         }
         catch { return Enumerable.Empty<DeezerAlbumInfo>(); }
     }
@@ -196,15 +202,21 @@ public class DeezerService : IDeezerService
 
     public async Task<IEnumerable<DeezerAlbumInfo>> SearchAlbumsAsync(string query, int limit = 10)
     {
+        string cacheKey = $"deezer_search_albums_{query}_{limit}".ToLowerInvariant();
+        if (_cache.TryGetValue(cacheKey, out IEnumerable<DeezerAlbumInfo>? cached)) return cached!;
+
         try
         {
             var doc = await GetJsonAsync($"{BaseUrl}/search/album?q={Uri.EscapeDataString(query)}&limit={limit}");
             if (doc == null) return Enumerable.Empty<DeezerAlbumInfo>();
 
-            return doc.Value.GetProperty("data").EnumerateArray()
+            var results = doc.Value.GetProperty("data").EnumerateArray()
                 .Select(MapAlbum)
                 .Where(a => !string.IsNullOrEmpty(a.Title) && !string.IsNullOrEmpty(a.ArtistName))
                 .ToList();
+
+            _cache.Set(cacheKey, results, TimeSpan.FromHours(1));
+            return results;
         }
         catch { return Enumerable.Empty<DeezerAlbumInfo>(); }
     }
@@ -372,6 +384,7 @@ public class DeezerService : IDeezerService
             DeezerAlbumId = albumId,
             AlbumImageUrl = imageUrl,
             DurationMs    = item.TryGetProperty("duration",        out var dur) && dur.ValueKind == JsonValueKind.Number ? dur.GetInt32() * 1000 : 0,
+            TrackNumber   = item.TryGetProperty("track_position",  out var tp) && tp.ValueKind == JsonValueKind.Number ? tp.GetInt32() : 0,
             IsExplicit    = isExplicit,
             Popularity    = rank
         };

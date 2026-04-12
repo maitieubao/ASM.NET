@@ -6,10 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using YoutubeMusicPlayer.Application.Interfaces;
 
-using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.Interfaces;
-
 namespace YoutubeMusicPlayer.Controllers;
 
 public class SubscriptionController : BaseController
@@ -25,28 +21,17 @@ public class SubscriptionController : BaseController
 
     public async Task<IActionResult> Index()
     {
-        // 1. Initialize Tasks
-        var plansTask = _subscriptionService.GetActivePlansAsync();
-        Task<bool>? premiumTask = null;
-
+        // 1. Get plans sequentially to avoid DbContext concurrency
+        var plans = await _subscriptionService.GetActivePlansAsync();
+        
+        // 2. Check for user status sequentially
+        ViewBag.IsPremium = false;
         if (CurrentUserId.HasValue)
         {
-            premiumTask = _subscriptionService.IsUserPremiumAsync(CurrentUserId.Value);
+            ViewBag.IsPremium = await _subscriptionService.IsUserPremiumAsync(CurrentUserId.Value);
         }
 
-        // 2. Run in parallel to save time
-        if (premiumTask != null) 
-        {
-            await Task.WhenAll(plansTask, premiumTask);
-            ViewBag.IsPremium = await premiumTask;
-        }
-        else 
-        {
-            await plansTask;
-            ViewBag.IsPremium = false;
-        }
-
-        return View(await plansTask);
+        return View(plans);
     }
 
     [Authorize]
@@ -82,7 +67,8 @@ public class SubscriptionController : BaseController
         // Premium validation
         if (!(await _subscriptionService.IsUserPremiumAsync(userId.Value)))
         {
-            return Forbid("Chỉ dành cho hội viên Premium.");
+            TempData["Error"] = "Chỉ hội viên Premium mới có thể tải nhạc. Hãy nâng cấp gói của bạn!";
+            return Redirect(Request.Headers["Referer"].ToString() ?? "/Subscription");
         }
 
         var videoUrl = $"https://youtube.com/watch?v={youtubeId}";

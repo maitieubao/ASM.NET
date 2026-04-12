@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 
@@ -12,30 +13,69 @@ public class ProfileFacade : IProfileFacade
     private readonly IPlaylistService _playlistService;
     private readonly IInteractionService _interactionService;
     private readonly IArtistService _artistService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public ProfileFacade(IUserService userService, 
                          INotificationService notificationService, 
                          IPlaylistService playlistService, 
                          IInteractionService interactionService,
-                         IArtistService artistService)
+                         IArtistService artistService,
+                         IServiceScopeFactory scopeFactory)
     {
         _userService = userService;
         _notificationService = notificationService;
         _playlistService = playlistService;
         _interactionService = interactionService;
         _artistService = artistService;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task<UserProfileViewModel> BuildUserProfileAsync(int userId)
     {
-        // 1. Kick off tasks in parallel (Parallelism)
-        var userTask = _userService.GetUserByIdAsync(userId);
-        var historyTask = _userService.GetUserListeningHistoryAsync(userId);
-        var notifyTask = _notificationService.GetUserNotificationsAsync(userId);
-        var playlistTask = _playlistService.GetUserPlaylistsAsync(userId);
-        var genreTask = _interactionService.GetTopPreferredGenresAsync(userId);
-        var likedSongsTask = _interactionService.GetLikedSongIdsAsync(userId);
-        var followedArtistsTask = _artistService.GetFollowedArtistsAsync(userId);
+        // 1. Kick off tasks in parallel using ISOLATED SCOPES to prevent DbContext concurrency issues
+        // Pattern adopted from HomeFacade to ensure thread safety with high performance
+        
+        var userTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var svc = scope.ServiceProvider.GetRequiredService<IUserService>();
+            return await svc.GetUserByIdAsync(userId);
+        });
+
+        var historyTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var svc = scope.ServiceProvider.GetRequiredService<IUserService>();
+            return await svc.GetUserListeningHistoryAsync(userId);
+        });
+
+        var notifyTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var svc = scope.ServiceProvider.GetRequiredService<INotificationService>();
+            return await svc.GetUserNotificationsAsync(userId);
+        });
+
+        var playlistTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var svc = scope.ServiceProvider.GetRequiredService<IPlaylistService>();
+            return await svc.GetUserPlaylistsAsync(userId);
+        });
+
+        var genreTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var svc = scope.ServiceProvider.GetRequiredService<IInteractionService>();
+            return await svc.GetTopPreferredGenresAsync(userId);
+        });
+
+        var likedSongsTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var svc = scope.ServiceProvider.GetRequiredService<IInteractionService>();
+            return await svc.GetLikedSongIdsAsync(userId);
+        });
+
+        var followedArtistsTask = Task.Run(async () => {
+            using var scope = _scopeFactory.CreateScope();
+            var svc = scope.ServiceProvider.GetRequiredService<IArtistService>();
+            return await svc.GetFollowedArtistsAsync(userId);
+        });
 
         // 2. Wait for all to complete
         await Task.WhenAll(userTask, historyTask, notifyTask, playlistTask, genreTask, likedSongsTask, followedArtistsTask);

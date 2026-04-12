@@ -40,7 +40,7 @@
             </div>
         </div>
         <div class="col-md-3 col-sm-6">
-            <a asp-controller="AdminSupport" asp-action="Reports" class="text-decoration-none h-100 d-block">
+            <a asp-controller="AdminReport" asp-action="Index" class="text-decoration-none h-100 d-block">
                 <div class="glass-panel @(Model.PendingReports > 0 ? "border-danger border-opacity-50" : "border-success border-opacity-25") shadow p-4 text-center h-100 transition-hover">
                     <div class="text-dim small text-uppercase fw-bold mb-2">Pending Reports</div>
                     <div class="@(Model.PendingReports > 0 ? "text-danger" : "text-success") fs-1 fw-black">@Model.PendingReports</div>
@@ -67,12 +67,12 @@
                 <h4 class="text-white fw-bold mb-4">Quick Navigation</h4>
                 <div class="d-grid gap-2">
                     <a asp-controller="AdminUser" asp-action="Index" class="btn btn-outline-primary border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-people me-2"></i> User Directory</a>
-                    <a asp-controller="AdminMusic" asp-action="Songs" class="btn btn-outline-info border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-music-note-beamed me-2"></i> Song Library</a>
-                    <a asp-controller="AdminMusic" asp-action="Artists" class="btn btn-outline-warning border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-person-badge me-2"></i> Artist Management</a>
-                    <a asp-controller="AdminMusic" asp-action="Albums" class="btn btn-outline-info border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-journal-album me-2"></i> Albums & Discography</a>
+                    <a asp-controller="AdminSong" asp-action="Index" class="btn btn-outline-info border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-music-note-beamed me-2"></i> Song Library</a>
+                    <a asp-controller="AdminArtist" asp-action="Index" class="btn btn-outline-warning border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-person-badge me-2"></i> Artist Management</a>
+                    <a asp-controller="AdminAlbum" asp-action="Index" class="btn btn-outline-info border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-journal-album me-2"></i> Albums & Discography</a>
                     <a asp-controller="AdminPlaylist" asp-action="Index" class="btn btn-outline-warning border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-star me-2"></i> Featured Playlists</a>
                     <a asp-controller="AdminTaxonomy" asp-action="Index" class="btn btn-outline-success border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-tag me-2"></i> Taxonomy & Genres</a>
-                    <a asp-controller="AdminSupport" asp-action="Notifications" class="btn btn-outline-danger border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-megaphone me-2"></i> System Alerts</a>
+                    <a asp-controller="AdminNotification" asp-action="Index" class="btn btn-outline-danger border-secondary border-opacity-25 py-3 text-start transition-hover"><i class="bi bi-megaphone me-2"></i> System Alerts</a>
                 </div>
             </div>
             
@@ -233,50 +233,3 @@
     .transition-hover:hover { transform: translateY(-4px); background: rgba(255,255,255,0.05) !important; }
 </style>
 
-@section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        const ctx = document.getElementById('playHistoryChart').getContext('2d');
-        const playHistoryChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(playDates)),
-                datasets: [{
-                    label: 'Songs Played',
-                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(playCounts)),
-                    fill: true,
-                    backgroundColor: 'rgba(30, 215, 96, 0.1)',
-                    borderColor: '#1ed760',
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#1ed760'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(255,255,255,0.05)' },
-                        ticks: { color: '#ffffff80' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#ffffff80' }
-                    }
-                }
-            }
-        });
-    </script>
-}
-
-<style>
-    .transition-hover { transition: all 0.3s ease; }
-    .transition-hover:hover { transform: translateY(-3px); }
-    .bg-accent { background-color: #1ed760 !important; }
-    .text-accent { color: #1ed760 !important; }
-</style>

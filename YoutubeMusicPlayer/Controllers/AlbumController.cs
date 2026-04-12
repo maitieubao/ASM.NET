@@ -12,10 +12,14 @@ namespace YoutubeMusicPlayer.Controllers;
 public class AlbumController : BaseController
 {
     private readonly IAlbumService _albumService;
+    private readonly IDeezerService _deezerService;
+    private readonly IITunesService _itunesService;
 
-    public AlbumController(IAlbumService albumService)
+    public AlbumController(IAlbumService albumService, IDeezerService deezerService, IITunesService itunesService)
     {
         _albumService = albumService;
+        _deezerService = deezerService;
+        _itunesService = itunesService;
     }
 
     [AllowAnonymous]
@@ -38,6 +42,55 @@ public class AlbumController : BaseController
         if (album == null) return NotFoundResponse("Không tìm thấy album này");
         
         return View(album);
+    }
+
+    [AllowAnonymous]
+    public async Task<IActionResult> DetailsEx(string source, string id)
+    {
+        var model = new ExternalAlbumViewModel { Source = source, ExternalId = id };
+
+        if (source.Equals("Deezer", StringComparison.OrdinalIgnoreCase))
+        {
+            var albums = await _deezerService.SearchAlbumsAsync(id, 1); // Exact ID search logic depends on service implementation, usually ID lookup is separate
+            // Let's assume we find it or use a better lookup
+            // Actually, I saw GetAlbumTracksAsync in DeezerService but not GetAlbumDetailsAsync.
+            // I'll use SearchAlbumsAsync with the ID if possible, or search for the title.
+            // Wait, I should add GetAlbumById to IDeezerService ideally.
+            
+            var tracks = await _deezerService.GetAlbumTracksAsync(id);
+            if (!tracks.Any()) return NotFound("Không tìm thấy thông tin album trên Deezer");
+
+            model.Title = tracks.First().AlbumName;
+            model.ArtistName = tracks.First().ArtistName;
+            model.CoverImageUrl = tracks.First().AlbumImageUrl;
+            model.Tracks = tracks.Select(t => new ExternalTrackViewModel {
+                Title = t.TrackName,
+                ArtistName = t.ArtistName,
+                AlbumName = t.AlbumName,
+                DurationMs = t.DurationMs,
+                TrackNumber = t.TrackNumber
+            }).ToList();
+        }
+        else if (source.Equals("iTunes", StringComparison.OrdinalIgnoreCase))
+        {
+            var album = await _itunesService.GetAlbumDetailsAsync(id);
+            if (album == null) return NotFound("Không tìm thấy thông tin album trên iTunes");
+
+            var tracks = await _itunesService.GetAlbumTracksAsync(id);
+            model.Title = album.CollectionName;
+            model.ArtistName = album.ArtistName;
+            model.CoverImageUrl = album.ArtworkUrl;
+            model.ReleaseDate = album.ReleaseDate;
+            model.Tracks = tracks.Select(t => new ExternalTrackViewModel {
+                Title = t.TrackName,
+                ArtistName = t.ArtistName,
+                AlbumName = t.CollectionName,
+                DurationMs = t.DurationMs,
+                TrackNumber = t.TrackNumber
+            }).ToList();
+        }
+
+        return View("DetailsEx", model);
     }
 
     [Authorize(Roles = UserRoles.Admin)]

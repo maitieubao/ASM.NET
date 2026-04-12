@@ -5,12 +5,6 @@ using System.Threading.Tasks;
 using YoutubeMusicPlayer.Application.DTOs;
 using YoutubeMusicPlayer.Application.Interfaces;
 
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-
 namespace YoutubeMusicPlayer.Controllers;
 
 [Authorize]

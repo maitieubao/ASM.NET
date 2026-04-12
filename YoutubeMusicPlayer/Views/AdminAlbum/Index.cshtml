@@ -1,0 +1,132 @@
+@model YoutubeMusicPlayer.Models.Admin.AdminAlbumListViewModel
+@{
+    ViewData["Title"] = "Album Management";
+}
+
+<div class="container-fluid py-4 animate-fade-in" style="padding-right: 160px !important;">
+    @Html.AntiForgeryToken()
+    <div class="d-flex justify-content-between align-items-center mb-4 px-lg-4">
+        <div>
+            <h2 class="text-white fw-bold"><i class="bi bi-journal-album me-2 text-info"></i> Album Management</h2>
+            <p class="text-muted small mb-0">Organize and manage music albums and Discography records.</p>
+        </div>
+        <div class="d-flex gap-3">
+             <form asp-controller="AdminAlbum" asp-action="Index" method="get" class="glass-panel p-2 d-flex" style="width: 350px;">
+                <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control bg-transparent border-0 text-white" placeholder="Search albums..." />
+                <button type="submit" class="btn btn-warning btn-sm rounded-circle ms-2"><i class="bi bi-search"></i></button>
+            </form>
+            <a asp-controller="AdminAlbum" asp-action="Create" class="btn btn-warning rounded-pill px-4 fw-bold">
+                <i class="bi bi-plus-lg me-2"></i>New Album
+            </a>
+        </div>
+    </div>
+
+    <div class="glass-panel p-0 overflow-hidden shadow-2xl mx-lg-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="text-white-50 border-bottom border-secondary border-opacity-10">
+                        <th class="ps-4 py-3">Album</th>
+                        <th>Type</th>
+                        <th>Release Date</th>
+                        <th>Explicit</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model.Albums)
+                    {
+                        <tr class="border-bottom border-secondary border-opacity-10">
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    <img src="@(string.IsNullOrEmpty(a.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + a.Title : a.CoverImageUrl)" 
+                                         class="rounded shadow-sm border border-secondary border-opacity-25" style="width: 50px; height: 50px; object-fit: cover;">
+                                    <div>
+                                        <div class="fw-bold text-white">@a.Title</div>
+                                        <div class="text-muted extra-small">ID: #@a.AlbumId</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge @(a.AlbumType == "Single" ? "bg-info" : "bg-primary") rounded-pill">@(a.AlbumType ?? "Album")</span></td>
+                            <td><span class="text-muted">@(a.ReleaseDate?.ToString("dd/MM/yyyy") ?? "--")</span></td>
+                            <td>
+                                @if (a.IsExplicit)
+                                {
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill">EXPLICIT</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">CLEAN</span>
+                                }
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group gap-2">
+                                    <a asp-controller="AdminAlbum" asp-action="Edit" asp-route-id="@a.AlbumId" class="btn btn-sm btn-outline-info rounded-3" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form asp-controller="AdminAlbum" asp-action="Delete" asp-route-id="@a.AlbumId" method="post" onsubmit="return confirm('Soft-delete this album?')">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-3" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        @if (!Model.Albums.Any())
+        {
+            <div class="p-5 text-center">
+                <i class="bi bi-journal-x display-1 text-white opacity-10 mb-3"></i>
+                <h4 class="text-muted">No albums found matching your search.</h4>
+            </div>
+        }
+        
+        <!-- Pagination -->
+        @if (Model.TotalPages > 1)
+        {
+            <div class="d-flex justify-content-between align-items-center p-4 border-top border-secondary border-opacity-10">
+                <div class="extra-small text-muted">Page @Model.CurrentPage of @Model.TotalPages</div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 gap-1">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                            <a class="page-link rounded-2 bg-dark border-secondary border-opacity-25" asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.SearchTerm">Pre</a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                                <a class="page-link rounded-2 @(Model.CurrentPage == i ? "bg-warning border-warning text-dark" : "bg-dark border-secondary border-opacity-25 text-white")" asp-action="Index" asp-route-page="@i" asp-route-searchTerm="@Model.SearchTerm">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link rounded-2 bg-dark border-secondary border-opacity-25" asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.SearchTerm">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+    document.getElementById('album-search').addEventListener('keyup', function() {
+        var term = this.value.toLowerCase();
+        var rows = document.querySelectorAll('.album-row');
+        rows.forEach(function(row) {
+            var title = row.querySelector('.album-title').textContent.toLowerCase();
+            if(title.indexOf(term) > -1) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
+
+<style>
+    .bg-dark-glass { background: rgba(20, 20, 20, 0.85); backdrop-filter: blur(15px); }
+</style>
