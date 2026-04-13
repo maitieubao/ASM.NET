@@ -27,6 +27,7 @@ public class AlbumServiceTests
     private Mock<IMemoryCache> _mockCache;
     private Mock<IBackgroundQueue> _mockBackgroundQueue;
     private Mock<IServiceScopeFactory> _mockScopeFactory;
+    private Mock<Microsoft.Extensions.Logging.ILogger<AlbumService>> _mockLogger;
     private AlbumService _albumService;
 
     [SetUp]
@@ -42,6 +43,7 @@ public class AlbumServiceTests
         _mockCache = new Mock<IMemoryCache>();
         _mockScopeFactory = new Mock<IServiceScopeFactory>();
         _mockBackgroundQueue = new Mock<IBackgroundQueue>();
+        _mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<AlbumService>>();
 
         _albumService = new AlbumService(
             _uow, 
@@ -49,7 +51,8 @@ public class AlbumServiceTests
             _mockDeezer.Object, 
             _mockCache.Object, 
             _mockScopeFactory.Object,
-            _mockBackgroundQueue.Object);
+            _mockBackgroundQueue.Object,
+            _mockLogger.Object);
     }
 
     [TearDown]

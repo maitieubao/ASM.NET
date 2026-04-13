@@ -18,7 +18,7 @@ public class PaymentControllerTests
 {
     private Mock<IPayOSService> _mockPayOS;
     private Mock<ISubscriptionService> _mockSubService;
-    private Mock<IAuthService> _mockAuth;
+    private Mock<Microsoft.Extensions.Logging.ILogger<PaymentController>> _mockLogger;
     private PaymentController _controller;
 
     [SetUp]
@@ -26,13 +26,13 @@ public class PaymentControllerTests
     {
         _mockPayOS = new Mock<IPayOSService>();
         _mockSubService = new Mock<ISubscriptionService>();
-        _mockAuth = new Mock<IAuthService>();
+        _mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<PaymentController>>();
         
-        _controller = new PaymentController(_mockPayOS.Object, _mockSubService.Object, _mockAuth.Object);
+        _controller = new PaymentController(_mockPayOS.Object, _mockSubService.Object, _mockLogger.Object);
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
         {
-            new Claim("InternalUserId", "1"),
+            new Claim(ClaimTypes.NameIdentifier, "1"),
             new Claim(ClaimTypes.Email, "test@example.com")
         }, "mock"));
 
@@ -73,13 +73,21 @@ public class PaymentControllerTests
 
         var result = await _controller.CreatePaymentPost(1) as RedirectResult;
 
+        Assert.That(result, Is.Not.Null);
         Assert.That(result.Url, Is.EqualTo("https://pay.os/checkout"));
     }
 
     [Test]
     public async Task Success_PaidStatus_ProcessesPayment()
     {
-        var result = await _controller.Success(12345, "lnk_1", "PAID") as ViewResult;
+        var mockPaymentInfo = new PayOS.Models.V2.PaymentRequests.PaymentLink { 
+            Id = "lnk_1",
+            Status = Enum.GetValues<PayOS.Models.V2.PaymentRequests.PaymentLinkStatus>().FirstOrDefault(s => s.ToString().Equals("PAID", StringComparison.OrdinalIgnoreCase))
+        };
+        _mockPayOS.Setup(p => p.GetPaymentLinkInformationAsync(12345)).ReturnsAsync(mockPaymentInfo);
+
+        var result = await _controller.Success(12345) as ViewResult;
+        
         Assert.That(result, Is.Not.Null);
         _mockSubService.Verify(s => s.ProcessPaymentSuccessAsync(12345, "lnk_1"), Times.Once);
     }
@@ -92,9 +100,9 @@ public class PaymentControllerTests
         };
         _mockPayOS.Setup(p => p.VerifyWebhookData(It.IsAny<Webhook>())).Returns(true);
 
-        var result = await _controller.Webhook(webhook);
+        var result = await _controller.Webhook(webhook) as OkResult;
 
-        Assert.That(result, Is.TypeOf<OkResult>());
+        Assert.That(result, Is.Not.Null);
         _mockSubService.Verify(s => s.ProcessPaymentSuccessAsync(12345, "lnk_1"), Times.Once);
     }
 

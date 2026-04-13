@@ -5,7 +5,7 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- Enabled DefaultCompileItems by removing the false property -->
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,17 +28,7 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="FunctionalTests\Selenium\LyricsTests.cs" />
-    <Compile Include="FunctionalTests\Selenium\LyricsVerificationLoop.cs" />
-    <Compile Include="FunctionalTests\Selenium\PlaylistVerificationLoop.cs" />
-    <Compile Include="FunctionalTests\Selenium\AlbumSearchVerificationTests.cs" />
-    <Compile Include="FunctionalTests\Selenium\YoutubeLyricsValidationTests.cs" />
-    <Compile Include="UnitTests\LyricsLogicTests.cs" />
-    <Compile Include="UnitTests\PlaybackResolutionTests.cs" />
-    <Compile Include="UnitTests\ExternalServices\YoutubeDiagnosticTests.cs" />
-    <Compile Include="UnitTests\ExternalServices\YoutubeServiceTests.cs" />
-  </ItemGroup>
+  <!-- Removed explicit Compile items so that all test files are automatically included -->
 
 
   <ItemGroup>

@@ -9,6 +9,7 @@ public interface IHomeFacade
     Task<MusicSection?> GetHomeSectionAsync(string type, int? userId, bool refresh = false);
     Task<List<SearchResultDto>> SearchAllAsync(string query, int? userId);
     Task<IEnumerable<SongDto>> GetSongsByArtistAsync(string name);
+    Task<IEnumerable<YoutubeVideoDetails>> GetDiscoverySongsAsync(string tag, int page, int limit);
 }
 
 public interface IPlaybackFacade

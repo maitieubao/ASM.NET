@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using YoutubeMusicPlayer.Domain.Interfaces;
 
 namespace YoutubeMusicPlayer.Tests.UnitTests.Services;
 
@@ -22,6 +23,10 @@ public class ArtistServiceTests
     private Mock<IWikipediaService> _mockWiki;
     private Mock<IDeezerService> _mockDeezer;
     private Mock<IYoutubeService> _mockYoutube;
+    private Microsoft.Extensions.Caching.Memory.IMemoryCache _cache;
+    private Mock<IBackgroundQueue> _mockQueue;
+    private Mock<Microsoft.Extensions.Logging.ILogger<ArtistService>> _mockLogger;
+    private Mock<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory> _mockScopeFactory;
     private ArtistService _artistService;
 
     [SetUp]
@@ -35,12 +40,31 @@ public class ArtistServiceTests
         _mockWiki = new Mock<IWikipediaService>();
         _mockDeezer = new Mock<IDeezerService>();
         _mockYoutube = new Mock<IYoutubeService>();
-        _artistService = new ArtistService(_uow, _mockWiki.Object, _mockDeezer.Object, _mockYoutube.Object);
+        
+        _cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        _mockQueue = new Mock<IBackgroundQueue>();
+        _mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<ArtistService>>();
+        
+        _mockScopeFactory = new Mock<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>();
+        var mockScope = new Mock<Microsoft.Extensions.DependencyInjection.IServiceScope>();
+        var mockServiceProvider = new Mock<IServiceProvider>();
+        
+        mockServiceProvider.Setup(x => x.GetService(typeof(IUnitOfWork))).Returns(() => 
+        {
+            var ctx = new AppDbContext(options);
+            ctx.Database.EnsureCreated(); // Ensure schema exists just in case
+            return new UnitOfWork(ctx);
+        });
+        mockScope.Setup(x => x.ServiceProvider).Returns(mockServiceProvider.Object);
+        _mockScopeFactory.Setup(x => x.CreateScope()).Returns(() => mockScope.Object);
+
+        _artistService = new ArtistService(_uow, _mockWiki.Object, _mockDeezer.Object, _mockYoutube.Object, _cache, _mockQueue.Object, _mockLogger.Object, _mockScopeFactory.Object);
     }
 
     [TearDown]
     public void TearDown()
     {
+        _cache?.Dispose();
         _uow?.Dispose();
         _context?.Dispose();
     }
@@ -100,18 +124,17 @@ public class ArtistServiceTests
     }
 
     [Test]
-    public async Task DeleteArtistAsync_RemovesArtistAndJunctions()
+    public async Task DeleteArtistAsync_MarksIsDeleted()
     {
         var artist = new Artist { ArtistId = 10, Name = "To Delete" };
-        var sa = new SongArtist { ArtistId = 10, SongId = 1 };
         await _context.Artists.AddAsync(artist);
-        await _context.SongArtists.AddAsync(sa);
         await _context.SaveChangesAsync();
 
         await _artistService.DeleteArtistAsync(10);
 
-        Assert.That(await _context.Artists.FindAsync(10), Is.Null);
-        Assert.That(await _context.SongArtists.AnyAsync(s => s.ArtistId == 10), Is.False);
+        var deletedArtist = await _context.Artists.FindAsync(10);
+        Assert.That(deletedArtist, Is.Not.Null);
+        Assert.That(deletedArtist.IsDeleted, Is.True);
     }
 
     [Test]

@@ -93,7 +93,10 @@ window.loadAndPlay = async function(track) {
 
         window.consecutiveErrorCount++;
         if (window.consecutiveErrorCount >= 5) {
-            setPlayerMessage('Gặp lỗi khi phát nhạc', 'Đã dừng tự động chuyển bài.');
+            setPlayerMessage('Gặp lỗi khi phát nhạc (STOP)', 'Đã dừng tự động chuyển bài sau 5 lần thử.');
+            if (typeof toastr !== 'undefined') {
+                toastr.error("Quá nhiều lỗi liên tiếp. Đã dừng tự động chuyển bài để bảo vệ hệ thống.", "Lỗi Phát Nhạc", { timeOut: 0, extendedTimeOut: 0 });
+            }
             window.consecutiveErrorCount = 0;
             return;
         }
@@ -113,5 +116,43 @@ window.safePlayCurrentTrack = async function() {
         console.error('[Engine] safePlayCurrentTrack failed:', e);
         if (typeof updatePlayPauseUI === 'function') updatePlayPauseUI(false);
         return false;
+    }
+};
+window.restorePlayerState = function() {
+    const raw = localStorage.getItem('ytm-player-state');
+    if (!raw) return;
+    
+    try {
+        const state = JSON.parse(raw);
+        if (!state.queue || state.queue.length === 0) return;
+        
+        console.log("[Engine] Restoring player state...");
+        window.playQueue = state.queue;
+        window.currentIndex = state.index || 0;
+        window.isShuffle = state.isShuffle || false;
+        window.repeatMode = state.repeatMode || 0;
+        
+        const track = window.playQueue[window.currentIndex];
+        if (track) {
+            // Restore UI but don't auto-play (browser restrictions)
+            if (typeof setPlayerMessage === 'function') setPlayerMessage(track.title, track.author);
+            if (typeof updateDynamicTheme === 'function') updateDynamicTheme(track.thumbnail);
+            $('#currentThumbnail').attr('src', track.thumbnail);
+            
+            // Hydrate audio source so it's ready when user clicks play
+            if (window.streamCache[track.videoId]) {
+                audioPlayer.src = window.streamCache[track.videoId];
+            } else {
+                // We'll fetch the stream only when they hit play to avoid redundant network calls
+            }
+            
+            if (typeof renderQueue === 'function') renderQueue();
+            
+            // Sync UI states
+            $('#shuffleBtn').toggleClass('active', window.isShuffle).toggleClass('text-primary', window.isShuffle);
+            // Repeat button UI requires a bit more logic but toggleRepeat handles it usually.
+        }
+    } catch (e) {
+        console.error("[Engine] State restoration failed:", e);
     }
 };

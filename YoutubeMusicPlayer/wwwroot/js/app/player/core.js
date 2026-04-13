@@ -84,10 +84,18 @@ $(function() {
 
     // Speed Control
     const savedSpeed = localStorage.getItem('music-player-speed') || '1';
-    if (typeof setPlaybackSpeed === 'function') {
-        window.setPlaybackSpeed(savedSpeed, false);
-    }
-    $('#playbackSpeed').val(savedSpeed);
+    window.setPlaybackSpeed = function(speed, showToast = true) {
+        if (!audioPlayer) return;
+        const s = parseFloat(speed);
+        audioPlayer.playbackRate = s;
+        localStorage.setItem('music-player-speed', speed);
+        $('#playbackSpeed').val(speed);
+        if (showToast && typeof toastr !== 'undefined') {
+            toastr.info(`Tốc độ phát: ${speed}x`);
+        }
+    };
+
+    window.setPlaybackSpeed(savedSpeed, false);
 
     // Bridge for external views
     window.playerModule = {
@@ -114,7 +122,56 @@ $(function() {
             if (typeof updateVisualsAndMetadata === 'function') {
                 window.updateVisualsAndMetadata(track, { streamUrl, videoId: track.videoId });
             }
-            if (typeof renderQueue === 'function') renderQueue();
+    if (typeof renderQueue === 'function') renderQueue();
+        }
+    };
+
+    // 4. Persistence Restore
+    if (typeof restorePlayerState === 'function') {
+        window.restorePlayerState();
+    }
+
+    // 5. Periodic State Sync (Save current time during playback)
+    setInterval(() => {
+        if (window.audioPlayer && !window.audioPlayer.paused && window.saveQueueState) {
+            // We append the current time to the state for resumption
+            const raw = localStorage.getItem('ytm-player-state');
+            if (raw) {
+                const state = JSON.parse(raw);
+                state.currentTime = window.audioPlayer.currentTime;
+                localStorage.setItem('ytm-player-state', JSON.stringify(state));
+                
+                // Also broadcast for other tabs
+                window.syncChannel.postMessage({ type: 'sync_time', time: audioPlayer.currentTime });
+            }
+        }
+    }, 3000);
+
+    // 6. Cross-Tab Synchronization (BroadcastChannel)
+    window.syncChannel = new BroadcastChannel('ytm-player-sync');
+    
+    // Listen for local trigger events
+    $audioPlayer.on('play', () => window.syncChannel.postMessage({ type: 'play', track: window.playQueue[window.currentIndex] }));
+    $audioPlayer.on('pause', () => window.syncChannel.postMessage({ type: 'pause' }));
+    
+    window.syncChannel.onmessage = (event) => {
+        const { type, time, track } = event.data;
+        console.log("[Sync] received:", type);
+
+        if (type === 'play') {
+            if (audioPlayer.paused) {
+                if (track && (!window.playQueue[window.currentIndex] || window.playQueue[window.currentIndex].videoId !== track.videoId)) {
+                    // Update state to match sender if different
+                     if (typeof restorePlayerState === 'function') window.restorePlayerState();
+                }
+                audioPlayer.play().catch(() => {});
+            }
+        } else if (type === 'pause') {
+            if (!audioPlayer.paused) audioPlayer.pause();
+        } else if (type === 'sync_time') {
+            if (Math.abs(audioPlayer.currentTime - time) > 5) {
+                audioPlayer.currentTime = time;
+            }
         }
     };
 });

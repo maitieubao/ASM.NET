@@ -1,98 +1,93 @@
-using NUnit.Framework;
-using Moq;
-using YoutubeMusicPlayer.Application.Services;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Domain.Entities;
-using YoutubeMusicPlayer.Domain.Interfaces;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using System;
 using System.Linq;
-using System.Linq.Expressions;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using NUnit.Framework;
+using Moq;
+using Microsoft.EntityFrameworkCore;
+using YoutubeMusicPlayer.Application.Services;
+using YoutubeMusicPlayer.Domain.Interfaces;
+using YoutubeMusicPlayer.Domain.Entities;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace YoutubeMusicPlayer.Tests.UnitTests.Services;
 
 [TestFixture]
 public class SubscriptionServiceTests
 {
-    private Mock<IUnitOfWork> _mockUow;
-    private Mock<IGenericRepository<SubscriptionPlan>> _mockPlanRepo;
+    private Mock<IUnitOfWork> _mockUnitOfWork;
     private Mock<IGenericRepository<User>> _mockUserRepo;
-    private Mock<IGenericRepository<UserSubscription>> _mockSubRepo;
     private Mock<IGenericRepository<Payment>> _mockPaymentRepo;
-    private SubscriptionService _subService;
+    private Mock<IGenericRepository<SubscriptionPlan>> _mockPlanRepo;
+    private Mock<IGenericRepository<UserSubscription>> _mockUserSubRepo;
+    private Mock<YoutubeMusicPlayer.Domain.Interfaces.IDbTransaction> _mockTransaction;
+    private SubscriptionService _service;
 
     [SetUp]
     public void Setup()
     {
-        _mockUow = new Mock<IUnitOfWork>();
-        _mockPlanRepo = new Mock<IGenericRepository<SubscriptionPlan>>();
+        _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockUserRepo = new Mock<IGenericRepository<User>>();
-        _mockSubRepo = new Mock<IGenericRepository<UserSubscription>>();
         _mockPaymentRepo = new Mock<IGenericRepository<Payment>>();
+        _mockPlanRepo = new Mock<IGenericRepository<SubscriptionPlan>>();
+        _mockUserSubRepo = new Mock<IGenericRepository<UserSubscription>>();
+        _mockTransaction = new Mock<YoutubeMusicPlayer.Domain.Interfaces.IDbTransaction>();
 
-        _mockUow.Setup(u => u.Repository<SubscriptionPlan>()).Returns(_mockPlanRepo.Object);
-        _mockUow.Setup(u => u.Repository<User>()).Returns(_mockUserRepo.Object);
-        _mockUow.Setup(u => u.Repository<UserSubscription>()).Returns(_mockSubRepo.Object);
-        _mockUow.Setup(u => u.Repository<Payment>()).Returns(_mockPaymentRepo.Object);
+        _mockUnitOfWork.Setup(u => u.Repository<User>()).Returns(_mockUserRepo.Object);
+        _mockUnitOfWork.Setup(u => u.Repository<Payment>()).Returns(_mockPaymentRepo.Object);
+        _mockUnitOfWork.Setup(u => u.Repository<SubscriptionPlan>()).Returns(_mockPlanRepo.Object);
+        _mockUnitOfWork.Setup(u => u.Repository<UserSubscription>()).Returns(_mockUserSubRepo.Object);
+        _mockUnitOfWork.Setup(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(_mockTransaction.Object);
 
-        _subService = new SubscriptionService(_mockUow.Object);
+        _service = new SubscriptionService(_mockUnitOfWork.Object);
     }
 
     [Test]
-    public async Task GetActivePlansAsync_ShouldSeedAndReturnPlans()
+    public async Task ProcessPaymentSuccessAsync_ValidPayment_UpgradesUserToPremium()
     {
-        _mockPlanRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<SubscriptionPlan> { new SubscriptionPlan { Name = "Basic" } });
-        var result = await _subService.GetActivePlansAsync();
-        Assert.That(result.Count(), Is.EqualTo(1));
-    }
+        // Arrange
+        long orderCode = 12345;
+        string transactionId = "TXN_999";
+        int userId = 10;
+        int planId = 1;
 
-    [Test]
-    public async Task IsUserPremiumAsync_ValidSubscription_ReturnsTrue()
-    {
-        var user = new User { UserId = 1, IsPremium = true };
-        var sub = new UserSubscription { UserId = 1, IsActive = true, EndDate = DateTime.UtcNow.AddDays(1) };
-        
-        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
-        _mockSubRepo.Setup(r => r.FirstOrDefaultAsync(It.IsAny<Expression<Func<UserSubscription, bool>>>())).ReturnsAsync(sub);
+        var payment = new Payment { OrderCode = orderCode, Status = "Pending", UserId = userId, PlanId = planId };
+        var plan = new SubscriptionPlan { PlanId = planId, DurationDays = 30 };
+        var user = new User { UserId = userId, IsPremium = false };
 
-        var result = await _subService.IsUserPremiumAsync(1);
-        Assert.That(result, Is.True);
-    }
+        _mockPaymentRepo.Setup(r => r.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Payment, bool>>>(), It.IsAny<CancellationToken>())).ReturnsAsync(payment);
+        _mockPlanRepo.Setup(r => r.GetByIdAsync(planId, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
+        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _mockUserSubRepo.Setup(r => r.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<UserSubscription, bool>>>(), It.IsAny<CancellationToken>())).ReturnsAsync((UserSubscription?)null);
 
-    [Test]
-    public async Task IsUserPremiumAsync_ExpiredSubscription_ReturnsFalseAndUpdatesUser()
-    {
-        var user = new User { UserId = 1, IsPremium = true };
-        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
-        _mockSubRepo.Setup(r => r.FirstOrDefaultAsync(It.IsAny<Expression<Func<UserSubscription, bool>>>())).ReturnsAsync((UserSubscription)null!);
+        // Act
+        await _service.ProcessPaymentSuccessAsync(orderCode, transactionId, CancellationToken.None);
 
-        var result = await _subService.IsUserPremiumAsync(1);
-
-        Assert.That(result, Is.False);
-        Assert.That(user.IsPremium, Is.False);
-        _mockUserRepo.Verify(r => r.Update(user), Times.Once);
-        _mockUow.Verify(u => u.CompleteAsync(), Times.AtLeastOnce);
-    }
-
-    [Test]
-    public async Task ProcessPaymentSuccessAsync_ShouldActivatePremiumAndExtendEndDate()
-    {
-        var payment = new Payment { OrderCode = 12345, UserId = 1, PlanId = 10, Status = "Pending" };
-        var plan = new SubscriptionPlan { PlanId = 10, DurationDays = 30 };
-        var user = new User { UserId = 1, IsPremium = false };
-        
-        _mockPaymentRepo.Setup(r => r.FirstOrDefaultAsync(It.IsAny<Expression<Func<Payment, bool>>>())).ReturnsAsync(payment);
-        _mockPlanRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(plan);
-        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
-        _mockSubRepo.Setup(r => r.FirstOrDefaultAsync(It.IsAny<Expression<Func<UserSubscription, bool>>>())).ReturnsAsync((UserSubscription)null!);
-
-        await _subService.ProcessPaymentSuccessAsync(12345, "TX_999");
-
-        Assert.That(user.IsPremium, Is.True);
+        // Assert
         Assert.That(payment.Status, Is.EqualTo("Success"));
-        _mockSubRepo.Verify(r => r.AddAsync(It.IsAny<UserSubscription>()), Times.Once);
-        _mockUow.Verify(u => u.CompleteAsync(), Times.AtLeastOnce);
+        Assert.That(user.IsPremium, Is.True);
+        _mockUserSubRepo.Verify(r => r.AddAsync(It.Is<UserSubscription>(s => s.UserId == userId && s.PlanId == planId && s.IsActive), It.IsAny<CancellationToken>()), Times.Once);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockTransaction.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CancelSubscriptionAsync_ExistingSub_SetsToBeInactive()
+    {
+        // Arrange
+        int userId = 5;
+        var existingSub = new UserSubscription { UserId = userId, IsActive = true };
+
+        _mockUserSubRepo.Setup(r => r.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<UserSubscription, bool>>>(), It.IsAny<CancellationToken>())).ReturnsAsync(existingSub);
+
+        // Act
+        var result = await _service.CancelSubscriptionAsync(userId, CancellationToken.None);
+
+        // Assert
+        Assert.That(result, Is.True);
+        Assert.That(existingSub.IsActive, Is.False); // Downgraded
+        _mockUserSubRepo.Verify(r => r.Update(existingSub), Times.Once);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
-

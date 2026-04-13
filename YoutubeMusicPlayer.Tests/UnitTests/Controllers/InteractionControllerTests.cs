@@ -13,13 +13,21 @@ namespace YoutubeMusicPlayer.Tests.UnitTests.Controllers;
 public class InteractionControllerTests
 {
     private Mock<IInteractionService> _mockInteraction;
+    private Mock<ISongService> _mockSong;
+    private Mock<IBackgroundQueue> _mockQueue;
     private InteractionController _interController;
 
     [SetUp]
     public void Setup()
     {
         _mockInteraction = new Mock<IInteractionService>();
-        _interController = new InteractionController(_mockInteraction.Object);
+        _mockSong = new Mock<ISongService>();
+        _mockQueue = new Mock<IBackgroundQueue>();
+        
+        _interController = new InteractionController(
+            _mockInteraction.Object, 
+            _mockSong.Object, 
+            _mockQueue.Object);
         
         var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[] { 
             new Claim(ClaimTypes.NameIdentifier, "1") 
@@ -37,7 +45,7 @@ public class InteractionControllerTests
     public async Task ToggleLike_ReturnsJson()
     {
         _mockInteraction.Setup(s => s.ToggleLikeAsync(1, 101)).ReturnsAsync(true);
-        var result = await _interController.ToggleLike(101) as JsonResult;
+        var result = await _interController.ToggleLike(101) as OkObjectResult;
         Assert.That(result, Is.Not.Null);
     }
 }

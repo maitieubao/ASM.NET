@@ -2,6 +2,17 @@
  * queue.js - Play queue management (jQuery Refactored)
  */
 
+window.saveQueueState = function() {
+    const state = {
+        queue: window.playQueue,
+        index: window.currentIndex,
+        isShuffle: window.isShuffle,
+        repeatMode: window.repeatMode,
+        timestamp: Date.now()
+    };
+    localStorage.setItem('ytm-player-state', JSON.stringify(state));
+};
+
 window.playSingleTrack = function(videoId, title, author, thumbnail) {
     console.log("[Queue] playSingleTrack:", videoId, title);
     const track = { videoId, title, author, thumbnail, isUserInitiated: true };
@@ -24,9 +35,29 @@ window.playSingleTrack = function(videoId, title, author, thumbnail) {
     if (typeof loadAndPlay === 'function') loadAndPlay(window.playQueue[window.currentIndex]);
     if (typeof renderQueue === 'function') renderQueue();
     
+    window.saveQueueState();
+
     if (author && author !== 'Nghệ sĩ' && typeof injectArtistSongs === 'function') {
         injectArtistSongs(author, videoId);
     }
+};
+
+window.playTrackInContext = function(trackList, startIndex) {
+    if (!trackList || !Array.isArray(trackList) || trackList.length === 0) return;
+    
+    console.log("[Queue] playTrackInContext, count:", trackList.length, "startAt:", startIndex);
+    
+    window.playQueue = trackList.map(s => ({
+        videoId: s.youtubeVideoId || s.videoId || s.YoutubeVideoId || s.VideoId || s.id,
+        title: s.title || s.Title || s.name || s.Name,
+        author: s.authorName || s.author || s.AuthorName || s.ArtistName || s.artist || "Playlist Track",
+        thumbnail: s.thumbnailUrl || s.thumbnail || s.ThumbnailUrl || s.CoverImageUrl || s.image
+    }));
+    
+    window.currentIndex = startIndex;
+    if (typeof loadAndPlay === 'function') loadAndPlay(window.playQueue[window.currentIndex]);
+    if (typeof renderQueue === 'function') renderQueue();
+    window.saveQueueState();
 };
 
 window.playPlaylist = async function(data, shuffled = false, defaultThumb = null) {
@@ -34,10 +65,17 @@ window.playPlaylist = async function(data, shuffled = false, defaultThumb = null
     let tracks = [];
 
     if (Array.isArray(data)) {
-        tracks = [...data];
+        tracks = data;
     } else if (!isNaN(data) && data !== null && data !== "") {
         try {
-            tracks = await $.getJSON(`/Playlist/GetPlaylistSongs/${data}`);
+            const res = await $.getJSON(`/Playlist/GetPlaylistSongs/${data}`);
+            // Robust extraction: Handle SuccessResponse wrapper with varying casing
+            tracks = res.data || res.Data || (Array.isArray(res) ? res : []);
+            
+            if (!Array.isArray(tracks)) {
+                console.warn("[Queue] Response format unexpected, attempting fallback to res.items/res.songs");
+                tracks = res.items || res.songs || [];
+            }
         } catch (e) {
             console.error("[Queue] Failed to load playlist ID:", data, e);
             if (typeof toastr !== 'undefined') toastr.error("Không thể tải danh sách.");
@@ -51,10 +89,10 @@ window.playPlaylist = async function(data, shuffled = false, defaultThumb = null
     }
 
     window.playQueue = tracks.map(s => ({
-        videoId: s.youtubeVideoId || s.videoId || s.YoutubeVideoId || s.VideoId,
-        title: s.title || s.Title,
-        author: s.authorName || s.author || s.AuthorName || s.ArtistName,
-        thumbnail: s.thumbnailUrl || s.thumbnail || s.ThumbnailUrl || s.CoverImageUrl || defaultThumb
+        videoId: s.youtubeVideoId || s.videoId || s.YoutubeVideoId || s.VideoId || s.id,
+        title: s.title || s.Title || s.name || s.Name,
+        author: s.authorName || s.author || s.AuthorName || s.ArtistName || s.artist || "Nghệ sĩ",
+        thumbnail: s.thumbnailUrl || s.thumbnail || s.ThumbnailUrl || s.CoverImageUrl || s.image || defaultThumb
     }));
 
     if (shuffled) window.playQueue.sort(() => Math.random() - 0.5);
@@ -62,7 +100,8 @@ window.playPlaylist = async function(data, shuffled = false, defaultThumb = null
     window.currentIndex = 0;
     if (typeof loadAndPlay === 'function') loadAndPlay(window.playQueue[0]);
     if (typeof renderQueue === 'function') renderQueue();
-    if (typeof toastr !== 'undefined') toastr.info(`${shuffled ? 'Đang phát ngẫu nhiên' : 'Đang phát'} danh sách bài hát.`);
+    window.saveQueueState();
+    if (typeof toastr !== 'undefined') toastr.info(`${shuffled ? 'Đang phát ngẫu nhiên' : 'Đang phát'} ${tracks.length} bài hát.`);
 };
 
 window.nextTrack = function() {
@@ -87,27 +126,69 @@ window.nextTrack = function() {
     } else { 
         if (typeof updatePlayPauseUI === 'function') updatePlayPauseUI(false); 
     }
+    window.saveQueueState();
 };
 
 window.prevTrack = function() {
+    if (!window.audioPlayer) return;
+    
+    // If song played for more than 3 seconds, just restart it
+    if (window.audioPlayer.currentTime > 3) {
+        window.audioPlayer.currentTime = 0;
+        if (typeof safePlayCurrentTrack === 'function') window.safePlayCurrentTrack();
+        return;
+    }
+    
     if (window.currentIndex > 0) {
         window.currentIndex--;
+        if (typeof loadAndPlay === 'function') loadAndPlay(window.playQueue[window.currentIndex]);
+    } else if (window.repeatMode === 2 && window.playQueue.length > 0) {
+        // Repeat All enabled: wrap to end
+        window.currentIndex = window.playQueue.length - 1;
         if (typeof loadAndPlay === 'function') loadAndPlay(window.playQueue[window.currentIndex]);
     }
 };
 
 window.toggleShuffle = function() {
     window.isShuffle = !window.isShuffle;
-    $('#shuffleBtn').toggleClass('active', window.isShuffle);
+    const $btn = $('#shuffleBtn');
+    $btn.toggleClass('active', window.isShuffle);
+    $btn.toggleClass('text-primary', window.isShuffle);
+    
+    if (window.isShuffle && window.playQueue.length > 1) {
+        // Shuffle the remaining queue visually
+        const currentTrack = window.playQueue[window.currentIndex];
+        const others = window.playQueue.filter((_, i) => i !== window.currentIndex);
+        
+        // Fisher-Yates shuffle
+        for (let i = others.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [others[i], others[j]] = [others[j], others[i]];
+        }
+        
+        window.playQueue = [currentTrack, ...others];
+        window.currentIndex = 0;
+        if (typeof renderQueue === 'function') renderQueue();
+        if (typeof toastr !== 'undefined') toastr.success("Đã xáo trộn danh sách chờ.");
+    }
 };
 
 window.toggleRepeat = function() {
     window.repeatMode = (window.repeatMode + 1) % 3;
     const $btn = $('#repeatBtn');
     if ($btn.length) {
-        $btn.attr('class', window.repeatMode === 1 ? 'fa-solid fa-repeat-1 text-primary' : 'fa-solid fa-repeat');
-        $btn.toggleClass('text-primary', window.repeatMode === 2);
-        if (window.repeatMode === 0) $btn.removeClass('text-primary');
+        // Reset classes
+        $btn.removeClass('fa-repeat fa-repeat-1 text-primary active');
+        
+        if (window.repeatMode === 0) {
+            $btn.addClass('fa-solid fa-repeat text-dim');
+        } else if (window.repeatMode === 1) {
+            $btn.addClass('fa-solid fa-repeat-1 active text-primary');
+            if (typeof toastr !== 'undefined') toastr.info("Đang lặp lại 1 bài");
+        } else {
+            $btn.addClass('fa-solid fa-repeat active text-primary');
+            if (typeof toastr !== 'undefined') toastr.info("Đang lặp lại danh sách");
+        }
     }
 };
 

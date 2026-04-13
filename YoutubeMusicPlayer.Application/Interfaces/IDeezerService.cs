@@ -72,4 +72,7 @@ public interface IDeezerService
 
     /// <summary>Get all albums of an artist by Deezer artist ID.</summary>
     Task<IEnumerable<DeezerAlbumInfo>> GetArtistAlbumsAsync(string deezerArtistId, int limit = 20);
+
+    /// <summary>Search for artists on Deezer by query.</summary>
+    Task<IEnumerable<DeezerArtistInfo>> SearchArtistsAsync(string query, int limit = 10);
 }

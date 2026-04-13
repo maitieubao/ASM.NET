@@ -207,10 +207,11 @@ public class RecommendationService : IRecommendationService
         string cacheKey = $"mood_v2_{moodTag}_{limit}";
         if (!forceRefresh && _cache.TryGetValue(cacheKey, out IEnumerable<YoutubeVideoDetails>? cached)) return cached!;
 
-        // Optimized: Uses global config dictionary
+        // Increased buffer for pagination support
+        int fetchLimit = Math.Max(limit, 80);
         string query = MoodQueries.GetQuery(moodTag);
-        var results = await _youtubeService.SearchVideosAsync(query, Math.Max(limit, 20));
-        var final = results.Where(v => _youtubeService.IsMusic(v)).Take(limit).ToList();
+        var results = await _youtubeService.SearchVideosAsync(query, fetchLimit);
+        var final = results.Where(v => _youtubeService.IsMusic(v)).Take(fetchLimit).ToList();
 
         _cache.Set(cacheKey, final, TimeSpan.FromHours(2)); 
         return final;

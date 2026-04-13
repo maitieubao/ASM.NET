@@ -221,6 +221,30 @@ public class DeezerService : IDeezerService
         catch { return Enumerable.Empty<DeezerAlbumInfo>(); }
     }
 
+    public async Task<IEnumerable<DeezerArtistInfo>> SearchArtistsAsync(string query, int limit = 10)
+    {
+        string cacheKey = $"deezer_search_artists_{query}_{limit}".ToLowerInvariant();
+        if (_cache.TryGetValue(cacheKey, out IEnumerable<DeezerArtistInfo>? cached)) return cached!;
+
+        try
+        {
+            var doc = await GetJsonAsync($"{BaseUrl}/search/artist?q={Uri.EscapeDataString(query)}&limit={limit}");
+            if (doc == null) return Enumerable.Empty<DeezerArtistInfo>();
+
+            var results = doc.Value.GetProperty("data").EnumerateArray().Select(item => new DeezerArtistInfo
+            {
+                DeezerId  = SafeGetId(item),
+                Name      = item.TryGetProperty("name",       out var n)  ? (n.GetString()  ?? string.Empty) : string.Empty,
+                ImageUrl  = item.TryGetProperty("picture_xl", out var px) ? (px.GetString() ?? string.Empty) : string.Empty,
+                Followers = item.TryGetProperty("nb_fan",    out var f)  ? (f.ValueKind == JsonValueKind.Number ? f.GetInt32() : 0) : 0
+            }).ToList();
+
+            _cache.Set(cacheKey, results, TimeSpan.FromHours(6));
+            return results;
+        }
+        catch { return Enumerable.Empty<DeezerArtistInfo>(); }
+    }
+
     public async Task<IEnumerable<DeezerAlbumInfo>> GetNewReleasesAsync(int limit = 10)
     {
         const string cacheKey = "deezer_new_releases";

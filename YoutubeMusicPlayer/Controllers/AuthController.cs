@@ -87,7 +87,13 @@ public class AuthController : Controller
         }
         catch (System.Exception ex)
         {
-            ModelState.AddModelError(string.Empty, ex.Message);
+            var errorMessage = ex.Message;
+            if (ex is Microsoft.EntityFrameworkCore.DbUpdateException && ex.InnerException != null)
+            {
+                errorMessage = ex.InnerException.Message;
+            }
+            
+            ModelState.AddModelError(string.Empty, errorMessage);
             return View(model);
         }
     }
@@ -181,21 +187,23 @@ public class AuthController : Controller
 
     [HttpGet]
     [AllowAnonymous]
-    public IActionResult ResetPassword(string email) => View(new { email });
+    public IActionResult ResetPassword(string email) => View(new ResetPasswordDto { Email = email });
 
     [HttpPost]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ResetPassword(string email, string token, string newPassword)
+    public async Task<IActionResult> ResetPassword(ResetPasswordDto model)
     {
-        var success = await _authService.ResetPasswordAsync(email, token, newPassword);
+        if (!ModelState.IsValid) return View(model);
+
+        var success = await _authService.ResetPasswordAsync(model.Email, model.Token, model.NewPassword);
         if (success)
         {
-            TempData["Message"] = "Password reset successful. Please login.";
+            TempData["Message"] = "Mật khẩu đã được thay đổi thành công. Vui lòng đăng nhập lại.";
             return RedirectToAction(nameof(Login));
         }
-        ModelState.AddModelError("", "Invalid or expired token.");
-        return View();
+        ModelState.AddModelError("", "Mã xác nhận không hợp lệ hoặc đã hết hạn.");
+        return View(model);
     }
 
     private async Task SignInUser(UserDto user, bool isPersistent)
@@ -221,9 +229,13 @@ public class AuthController : Controller
         {
             IsPersistent = isPersistent,
             IssuedUtc = DateTimeOffset.UtcNow,
-            ExpiresUtc = isPersistent ? DateTimeOffset.UtcNow.AddDays(7) : DateTimeOffset.UtcNow.AddHours(2),
             AllowRefresh = true
         };
+
+        if (isPersistent)
+        {
+            authProperties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7);
+        }
 
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme, 

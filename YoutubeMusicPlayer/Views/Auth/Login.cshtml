@@ -18,7 +18,10 @@
             </div>
 
             <div class="mb-4">
-                <label asp-for="Password" class="form-label text-white-50">Password</label>
+                <div class="d-flex justify-content-between">
+                    <label asp-for="Password" class="form-label text-white-50">Password</label>
+                    <a asp-action="ForgotPassword" class="text-white-50 small text-decoration-none">Forgot password?</a>
+                </div>
                 <input asp-for="Password" type="password" class="form-control bg-dark border-secondary text-white rounded-pill px-4" placeholder="••••••••" />
                 <span asp-validation-for="Password" class="text-danger small"></span>
             </div>

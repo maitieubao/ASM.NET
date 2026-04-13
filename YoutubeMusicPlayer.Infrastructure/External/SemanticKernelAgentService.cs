@@ -33,9 +33,9 @@ public class SemanticKernelAgentService : IAiAgentService
         var modelId = configuration["Groq:ModelId"] ?? "llama-3.3-70b-versatile";
         var baseUrl = configuration["Groq:BaseUrl"] ?? "https://api.groq.com/openai/v1";
 
-        // Performance & Reliability: Add explicit HttpClient with 30s timeout and custom BaseUrl for Groq
+        // Performance & Reliability: Add explicit HttpClient with 90s timeout and custom BaseUrl for Groq
         var httpClient = new System.Net.Http.HttpClient { 
-            Timeout = TimeSpan.FromSeconds(30),
+            Timeout = TimeSpan.FromSeconds(90),
             BaseAddress = new Uri(baseUrl)
         };
         
@@ -59,14 +59,15 @@ public class SemanticKernelAgentService : IAiAgentService
         try {
             var chatHistory = new ChatHistory();
             
-            // System Prompt (Optimized for Groq)
-            string systemPrompt = "Bạn là trợ lý âm nhạc 'Antigravity AI'. Thân thiện, chuyên nghiệp, súc tích bằng tiếng Việt.\n" +
+            // System Prompt (Optimized for Groq & Natural Conversation)
+            string systemPrompt = "Bạn là trợ lý âm nhạc 'Antigravity AI'. Thân thiện, chuyên nghiệp bằng tiếng Việt.\n" +
                                    "Nhiệm vụ: Tìm nhạc, quản lý playlist, tra cứu nghệ sĩ.\n" +
                                    (userId.HasValue ? $"User ID: {userId.Value}.\n" : "") +
-                                   "QUY TẮC:\n" +
-                                   "1. Tìm và gợi ý bài hát khi được yêu cầu.\n" +
-                                   "2. Khi phát một bài, thêm 'ACTION:play:[VideoID]' vào CUỐI câu.\n" +
-                                   "3. Ưu tiên sử dụng công cụ (plugins) để có thông tin chính xác.";
+                                   "QUY TẮC QUAN TRỌNG:\n" +
+                                   "1. LUÔN TRÒ CHUYỆN: Phải luôn có câu trả lời bằng văn bản tự nhiên gửi tới người dùng. KHÔNG ĐƯỢC chỉ gửi mỗi lệnh ACTION.\n" +
+                                   "2. Tìm bài hát: Dùng công cụ SEARCH khi người dùng yêu cầu bài cụ thể hoặc tìm danh sách theo chủ đề.\n" +
+                                   "3. Phát nhạc: Nếu muốn phát nhạc, hãy thêm 'ACTION:play:[VideoID]' vào CUỐI câu phản hồi.\n" +
+                                   "4. Súc tích: Trả lời ngắn gọn nhưng đầy đủ ý, không lặp lại thông tin dư thừa.";
 
             chatHistory.AddSystemMessage(systemPrompt);
 
@@ -86,11 +87,30 @@ public class SemanticKernelAgentService : IAiAgentService
             { 
                 ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions
             };
-            
-            var result = await _chatCompletionService.GetChatMessageContentAsync(
-                chatHistory, 
-                executionSettings: settings, 
-                kernel: _kernel);
+
+            // Reliability: Retry mechanism for transient LLM/Network errors
+            Microsoft.SemanticKernel.ChatMessageContent? result = null;
+            int retries = 3;
+            while (retries > 0)
+            {
+                try
+                {
+                    result = await _chatCompletionService.GetChatMessageContentAsync(
+                        chatHistory, 
+                        executionSettings: settings, 
+                        kernel: _kernel);
+                    break; // Success
+                }
+                catch (Exception ex) when (retries > 1)
+                {
+                    _logger.LogWarning(ex, "[AiAgent] Transient error in SK. Retrying... ({Retries} left)", retries - 1);
+                    retries--;
+                    await Task.Delay(1000); // Backoff
+                }
+                catch (Exception) { throw; } // Final failure
+            }
+
+            if (result == null) throw new Exception("AI returned empty result");
 
             var responseText = result.Content ?? "Tôi không tìm thấy thông tin phù hợp.";
             var response = new AgentResponse { Message = responseText };

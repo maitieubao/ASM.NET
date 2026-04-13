@@ -203,9 +203,24 @@
     }
 
     .ai-typing-indicator {
-        font-style: italic;
-        color: #888;
-        font-size: 0.8rem;
+        display: flex;
+        gap: 4px;
+        padding: 12px 16px;
+        min-width: 60px;
+    }
+    .ai-typing-indicator span {
+        width: 6px;
+        height: 6px;
+        background: #888;
+        border-radius: 50%;
+        animation: ai-typing 1.4s infinite both;
+    }
+    .ai-typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .ai-typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @@keyframes ai-typing {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
     }
 </style>
 
@@ -239,45 +254,71 @@
 
             // Add typing indicator
             const typingId = 'typing-' + Date.now();
-            const typingHtml = `<div id="${typingId}" class="ai-message ai-message-bot ai-typing-indicator">Antigravity đang xử lý...</div>`;
+            const typingHtml = `
+                <div id="${typingId}" class="ai-message ai-message-bot ai-typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>`;
             messagesContainer.insertAdjacentHTML('beforeend', typingHtml);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-            try {
-                const response = await fetch('/api/AiAgent/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: msg, history: chatHistory })
-                });
+            let retryCount = 0;
+            const maxRetries = 2;
 
-                const data = await response.json();
-                
-                // Remove typing indicator
-                document.getElementById(typingId)?.remove();
+            async function attemptChat() {
+                try {
+                    const response = await fetch('/api/AiAgent/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: msg, history: chatHistory })
+                    });
 
-                // Extract data from ApiResponse wrapper
-                const apiData = data.data || data.Data || data;
-                const resMsg = apiData.message || apiData.Message || data.message || data.Message || 'Tôi xin lỗi, có lỗi khi xử lý tin nhắn.';
-                const resAction = apiData.suggestedAction || apiData.SuggestedAction;
+                    if (!response.ok) throw new Error("Server error");
 
-                // Add to history
-                chatHistory.push({ role: 'user', content: msg });
-                chatHistory.push({ role: 'assistant', content: resMsg });
-                
-                if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+                    const data = await response.json();
+                    
+                    // Remove typing indicator
+                    document.getElementById(typingId)?.remove();
 
-                // Add bot response
-                appendMessage(resMsg, 'bot');
+                    // Extract data from ApiResponse wrapper
+                    const apiData = data.data || data.Data || data;
+                    let resMsg = apiData.message || apiData.Message || data.message || data.Message || 'Tôi xin lỗi, có lỗi khi xử lý tin nhắn.';
+                    const resAction = apiData.suggestedAction || apiData.SuggestedAction;
 
-                // Handle suggested actions
-                if (resAction) {
-                    handleAiAction(resAction);
+                    // Clean message: remove raw ACTION strings if AI mistakenly output them integrated
+                    resMsg = resMsg.replace(/ACTION:play:[a-zA-Z0-9_-]{11}/g, "").trim();
+
+                    // Add to history
+                    chatHistory.push({ role: 'user', content: msg });
+                    chatHistory.push({ role: 'assistant', content: resMsg });
+                    
+                    if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+
+                    // Add bot response
+                    if (resMsg) {
+                        appendMessage(resMsg, 'bot');
+                    } else if (resAction) {
+                        appendMessage("Đang thực hiện yêu cầu của bạn...", 'bot');
+                    } else {
+                        appendMessage("Tôi đã hiểu yêu cầu của bạn.", 'bot');
+                    }
+
+                    // Handle suggested actions
+                    if (resAction) {
+                        handleAiAction(resAction);
+                    }
+                } catch (err) {
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        console.warn("[AI] Retrying chat...", retryCount);
+                        setTimeout(attemptChat, 1500); // Wait 1.5s before retry
+                    } else {
+                        document.getElementById(typingId)?.remove();
+                        appendMessage('Kết nối tới AI không ổn định. Bạn vui lòng thử lại sau vài giây nhé!', 'bot');
+                    }
                 }
-
-            } catch (err) {
-                document.getElementById(typingId)?.remove();
-                appendMessage('Có lỗi xảy ra khi kết nối với AI.', 'bot');
             }
+
+            attemptChat();
         }
 
         function appendMessage(text, side) {

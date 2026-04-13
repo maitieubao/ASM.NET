@@ -92,7 +92,15 @@ window.performFullSearch = async function() {
             const data = await res.json();
             
             if (data && data.length > 0) {
-                searchContent.innerHTML = data.map(item => {
+                // Prepare the track list for context playback
+                const trackList = data.filter(i => i.type === 'Song').map(s => ({
+                    videoId: s.videoId,
+                    title: s.title,
+                    author: s.author,
+                    thumbnail: s.thumbnail
+                }));
+                
+                searchContent.innerHTML = data.map((item, idx) => {
                     let typeLabel = '';
                     let onclick = '';
                     let itemClass = 'search-result-row';
@@ -111,10 +119,9 @@ window.performFullSearch = async function() {
                         itemClass += ' is-artist';
                         imgClass += ' rounded-circle';
                     } else {
-                        const escapedTitle = item.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                        const escapedAuthor = (item.author || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                        const vidId = item.videoId || ""; // Empty string if null
-                        onclick = `playSingleTrack('${vidId}', '${escapedTitle}', '${escapedAuthor}', '${item.thumbnail}')`;
+                        // Find this song's index in the trackList
+                        const songIdx = trackList.findIndex(s => s.videoId === item.videoId);
+                        onclick = `playTrackInContext(${JSON.stringify(trackList).replace(/"/g, '&quot;')}, ${songIdx})`;
                         typeLabel = item.author || 'Bài hát';
                     }
 

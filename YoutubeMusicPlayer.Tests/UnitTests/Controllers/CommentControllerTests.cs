@@ -39,7 +39,7 @@ public class CommentControllerTests
     {
         var comment = new CommentDto { Content = "Nice!" };
         _mockComment.Setup(s => s.CreateCommentAsync(1, 10, "Nice!", null)).ReturnsAsync(comment);
-        var result = await _commentController.AddComment(10, "Nice!") as JsonResult;
+        var result = await _commentController.AddComment(10, "Nice!") as OkObjectResult;
         Assert.That(result, Is.Not.Null);
     }
 }

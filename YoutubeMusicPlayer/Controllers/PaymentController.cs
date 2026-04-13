@@ -55,7 +55,8 @@ public class PaymentController : BaseController
         if (plan == null) return NotFound("Plan not found");
 
         long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        long orderCode = long.Parse($"{timestamp}{CurrentUserId % 100000000:D8}");
+        // New: 10 digit timestamp + 3 digit user snippet = 13 digits (Safe for JS Number.MAX_SAFE_INTEGER)
+        long orderCode = long.Parse($"{timestamp}{CurrentUserId % 1000:D3}");
 
         string description = $"Thanh toán gói {plan.Name}";
         string returnUrl = Url.Action("Success", "Payment", new { orderCode = orderCode }, Request.Scheme) ?? "";

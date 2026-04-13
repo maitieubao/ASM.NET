@@ -222,16 +222,30 @@ public class HomeFacade : IHomeFacade
 
         // 3. External Search (Deezer & iTunes)
         var deezerTask = _deezerService.SearchAlbumsAsync(query, 5);
+        var deezerArtistTask = _deezerService.SearchArtistsAsync(query, 3);
         var itunesTask = _itunesService.SearchAlbumsAsync(query, 5);
 
         // WAIT FOR EVERYTHING AT ONCE
-        await Task.WhenAll(ytTask, artistSearchTask, albumSearchTask, deezerTask, itunesTask);
+        await Task.WhenAll(ytTask, artistSearchTask, albumSearchTask, deezerTask, deezerArtistTask, itunesTask);
 
         var ytResults = await ytTask;
-        var internalArtists = await artistSearchTask;
+        var internalArtists = (await artistSearchTask).ToList();
         var internalAlbums = await albumSearchTask;
         var deezerAlbums = await deezerTask;
+        var deezerArtists = await deezerArtistTask;
         var itunesAlbums = await itunesTask;
+
+        // Ensure external artists found have a place in our system
+        foreach (var da in deezerArtists)
+        {
+            if (!internalArtists.Any(a => a.Name.ToLower() == da.Name.ToLower()))
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
+                var stub = await artistSvc.GetOrCreateArtistStubAsync(da.Name, da.ImageUrl);
+                internalArtists.Add(stub);
+            }
+        }
 
         var finalResults = new List<SearchResultDto>();
 
@@ -316,5 +330,16 @@ public class HomeFacade : IHomeFacade
         // Use the existing GetArtistByIdAsync which returns top songs
         var details = await _artistService.GetArtistByIdAsync(artistDto.ArtistId);
         return details?.TopSongs ?? Enumerable.Empty<SongDto>();
+    }
+    public async Task<IEnumerable<YoutubeVideoDetails>> GetDiscoverySongsAsync(string tag, int page, int limit)
+    {
+        // 1. Fetch a larger pool from recommendation service (already optimized to return 80+)
+        var pool = await _recommendationService.GetMoodMusicAsync(tag, 100);
+        
+        // 2. Perform slicing based on page
+        // Page 1: skip 0, take 25
+        // Page 2: skip 25, take 25...
+        int skip = (page - 1) * limit;
+        return pool.Skip(skip).Take(limit);
     }
 }

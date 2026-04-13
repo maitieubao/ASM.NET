@@ -8,9 +8,17 @@
     <div class="playlist-hero mb-5">
         <div class="playlist-hero-bg" style="background-image: url('@(string.IsNullOrEmpty(Model.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + Model.Title + "&background=6C5CE7&color=fff&size=512" : Model.CoverImageUrl)')"></div>
         <div class="playlist-hero-content d-flex align-items-end p-4 p-md-5">
-            <div class="playlist-thumb shadow-2xl me-4">
-                <img src="@(string.IsNullOrEmpty(Model.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + Model.Title + "&background=6C5CE7&color=fff&size=512" : Model.CoverImageUrl)" 
-                     alt="@Model.Title" class="rounded-4">
+            <div class="playlist-thumb shadow-2xl me-4 overflow-hidden rounded-4">
+                @if (string.IsNullOrEmpty(Model.CoverImageUrl))
+                {
+                    <div class="card-thumb-placeholder" style="font-size: 6rem;">
+                        <i class="fa-solid fa-music"></i>
+                    </div>
+                }
+                else
+                {
+                    <img src="@Model.CoverImageUrl" alt="@Model.Title" class="w-100 h-100 object-fit-cover">
+                }
             </div>
             <div class="playlist-info">
                 <span class="badge bg-white bg-opacity-10 text-white px-3 py-2 rounded-pill small fw-bold tracking-wider uppercase mb-3">PLAYLIST</span>
@@ -76,7 +84,7 @@
                 @{ int i = 1; }
                 @foreach (var s in Model.Songs)
                 {
-                    <tr class="song-row" data-song-id="@s.SongId" onclick="playSingleTrack('@s.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(s.Title)', 'Playlist: @System.Web.HttpUtility.JavaScriptStringEncode(Model.Title)', '@s.ThumbnailUrl')">
+                    <tr class="song-row" data-song-id="@s.SongId" onclick="playTrackInContext(@Json.Serialize(Model.Songs), @(i - 1))">
                         <td class="ps-4 text-dim">
                             <i class="fa-solid fa-grip-vertical drag-handle cursor-move opacity-25 hover-opacity-100"></i>
                         </td>
@@ -102,13 +110,9 @@
                                 <a href="javascript:void(0)" onclick="event.stopPropagation(); gracefulDownload('@s.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(s.Title)')" class="btn btn-icon text-dim hover-text-accent" title="Tải xuống">
                                     <i class="fa-solid fa-download"></i>
                                 </a>
-                                <form asp-action="RemoveSong" method="post" onsubmit="event.stopPropagation(); return confirm('Gỡ bài hát này khỏi playlist?')" class="d-inline">
-                                    <input type="hidden" name="playlistId" value="@Model.PlaylistId" />
-                                    <input type="hidden" name="songId" value="@s.SongId" />
-                                    <button type="submit" class="btn btn-icon text-danger hover-bg-danger bg-opacity-10">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-icon text-danger hover-bg-danger bg-opacity-10" onclick="event.stopPropagation(); removeSong(@Model.PlaylistId, @s.SongId, this)" title="Gỡ khỏi Playlist">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -276,6 +280,35 @@
                 else btn.classList.remove('liked');
             }
         } catch(e) {}
+    }
+
+    async function removeSong(playlistId, songId, btn) {
+        if (!confirm('Gỡ bài hát này khỏi playlist?')) return;
+        
+        try {
+            const formData = new FormData();
+            formData.append('playlistId', playlistId);
+            formData.append('songId', songId);
+            
+            const res = await fetch('/Playlist/RemoveSong', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            if (data.success) {
+                $(btn).closest('tr').fadeOut(300, function() { 
+                    $(this).remove(); 
+                    // Update index numbers
+                    $('.row-index').each(function(idx) {
+                        $(this).text(idx + 1);
+                    });
+                });
+                if (typeof toastr !== 'undefined') toastr.success("Đã gỡ bài hát khỏi playlist");
+            } else {
+                if (typeof toastr !== 'undefined') toastr.error(data.message || "Lỗi khi gỡ bài hát");
+            }
+        } catch (e) {
+            console.error(e);
+            if (typeof toastr !== 'undefined') toastr.error("Lỗi kết nối máy chủ");
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {

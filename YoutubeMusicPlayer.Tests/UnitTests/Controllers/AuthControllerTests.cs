@@ -20,6 +20,7 @@ public class AuthControllerTests
 {
     private AuthController _controller;
     private Mock<IAuthService> _mockAuthService;
+    private Mock<Microsoft.Extensions.Logging.ILogger<AuthController>> _mockLogger;
     private Mock<IServiceProvider> _mockServiceProvider;
     private Mock<IAuthenticationService> _mockAuthenticationService;
     private Mock<IUrlHelperFactory> _mockUrlHelperFactory;
@@ -29,7 +30,8 @@ public class AuthControllerTests
     public void Setup()
     {
         _mockAuthService = new Mock<IAuthService>();
-        _controller = new AuthController(_mockAuthService.Object);
+        _mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<AuthController>>();
+        _controller = new AuthController(_mockAuthService.Object, _mockLogger.Object);
 
         _mockAuthenticationService = new Mock<IAuthenticationService>();
         _mockUrlHelperFactory = new Mock<IUrlHelperFactory>();

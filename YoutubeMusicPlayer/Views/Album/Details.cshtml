@@ -67,9 +67,7 @@
                     {
                         var isMatching = string.IsNullOrEmpty(song.YoutubeVideoId);
                         <tr class="track-row group @(isMatching ? "track-matching" : "")" 
-                            onclick="@(isMatching 
-                                ? $"playAnyTrack('{System.Web.HttpUtility.JavaScriptStringEncode(song.Title)}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.AuthorName)}', '{song.ThumbnailUrl}')" 
-                                : $"playSingleTrack('{song.YoutubeVideoId}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.Title)}', '{System.Web.HttpUtility.JavaScriptStringEncode(song.AuthorName)}', '{song.ThumbnailUrl}')")">
+                            onclick="playTrackInContext(@Json.Serialize(Model.Songs), @(i - 1))">
                             <td class="text-center text-dim">
                                 <span class="track-number group-hover-hide">@i</span>
                                 <i class="fa-solid fa-play track-play-icon group-hover-show text-white"></i>

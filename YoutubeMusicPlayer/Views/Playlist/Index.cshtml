@@ -32,7 +32,16 @@
                     {
                         <div class="music-card group mini-card" onclick="window.location.href='/Playlist/Details/@p.PlaylistId'">
                             <div class="card-thumb-wrapper">
-                                <img src="@(string.IsNullOrEmpty(p.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + p.Title + "&background=6C5CE7&color=fff&size=512" : p.CoverImageUrl)" alt="@p.Title">
+                                @if (string.IsNullOrEmpty(p.CoverImageUrl))
+                                {
+                                    <div class="card-thumb-placeholder">
+                                        <i class="fa-solid fa-music"></i>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <img src="@p.CoverImageUrl" alt="@p.Title">
+                                }
                                 <div class="card-play-btn" onclick="event.stopPropagation(); playPlaylist(@p.PlaylistId)">
                                     <i class="fa-solid fa-play"></i>
                                 </div>
@@ -51,6 +60,7 @@
 
     <div class="mb-4">
         <h3 class="fw-bold mb-4">Playlist của tôi</h3>
+    </div>
 
     <!-- PLAYLISTS GRID -->
     <div class="music-grid">
@@ -70,7 +80,16 @@
             {
                 <div class="music-card group" onclick="window.location.href='/Playlist/Details/@p.PlaylistId'">
                     <div class="card-thumb-wrapper">
-                        <img src="@(string.IsNullOrEmpty(p.CoverImageUrl) ? "https://ui-avatars.com/api/?name=" + p.Title + "&background=282828&color=fff&size=512" : p.CoverImageUrl)" alt="@p.Title">
+                        @if (string.IsNullOrEmpty(p.CoverImageUrl))
+                        {
+                            <div class="card-thumb-placeholder">
+                                <i class="fa-solid fa-music"></i>
+                            </div>
+                        }
+                        else
+                        {
+                            <img src="@p.CoverImageUrl" alt="@p.Title">
+                        }
                         <div class="card-play-btn" onclick="event.stopPropagation(); playPlaylist(@p.PlaylistId)">
                             <i class="fa-solid fa-play"></i>
                         </div>

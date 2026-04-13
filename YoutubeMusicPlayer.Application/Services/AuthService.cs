@@ -35,9 +35,13 @@ public class AuthService : IAuthService
 
     public async Task<UserDto> RegisterAsync(RegisterDto dto)
     {
-        var existingUser = await _unitOfWork.Repository<User>().FirstOrDefaultAsync(u => u.Email == dto.Email);
-        if (existingUser != null)
+        var existingEmail = await _unitOfWork.Repository<User>().FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (existingEmail != null)
             throw new AuthException("Email is already registered.");
+
+        var existingUsername = await _unitOfWork.Repository<User>().FirstOrDefaultAsync(u => u.Username == dto.Username);
+        if (existingUsername != null)
+            throw new AuthException("Username is already taken.");
 
         var user = new User
         {
@@ -46,7 +50,7 @@ public class AuthService : IAuthService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             Role = UserRoles.Customer,
             CreatedAt = DateTime.UtcNow,
-            DateOfBirth = dto.DateOfBirth
+            DateOfBirth = DateTime.SpecifyKind(dto.DateOfBirth, DateTimeKind.Utc)
         };
 
         await _unitOfWork.Repository<User>().AddAsync(user);

@@ -8,6 +8,7 @@ using YoutubeMusicPlayer.Application.DTOs;
 using System.Security.Claims;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace YoutubeMusicPlayer.Tests.UnitTests.Controllers;
 
@@ -15,18 +16,28 @@ namespace YoutubeMusicPlayer.Tests.UnitTests.Controllers;
 public class SubscriptionControllerTests
 {
     private Mock<ISubscriptionService> _mockSub;
+    private Mock<IYoutubeService> _mockYoutube;
     private SubscriptionController _subController;
 
     [SetUp]
     public void Setup()
     {
         _mockSub = new Mock<ISubscriptionService>();
-        _subController = new SubscriptionController(_mockSub.Object);
+        _mockYoutube = new Mock<IYoutubeService>();
+        _subController = new SubscriptionController(_mockSub.Object, _mockYoutube.Object);
         
         var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[] { 
             new Claim(ClaimTypes.NameIdentifier, "1") 
         }, "mock"));
-        _subController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = user } };
+        
+        var httpContext = new DefaultHttpContext { User = user };
+        httpContext.Request.Headers["Referer"] = "http://localhost/Subscription";
+        
+        _subController.ControllerContext = new ControllerContext 
+        { 
+            HttpContext = httpContext 
+        };
+        _subController.TempData = new Mock<ITempDataDictionary>().Object;
     }
 
     [TearDown]

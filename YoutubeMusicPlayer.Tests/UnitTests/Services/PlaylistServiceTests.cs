@@ -54,11 +54,11 @@ public class PlaylistServiceTests
     [Test]
     public async Task AddSongToPlaylistAsync_Success()
     {
-        var p = new Playlist { PlaylistId = 1, Title = "My List" };
+        var p = new Playlist { PlaylistId = 1, Title = "My List", UserId = 1 };
         await _context.Playlists.AddAsync(p);
         await _context.SaveChangesAsync();
 
-        await _playlistService.AddSongToPlaylistAsync(1, 10);
+        await _playlistService.AddSongToPlaylistAsync(1, 10, 1);
         
         Assert.That(await _context.PlaylistSongs.AnyAsync(ps => ps.PlaylistId == 1 && ps.SongId == 10), Is.True);
     }
@@ -79,14 +79,16 @@ public class PlaylistServiceTests
     }
 
     [Test]
-    public async Task DeletePlaylistAsync_RemovesFromDb()
+    public async Task DeletePlaylistAsync_MarksIsDeleted()
     {
-        var p = new Playlist { PlaylistId = 10 };
+        var p = new Playlist { PlaylistId = 10, UserId = 1 };
         await _context.Playlists.AddAsync(p);
         await _context.SaveChangesAsync();
 
-        await _playlistService.DeletePlaylistAsync(10);
-        Assert.That(await _context.Playlists.FindAsync(10), Is.Null);
+        await _playlistService.DeletePlaylistAsync(10, 1);
+        var deletedPlaylist = await _context.Playlists.FindAsync(10);
+        Assert.That(deletedPlaylist, Is.Not.Null);
+        Assert.That(deletedPlaylist.IsDeleted, Is.True);
     }
 }
 

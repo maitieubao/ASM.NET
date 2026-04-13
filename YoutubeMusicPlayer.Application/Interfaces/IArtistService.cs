@@ -22,4 +22,5 @@ public interface IArtistService
     Task<bool> IsFollowingAsync(int userId, int artistId, CancellationToken ct = default);
     Task<string?> SyncWithDeezerAsync(int artistId, CancellationToken ct = default);
     Task<IEnumerable<ArtistDto>> SearchArtistsAsync(string query, CancellationToken ct = default);
+    Task<ArtistDto> GetOrCreateArtistStubAsync(string name, string? avatarUrl = null, CancellationToken ct = default);
 }

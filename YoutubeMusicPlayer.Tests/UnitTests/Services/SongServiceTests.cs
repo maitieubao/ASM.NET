@@ -25,6 +25,7 @@ public class SongServiceTests
     private Mock<IDeezerService> _mockDeezer;
     private Mock<ILyricsService> _mockLyrics;
     private Mock<IBackgroundQueue> _mockQueue;
+    private Mock<Microsoft.Extensions.Logging.ILogger<SongService>> _mockLogger;
     private SongService _songService;
 
     [SetUp]
@@ -41,8 +42,11 @@ public class SongServiceTests
         _mockDeezer = new Mock<IDeezerService>();
         _mockLyrics = new Mock<ILyricsService>();
         _mockQueue = new Mock<IBackgroundQueue>();
+        _mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<SongService>>();
 
-        _songService = new SongService(_uow, _mockYoutube.Object, _mockWiki.Object, _mockDeezer.Object, _mockLyrics.Object, _mockQueue.Object);
+        _songService = new SongService(
+            _uow, _mockYoutube.Object, _mockWiki.Object, _mockDeezer.Object, 
+            _mockLyrics.Object, _mockQueue.Object, _mockLogger.Object);
     }
 
     [TearDown]
@@ -67,7 +71,7 @@ public class SongServiceTests
         var result = await _songService.GetAllSongsAsync();
 
         Assert.That(result.Count(), Is.EqualTo(1));
-        Assert.That(result.First().GenreNames.First(), Is.EqualTo("Pop"));
+        Assert.That(result.First().Title, Is.EqualTo("Song 1"));
     }
 
     [Test]

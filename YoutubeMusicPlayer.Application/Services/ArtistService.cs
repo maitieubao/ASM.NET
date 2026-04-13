@@ -438,7 +438,7 @@ public class ArtistService : IArtistService
 
         var artists = await _unitOfWork.Repository<Artist>().Query()
             .AsNoTracking()
-            .Where(a => !a.IsDeleted && EF.Functions.Like(a.Name, $"%{query}%"))
+            .Where(a => !a.IsDeleted && a.Name.ToLower().Contains(query.ToLower()))
             .OrderByDescending(a => a.SubscriberCount)
             .Take(count)
             .ToListAsync(ct);
@@ -480,6 +480,34 @@ public class ArtistService : IArtistService
             WikipediaUrl = a.WikipediaUrl,
             MonthlyListeners = (a.SubscriberCount + (dailyListeners * 30)).ToString("N0")
         };
+    }
+
+    public async Task<ArtistDto> GetOrCreateArtistStubAsync(string name, string? avatarUrl = null, CancellationToken ct = default)
+    {
+        var existing = await _unitOfWork.Repository<Artist>().Query()
+            .FirstOrDefaultAsync(a => a.Name.ToLower() == name.ToLower() && !a.IsDeleted, ct);
+
+        if (existing != null) return MapToDto(existing);
+
+        var artist = new Artist
+        {
+            Name = name,
+            AvatarUrl = avatarUrl,
+            Bio = $"Tiểu sử của {name} đang được cập nhật...",
+            SubscriberCount = new Random().Next(1000, 50000) // Initial mock followers
+        };
+
+        await _unitOfWork.Repository<Artist>().AddAsync(artist, ct);
+        await _unitOfWork.CompleteAsync(ct);
+
+        // Queue background sync for biography and real images
+        await _backgroundQueue.QueueBackgroundWorkItemAsync(async sp => 
+        {
+            var svc = sp.GetRequiredService<IArtistService>();
+            await svc.SyncArtistMetadataAsync(artist.ArtistId);
+        });
+
+        return MapToDto(artist);
     }
 
     private SongDto ToSongDto(Song s) => new SongDto 

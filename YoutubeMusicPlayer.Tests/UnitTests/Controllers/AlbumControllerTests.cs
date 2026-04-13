@@ -12,13 +12,20 @@ namespace YoutubeMusicPlayer.Tests.UnitTests.Controllers;
 public class AlbumControllerTests
 {
     private Mock<IAlbumService> _mockAlbum;
+    private Mock<IDeezerService> _mockDeezer;
+    private Mock<IITunesService> _mockITunes;
     private AlbumController _albumController;
 
     [SetUp]
     public void Setup()
     {
         _mockAlbum = new Mock<IAlbumService>();
-        _albumController = new AlbumController(_mockAlbum.Object);
+        _mockDeezer = new Mock<IDeezerService>();
+        _mockITunes = new Mock<IITunesService>();
+        _albumController = new AlbumController(
+            _mockAlbum.Object, 
+            _mockDeezer.Object, 
+            _mockITunes.Object);
     }
 
     [TearDown]
@@ -34,7 +41,7 @@ public class AlbumControllerTests
 
         var result = await _albumController.Details(999);
 
-        Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
     }
 }
 

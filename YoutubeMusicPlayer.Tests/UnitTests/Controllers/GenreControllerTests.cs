@@ -13,13 +13,15 @@ namespace YoutubeMusicPlayer.Tests.UnitTests.Controllers;
 public class GenreControllerTests
 {
     private Mock<IGenreService> _mockGenre;
+    private Mock<ISongService> _mockSong;
     private GenreController _genreController;
 
     [SetUp]
     public void Setup()
     {
         _mockGenre = new Mock<IGenreService>();
-        _genreController = new GenreController(_mockGenre.Object);
+        _mockSong = new Mock<ISongService>();
+        _genreController = new GenreController(_mockGenre.Object, _mockSong.Object);
     }
 
     [TearDown]

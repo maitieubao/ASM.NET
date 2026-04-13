@@ -31,6 +31,8 @@
 .control-btns { display: flex; align-items: center; gap: 24px; color: var(--text-dim); }
 .control-btns i { font-size: 1.2rem; cursor: pointer; transition: 0.2s; }
 .control-btns i:hover { color: var(--text-main); }
+.control-btns i.active { color: var(--accent-primary) !important; text-shadow: 0 0 8px var(--accent-glow); }
+.text-primary { color: var(--accent-primary) !important; }
 .play-main { color: var(--text-main); font-size: 2.5rem !important; }
 
 /* SLIDERS & PROGRESS */

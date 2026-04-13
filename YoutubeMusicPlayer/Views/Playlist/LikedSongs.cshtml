@@ -46,7 +46,7 @@
                 @{ int i = 1; }
                 @foreach (var s in Model.Songs)
                 {
-                    <tr class="song-row" onclick="playSingleTrack('@s.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(s.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(s.AuthorName ?? "Unknown")', '@s.ThumbnailUrl')">
+                    <tr class="song-row" onclick="playTrackInContext(@Json.Serialize(Model.Songs), @(i - 1))">
                         <td class="ps-4 text-dim fw-bold">@i</td>
                         <td>
                             <div class="d-flex align-items-center">

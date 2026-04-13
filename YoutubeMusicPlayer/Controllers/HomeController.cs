@@ -115,6 +115,21 @@ public class HomeController : BaseController
         var songs = await _homeFacade.GetSongsByArtistAsync(name);
         return SuccessResponse(songs);
     }
+    
+    [HttpGet]
+    public async Task<IActionResult> Discovery(string tag, int page = 1, bool json = false)
+    {
+        if (string.IsNullOrEmpty(tag)) tag = "Tất cả";
+        
+        var songs = await _homeFacade.GetDiscoverySongsAsync(tag, page, 25);
+        
+        if (json) return Ok(songs);
+        
+        ViewBag.Tag = tag;
+        ViewBag.CurrentPage = page;
+        
+        return View(songs);
+    }
 
     public IActionResult Privacy() => View();
 

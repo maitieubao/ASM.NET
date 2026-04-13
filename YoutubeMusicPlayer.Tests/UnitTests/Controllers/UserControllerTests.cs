@@ -15,24 +15,25 @@ namespace YoutubeMusicPlayer.Tests.UnitTests.Controllers;
 public class UserControllerTests
 {
     private Mock<IUserService> _mockUser;
-    private Mock<ICommentService> _mockComment;
+    private Mock<IProfileFacade> _mockProfileFacade;
     private Mock<INotificationService> _mockNotification;
-    private Mock<IPlaylistService> _mockPlaylist;
-    private Mock<IInteractionService> _mockInteraction;
     private UserController _controller;
 
     [SetUp]
     public void Setup()
     {
         _mockUser = new Mock<IUserService>();
-        _mockComment = new Mock<ICommentService>();
+        _mockProfileFacade = new Mock<IProfileFacade>();
         _mockNotification = new Mock<INotificationService>();
-        _mockPlaylist = new Mock<IPlaylistService>();
-        _mockInteraction = new Mock<IInteractionService>();
 
-        _controller = new UserController(_mockUser.Object, _mockComment.Object, _mockNotification.Object, _mockPlaylist.Object, _mockInteraction.Object);
+        _controller = new UserController(
+            _mockUser.Object, 
+            _mockProfileFacade.Object, 
+            _mockNotification.Object);
         
-        var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[] { new Claim(ClaimTypes.NameIdentifier, "1") }, "mock"));
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[] { 
+            new Claim(ClaimTypes.NameIdentifier, "1") 
+        }, "mock"));
         _controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = user } };
     }
 
@@ -45,11 +46,8 @@ public class UserControllerTests
     [Test]
     public async Task Profile_ReturnsView_IfUserExists()
     {
-        _mockUser.Setup(s => s.GetUserByIdAsync(It.IsAny<int>())).ReturnsAsync(new UserDto { UserId = 1 });
-        _mockUser.Setup(s => s.GetUserListeningHistoryAsync(It.IsAny<int>())).ReturnsAsync(new List<ListeningHistoryDto>());
-        _mockNotification.Setup(s => s.GetUserNotificationsAsync(It.IsAny<int>())).ReturnsAsync(new List<NotificationDto>());
-        _mockPlaylist.Setup(s => s.GetUserPlaylistsAsync(It.IsAny<int>())).ReturnsAsync(new List<PlaylistDto>());
-        _mockInteraction.Setup(s => s.GetTopPreferredGenresAsync(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(new List<string>());
+        _mockProfileFacade.Setup(s => s.BuildUserProfileAsync(1))
+            .ReturnsAsync(new UserProfileViewModel());
 
         var result = await _controller.Profile() as ViewResult;
 

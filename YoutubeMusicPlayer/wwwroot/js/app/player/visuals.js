@@ -7,8 +7,16 @@ window.updatePlayPauseUI = function(isPlaying) {
 };
 
 window.setPlayerMessage = function(title, author) {
-    $('#currentTitle').text(title || 'Unknown Title');
-    $('#currentAuthor').text(author || 'Unknown Artist');
+    const $title = $('#currentTitle');
+    const $author = $('#currentAuthor');
+    $title.text(title || 'Unknown Title');
+    $author.text(author || 'Unknown Artist');
+    
+    if (title && (title.includes('Lỗi') || title.includes('STOP'))) {
+        $title.addClass('text-danger fw-bold');
+    } else {
+        $title.removeClass('text-danger fw-bold');
+    }
 };
 
 window.updateDynamicTheme = function(thumbUrl) {
