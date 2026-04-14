@@ -96,7 +96,8 @@
                 }
                 else
                 {
-                    <div class="glass-card p-4 w-100 text-center text-white-50 rounded-4">
+                    <div class="glass-card p-4 w-100 text-center text-white-50 rounded-4 border border-white border-opacity-5">
+                        <i class="fa-solid fa-users-slash d-block mb-2 opacity-50 fs-4"></i>
                         Bạn chưa theo dõi nghệ sĩ nào.
                     </div>
                 }
@@ -109,7 +110,7 @@
                 <section class="mb-5 section-reveal">
                     <div class="d-flex align-items-center justify-content-between mb-4">
                         <h3 class="section-title">Playlist của tôi</h3>
-                        <a asp-controller="Playlist" asp-action="Index" class="btn btn-accent btn-sm rounded-pill px-3 fw-bold">
+                        <a asp-controller="Playlist" asp-action="Index" class="btn btn-accent btn-sm rounded-pill px-3 fw-bold shadow-lg shadow-accent/20">
                             <i class="fa-solid fa-plus me-1"></i> Quản lý
                         </a>
                     </div>
@@ -129,6 +130,13 @@
                                     </div>
                                 </div>
                             }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="glass-card p-5 text-center text-white-50 rounded-5 border border-white border-opacity-5">
+                             <p>Hãy tạo playlist đầu tiên của bạn để lưu giữ những bài hát yêu thích!</p>
+                             <a href="/Playlist/Create" class="btn btn-outline-accent btn-sm rounded-pill px-4 mt-2">Tạo ngay</a>
                         </div>
                     }
                 </section>
@@ -154,6 +162,10 @@
                                 </div>
                             }
                         }
+                        else
+                        {
+                            <div class="p-5 text-center text-white-50">Lịch sử nghe nhạc đang trống.</div>
+                        }
                     </div>
                 </section>
             </div>
@@ -162,8 +174,8 @@
                 <div class="sticky-sidebar">
                     <!-- C. DISCOVER GENRES -->
                     <section class="mb-5 section-reveal">
-                        <h3 class="section-title mb-4">Gu âm nhạc</h3>
-                        <div class="glass-card p-4 rounded-5">
+                         <h3 class="section-title mb-4">Gu âm nhạc</h3>
+                        <div class="glass-card p-4 rounded-5 border border-white border-opacity-5">
                             @if (topGenres.Any())
                             {
                                 <div class="d-flex flex-wrap gap-2">
@@ -172,6 +184,10 @@
                                         <span class="badge bg-white bg-opacity-10 text-white rounded-pill px-3 py-2 fw-medium border border-white border-opacity-5">#@g</span>
                                     }
                                 </div>
+                            }
+                            else
+                            {
+                                <div class="text-white-50 small">Hãy nghe nhạc nhiều hơn để khám phá gu âm nhạc của bạn!</div>
                             }
                         </div>
                     </section>
@@ -182,15 +198,17 @@
                             <h3 class="section-title">Thông báo</h3>
                             @if(unreadCount > 0)
                             {
-                                <span class="badge bg-danger rounded-pill">@unreadCount mới</span>
+                                <span class="badge bg-danger rounded-pill shadow-lg shadow-danger/20">@unreadCount mới</span>
                             }
                         </div>
-                        <div class="glass-card rounded-5 overflow-hidden">
+                        <div class="glass-card rounded-5 overflow-hidden border border-white border-opacity-5">
                             @if(notifications.Any())
                             {
                                 foreach(var n in notifications.Take(4))
                                 {
-                                    <div class="p-4 border-bottom border-white border-opacity-5 d-flex gap-4 @(!n.IsRead ? "bg-white bg-opacity-5" : "")" id="notif-@n.NotificationId">
+                                    <div class="notif-row p-4 border-bottom border-white border-opacity-5 d-flex gap-4 @(!n.IsRead ? "active-notif" : "opacity-75")" 
+                                         id="notif-@n.NotificationId" 
+                                         onclick="markRead(@n.NotificationId)">
                                         <div class="notif-type-icon @(n.Type == "System" ? "text-info" : "text-warning")">
                                             <i class="fa-solid @(n.Type == "System" ? "fa-circle-info" : "fa-star") fs-4"></i>
                                         </div>
@@ -204,6 +222,13 @@
                                     </div>
                                 }
                             }
+                            else
+                            {
+                                <div class="p-5 text-center text-white-50 small">
+                                    <i class="fa-solid fa-bell-slash d-block mb-2 fs-3 opacity-20"></i>
+                                    Bạn chưa có thông báo mới nào.
+                                </div>
+                            }
                         </div>
                     </section>
                 </div>
@@ -215,17 +240,32 @@
 @section Scripts {
     <script>
         async function markRead(id) {
+            const el = document.getElementById('notif-' + id);
+            if (!el || !el.classList.contains('active-notif')) return;
+
+            // Optimistic UI update: immediate visual feedback
+            el.classList.remove('active-notif');
+            el.classList.add('opacity-75');
+            
             try {
-                const res = await fetch('/User/MarkNotificationRead/' + id, { method: 'POST' });
-                if(res.ok) {
-                    const el = document.getElementById('notif-' + id);
-                    if(el) {
-                        el.classList.remove('bg-white', 'bg-opacity-5');
-                        const btn = el.querySelector('button');
-                        if(btn) btn.remove();
-                    }
+                // CSRF Token is required for POST requests
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['RequestVerificationToken'] = token;
+
+                const res = await fetch('/User/MarkNotificationRead/' + id, { 
+                    method: 'POST',
+                    headers: headers
+                });
+                
+                if(!res.ok) {
+                    // Rollback if server fails
+                    el.classList.add('active-notif');
+                    el.classList.remove('opacity-75');
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.error('[Notification] MarkRead error:', e);
+            }
         }
 
         const observer = new IntersectionObserver((entries) => {
@@ -290,4 +330,8 @@
     .artist-card-mini:hover .avatar-wrapper { transform: scale(1.1); box-shadow: 0 10px 30px rgba(108, 92, 231, 0.4); }
     .group-hover-scale-110 { transition: 0.4s; }
     .artist-card-mini:hover .group-hover-scale-110 { transform: scale(1.1); }
+    .notif-row { cursor: pointer; transition: 0.3s; }
+    .notif-row:hover { background: rgba(255,255,255,0.05); }
+    .active-notif { background: rgba(108, 92, 231, 0.1) !important; border-left: 3px solid var(--accent-primary); }
+    .opacity-75 { opacity: 0.75; }
 </style>

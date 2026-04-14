@@ -102,9 +102,9 @@ public class AlbumService : IAlbumService
         if (!album.Songs.Any() || string.IsNullOrEmpty(album.DeezerAlbumId)) 
         {
              string? firstArtist = artists.FirstOrDefault()?.Name;
-             await _backgroundQueue.QueueBackgroundWorkItemAsync(async sp => {
+             await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp, cancellationToken) => {
                  var syncService = sp.GetRequiredService<IAlbumService>();
-                 await syncService.EnsureAlbumSyncMetadataBackground(id, firstArtist);
+                 await syncService.EnsureAlbumSyncMetadataBackground(id, firstArtist, cancellationToken);
              });
         }
 
@@ -334,22 +334,19 @@ public class AlbumService : IAlbumService
     {
         try 
         {
-             using var scope = _scopeFactory.CreateScope();
-             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-             var dz = scope.ServiceProvider.GetRequiredService<IDeezerService>();
-
-             var album = await uow.Repository<Album>().GetByIdAsync(albumId, ct);
+             // Note: Using injected services instead of new scope as it is already provided by BackgroundQueue
+             var album = await _unitOfWork.Repository<Album>().GetByIdAsync(albumId, ct);
              if (album == null || album.IsDeleted) return;
 
              if (string.IsNullOrEmpty(album.DeezerAlbumId)) 
              {
                 string query = string.IsNullOrWhiteSpace(artistName) ? album.Title : $"{artistName} {album.Title}";
-                var searchResults = await dz.SearchAlbumsAsync(query, 1);
+                var searchResults = await _deezerService.SearchAlbumsAsync(query, 1);
                 var res = searchResults.FirstOrDefault();
                 if (res != null) {
                     album.DeezerAlbumId = res.DeezerId;
-                    uow.Repository<Album>().Update(album);
-                    await uow.CompleteAsync(ct);
+                    _unitOfWork.Repository<Album>().Update(album);
+                    await _unitOfWork.CompleteAsync(ct);
                 }
              }
         } 

@@ -73,16 +73,18 @@ $(function() {
     window.loadSidebarPlaylists();
 
     // Responsive Sidebar Toggle
-    $('.logo-container i.fa-bars').on('click', function(e) {
+    $('#mobileMenuBtn').on('click', function(e) {
         e.stopPropagation();
-        $('.sidebar').toggleClass('show');
+        $('#sidebar').toggleClass('show');
     });
 
     // Close sidebar when clicking outside on mobile
     $(document).on('click', function(e) {
         if ($(window).width() <= 992) {
-            if (!$('.sidebar').is(e.target) && $('.sidebar').has(e.target).length === 0) {
-                $('.sidebar').removeClass('show');
+            const $sidebar = $('#sidebar');
+            const $btn = $('#mobileMenuBtn');
+            if (!$sidebar.is(e.target) && $sidebar.has(e.target).length === 0 && !$btn.is(e.target) && $btn.has(e.target).length === 0) {
+                $sidebar.removeClass('show');
             }
         }
     });

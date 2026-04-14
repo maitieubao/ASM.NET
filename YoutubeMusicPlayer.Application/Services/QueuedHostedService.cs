@@ -39,7 +39,7 @@ public class QueuedHostedService : BackgroundService
                     _logger.LogInformation("Starting execution of background task (Attempt {Attempt}).", retryCount + 1);
 
                     using var scope = _serviceProvider.CreateScope();
-                    await workItem(scope.ServiceProvider);
+                    await workItem(scope.ServiceProvider, stoppingToken);
                     
                     success = true;
                     _logger.LogInformation("Finished execution of background task.");

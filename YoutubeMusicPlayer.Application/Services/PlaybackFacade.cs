@@ -205,7 +205,10 @@ public class PlaybackFacade : IPlaybackFacade
             StreamUrl = streamUrl, 
             VideoId = youtubeId, 
             SongId = song?.SongId, 
-            ShowAd = !isPremium 
+            ShowAd = !isPremium,
+            Title = song?.Title ?? title,
+            Author = song?.AuthorName ?? artist,
+            ThumbnailUrl = song?.ThumbnailUrl
         };
 
         if (song != null)
@@ -230,7 +233,7 @@ public class PlaybackFacade : IPlaybackFacade
                 result.IsLiked = await _interactionService.IsSongLikedAsync(userId.Value, song.SongId);
                 
                 // Record history in background with error handling
-                await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) =>
+                await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp, ct) =>
                 {
                     try {
                         var interactionSvc = sp.GetRequiredService<IInteractionService>();
@@ -301,7 +304,7 @@ public class PlaybackFacade : IPlaybackFacade
                 // Background save to DB only if it's the default language (null lang) and we got timed lyrics
                 if (string.IsNullOrEmpty(lang) && timedLyrics != null && timedLyrics.Any())
                 {
-                    await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) => {
+                    await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp, ct) => {
                         try {
                             var uow = sp.GetRequiredService<IUnitOfWork>();
                             var songRepo = uow.Repository<Song>();

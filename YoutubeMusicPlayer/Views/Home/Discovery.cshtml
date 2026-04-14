@@ -50,9 +50,24 @@
     </div>
 </div>
 
-@section Scripts {
-    <script src="~/js/discovery.js" asp-append-version="true"></script>
-}
+</div>
+
+<input type="hidden" id="page-title-data" value="Khám phá: @ViewBag.Tag" />
+
+<script>
+    (async function() {
+        // Load discovery.js if not already loaded (though it should be in layout)
+        // If it's already in layout, we just call init
+        if (typeof window.initDiscovery === 'function') {
+            window.initDiscovery();
+        } else {
+            console.log("[Discovery] discovery.js not found, loading manually...");
+            $.getScript("/js/discovery.js", function() {
+                window.initDiscovery();
+            });
+        }
+    })();
+</script>
 
 <style>
     .discovery-container {

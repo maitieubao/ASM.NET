@@ -99,12 +99,12 @@ window.fetchRichMetadata = function(videoId, retryCount = 0, lang = null) {
                         renderPlainLyrics($lc, data.lyrics);
                     }
                 } else if (data.status === "NOT_FOUND" && retryCount < 1) {
-                    setTimeout(() => fetchRichMetadata(videoId, retryCount + 1), 3000);
+                    setTimeout(() => fetchRichMetadata(videoId, retryCount + 1, lang), 3000);
                 } else {
-                    $lc.html(`
-                        <div class="lyrics-not-found">
+                    $lc.removeClass('lyrics-text').html(`
+                        <div class="lyrics-not-found animate-fade-in">
                             <i class="fa-solid fa-music mb-3 opacity-20 d-block fs-1"></i>
-                            <div class="opacity-50">Hiện tại chưa có lời bài hát cho tác phẩm này.</div>
+                            <div class="opacity-80">Hiện tại chưa có lời bài hát cho tác phẩm này.</div>
                         </div>
                     `);
                 }
@@ -127,9 +127,11 @@ function renderPlainLyrics($container, lyrics) {
     `;
     
     $container.html(`
-        ${noticeHtml}
         <div class="is-plain-subtitle animate-fade-in">
-            ${lyrics.replace(/\n/g, '<br>')}
+            ${noticeHtml}
+            <div class="plain-text-content">
+                ${lyrics.replace(/\n/g, '<br>')}
+            </div>
         </div>
     `)
     .removeClass('is-synchronized')

@@ -20,27 +20,29 @@ public class InteractionService : IInteractionService
 
     public async Task<IEnumerable<int>> GetRecentListeningHistoryAsync(int userId, int count = 20)
     {
-        // Optimized: SQL-level processing to avoid loading all history into RAM
+        // Optimized: Group by SongId to get the latest interaction per song, then order and take
         return await _unitOfWork.Repository<ListeningHistory>().Query()
             .AsNoTracking()
             .Where(lh => lh.UserId == userId)
-            .OrderByDescending(lh => lh.ListenedAt)
-            .Select(lh => lh.SongId)
-            .Distinct()
+            .GroupBy(lh => lh.SongId)
+            .Select(g => new { SongId = g.Key, MaxDate = g.Max(lh => lh.ListenedAt) })
+            .OrderByDescending(x => x.MaxDate)
             .Take(count)
+            .Select(x => x.SongId)
             .ToListAsync();
     }
 
     public async Task<IEnumerable<string>> GetRecentSearchHistoryAsync(int userId, int count = 10)
     {
-        // Optimized: SQL-level processing to avoid loading all searches into RAM
+        // Optimized: Group by Query to get the latest search date per query string
         return await _unitOfWork.Repository<UserSearchHistory>().Query()
             .AsNoTracking()
             .Where(sh => sh.UserId == userId)
-            .OrderByDescending(sh => sh.SearchedAt)
-            .Select(sh => sh.SearchQuery)
-            .Distinct()
+            .GroupBy(sh => sh.SearchQuery)
+            .Select(g => new { Query = g.Key, MaxDate = g.Max(sh => sh.SearchedAt) })
+            .OrderByDescending(x => x.MaxDate)
             .Take(count)
+            .Select(x => x.Query)
             .ToListAsync();
     }
 
@@ -70,12 +72,9 @@ public class InteractionService : IInteractionService
 
             if (song == null) return;
 
-            // 3. Update Song PlayCount (Only if play is > 30s)
-            if (durationSeconds > 30)
-            {
-                song.PlayCount += 1;
-                _unitOfWork.Repository<Song>().Update(song);
-            }
+            // 3. Update Song PlayCount (REMOVED: Now handled by IncrementPlayCountAsync for accuracy)
+            // Lượt xem được đếm riêng qua RecordView API để đạt chuẩn 30s/50%
+
 
             // 4. Update Genre-specific Stats
             foreach (var sg in song.SongGenres)
@@ -106,11 +105,37 @@ public class InteractionService : IInteractionService
 
             await _unitOfWork.CompleteAsync();
         }
-        catch (ObjectDisposedException ex)
+        catch (ObjectDisposedException)
         {
             // Log and absorb if the context was disposed during a shutdown/retry cycle
-            // The QueuedHostedService will handle retries if this was a transient failure
             throw; 
+        }
+    }
+
+    public async Task IncrementPlayCountAsync(int songId)
+    {
+        try
+        {
+            var song = await _unitOfWork.Repository<Song>().Query()
+                .FirstOrDefaultAsync(s => s.SongId == songId);
+
+            if (song != null)
+            {
+                song.PlayCount += 1;
+                _unitOfWork.Repository<Song>().Update(song);
+                await _unitOfWork.CompleteAsync();
+                
+                // DETAILED LOG FOR VERIFICATION
+                System.Console.WriteLine($"[DB-UPDATE] Song #{songId} ({song.Title}) -> New PlayCount: {song.PlayCount}");
+            }
+            else
+            {
+                System.Console.WriteLine($"[DB-UPDATE] WARNING: Song #{songId} not found. Cannot increment play count.");
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            throw;
         }
     }
 
@@ -181,14 +206,15 @@ public class InteractionService : IInteractionService
 
     public async Task<List<string>> GetHistoryVideoIdsAsync(int userId, int count = 50)
     {
-        // Optimized: SQL projection (.Select) to fetch only strings, not full Song entities
+        // Optimized: Get unique video IDs ordered by latest interaction date
         return await _unitOfWork.Repository<ListeningHistory>().Query()
             .AsNoTracking()
             .Where(h => h.UserId == userId)
-            .OrderByDescending(h => h.ListenedAt)
-            .Select(h => h.Song.YoutubeVideoId)
-            .Distinct()
+            .GroupBy(h => h.Song.YoutubeVideoId)
+            .Select(g => new { VideoId = g.Key, MaxDate = g.Max(h => h.ListenedAt) })
+            .OrderByDescending(x => x.MaxDate)
             .Take(count)
+            .Select(x => x.VideoId)
             .ToListAsync();
     }
 

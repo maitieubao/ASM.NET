@@ -53,6 +53,11 @@ window.loadAndPlay = async function(track) {
                 window.streamCache[track.videoId] = result.streamUrl;
                 window.currentSongDbId = result.songId || null; 
                 audioPlayer.src = result.streamUrl;
+                
+                // SYNC LIKE STATUS FROM DB ON LOAD
+                if (typeof window.updateLikeUI === 'function') {
+                    window.updateLikeUI(result.isLiked || false);
+                }
             } else {
                 throw new Error('No stream URL provided');
             }

@@ -168,10 +168,15 @@ public class AppDbContext : DbContext
             {
                 property.SetColumnName(property.GetColumnName().ToLower());
 
-                // 3. Standardize DateTime to 'timestamp with time zone'
+                // 3. Standardize DateTime to 'timestamp with time zone' and ensure UTC
                 if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
                 {
                     property.SetColumnType("timestamp with time zone");
+                    
+                    property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+                        v => v.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v, DateTimeKind.Utc),
+                        v => DateTime.SpecifyKind(v, DateTimeKind.Utc)
+                    ));
                 }
             }
         }

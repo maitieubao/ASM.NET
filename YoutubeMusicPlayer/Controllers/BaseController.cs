@@ -11,6 +11,8 @@ public abstract class BaseController : Controller
 
     protected bool IsAdmin => User.IsInRole(UserRoles.Admin);
 
+    protected bool IsSpaRequest => Request.Headers["X-SPA-Request"] == "true";
+
     protected IActionResult SuccessResponse<T>(T data, string? message = null)
     {
         return Ok(ApiResponse<T>.SuccessResult(data, message));

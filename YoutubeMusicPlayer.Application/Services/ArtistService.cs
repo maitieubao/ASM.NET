@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +25,7 @@ public class ArtistService : IArtistService
     private readonly IBackgroundQueue _backgroundQueue;
     private readonly ILogger<ArtistService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private static readonly ConcurrentDictionary<int, SemaphoreSlim> _syncLocks = new();
 
     public ArtistService(IUnitOfWork unitOfWork, 
                          IWikipediaService wikipediaService, 
@@ -97,65 +99,37 @@ public class ArtistService : IArtistService
             .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted);
 
         // EXECUTE ALL QUERIES IN PARALLEL USING ISOLATED SCOPES
-        var topSongsTask = Task.Run(async () => {
+        // 1. Grouped Songs Task (Top, Latest, Paginated, Count) - Single connection
+        var songsGroupTask = Task.Run(async () => {
             using var scope = _scopeFactory.CreateScope();
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            return await uow.Repository<Song>().Query()
-                .AsNoTracking()
-                .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted)
-                .OrderByDescending(s => s.PlayCount)
-                .Take(10)
-                .ToListAsync(ct);
+            var repo = uow.Repository<Song>();
+            
+            var baseQuery = repo.Query().AsNoTracking()
+                                .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted);
+
+            var top = await baseQuery.OrderByDescending(s => s.PlayCount).Take(10).ToListAsync(ct);
+            var latest = await baseQuery.OrderByDescending(s => s.ReleaseDate ?? DateTime.MinValue)
+                                        .ThenByDescending(s => s.SongId)
+                                        .Take(10).ToListAsync(ct);
+            var paginated = await baseQuery.OrderBy(s => s.Title)
+                                           .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+            var count = await baseQuery.CountAsync(ct);
+
+            return (top, latest, paginated, count);
         });
 
-        var latestSongsTask = Task.Run(async () => {
+        // 2. Grouped Metadata Task (Albums, Related Artists) - Single connection
+        var metadataGroupTask = Task.Run(async () => {
             using var scope = _scopeFactory.CreateScope();
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            return await uow.Repository<Song>().Query()
-                .AsNoTracking()
-                .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted)
-                .OrderByDescending(s => s.ReleaseDate ?? DateTime.MinValue)
-                .ThenByDescending(s => s.SongId)
-                .Take(10)
-                .ToListAsync(ct);
-        });
 
-        var paginatedSongsTask = Task.Run(async () => {
-            using var scope = _scopeFactory.CreateScope();
-            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            return await uow.Repository<Song>().Query()
-                .AsNoTracking()
-                .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted)
-                .OrderBy(s => s.Title)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync(ct);
-        });
+            var albums = await uow.Repository<Album>().Query().AsNoTracking()
+                                .Where(al => al.AlbumArtists.Any(aa => aa.ArtistId == id) && !al.IsDeleted)
+                                .OrderByDescending(al => al.ReleaseDate ?? DateTime.MinValue)
+                                .Take(20).ToListAsync(ct);
 
-        var countTask = Task.Run(async () => {
-            using var scope = _scopeFactory.CreateScope();
-            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            return await uow.Repository<Song>().Query()
-                .AsNoTracking()
-                .Where(s => s.SongArtists.Any(sa => sa.ArtistId == id) && !s.IsDeleted)
-                .CountAsync(ct);
-        });
-
-        var albumsTask = Task.Run(async () => {
-            using var scope = _scopeFactory.CreateScope();
-            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            return await uow.Repository<Album>().Query()
-                .AsNoTracking()
-                .Where(al => al.AlbumArtists.Any(aa => aa.ArtistId == id) && !al.IsDeleted)
-                .OrderByDescending(al => al.ReleaseDate ?? DateTime.MinValue)
-                .Take(20)
-                .ToListAsync(ct);
-        });
-
-        var relatedArtistsTask = Task.Run(async () => {
-            using var scope = _scopeFactory.CreateScope();
-            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            return await (from ra in uow.Repository<Artist>().Query().AsNoTracking()
+            var related = await (from ra in uow.Repository<Artist>().Query().AsNoTracking()
                                  join rsa in uow.Repository<SongArtist>().Query().AsNoTracking() on ra.ArtistId equals rsa.ArtistId
                                  join rsg in uow.Repository<SongGenre>().Query().AsNoTracking() on rsa.SongId equals rsg.SongId
                                  where !ra.IsDeleted && ra.ArtistId != id &&
@@ -163,18 +137,15 @@ public class ArtistService : IArtistService
                                  select ra)
                                  .Distinct()
                                  .OrderByDescending(ra => ra.SubscriberCount)
-                                 .Take(6)
-                                 .ToListAsync(ct);
+                                 .Take(6).ToListAsync(ct);
+
+            return (albums, related);
         });
 
-        await Task.WhenAll(topSongsTask, latestSongsTask, paginatedSongsTask, countTask, albumsTask, relatedArtistsTask);
+        await Task.WhenAll(songsGroupTask, metadataGroupTask);
 
-        var topSongs = await topSongsTask;
-        var latestSongs = await latestSongsTask;
-        var paginatedSongs = await paginatedSongsTask;
-        var totalSongsCount = await countTask;
-        var albums = await albumsTask;
-        var relatedArtists = await relatedArtistsTask;
+        var (topSongs, latestSongs, paginatedSongs, totalSongsCount) = await songsGroupTask;
+        var (albums, relatedArtists) = await metadataGroupTask;
 
         bool isFollowing = false;
         if (currentUserId.HasValue) isFollowing = await IsFollowingAsync(currentUserId.Value, id, ct);
@@ -312,35 +283,43 @@ public class ArtistService : IArtistService
 
     public async Task<string?> SyncArtistMetadataAsync(int artistId, CancellationToken ct = default)
     {
+        var myLock = _syncLocks.GetOrAdd(artistId, _ => new SemaphoreSlim(1, 1));
+        bool acquired = false;
         try 
         {
-            using var scope = _scopeFactory.CreateScope();
-            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var wik = scope.ServiceProvider.GetRequiredService<IWikipediaService>();
-            var dz = scope.ServiceProvider.GetRequiredService<IDeezerService>();
-            var yt = scope.ServiceProvider.GetRequiredService<IYoutubeService>();
+            // Only wait for a reasonable time to avoid clogging background worker
+            acquired = await myLock.WaitAsync(TimeSpan.FromMinutes(2), ct);
+            if (!acquired) {
+                _logger.LogWarning("Skipping sync for Artist {ArtistId} as another sync is in progress.", artistId);
+                return null;
+            }
 
-            var artist = await uow.Repository<Artist>().GetByIdAsync(artistId, ct);
+            // Note: Since this is called from BackgroundQueue which already provides a scope, 
+            // we use the injected services instead of creating a new scope.
+            // If called from elsewhere, we rely on the injected UnitOfWork scope.
+
+            var artist = await _unitOfWork.Repository<Artist>().GetByIdAsync(artistId, ct);
             if (artist == null || artist.IsDeleted) return null;
 
             bool modified = false;
+            // Background metadata fetching (Bio, Images)
             if (string.IsNullOrEmpty(artist.Bio)) {
-                artist.Bio = await wik.GetArtistBioAsync(artist.Name);
-                artist.WikipediaUrl = await wik.GetWikipediaUrlAsync(artist.Name);
+                artist.Bio = await _wikipediaService.GetArtistBioAsync(artist.Name);
+                artist.WikipediaUrl = await _wikipediaService.GetWikipediaUrlAsync(artist.Name);
                 modified = true;
             }
 
             if (string.IsNullOrEmpty(artist.AvatarUrl)) {
-                var wikiImg = await wik.GetArtistImageAsync(artist.Name);
+                var wikiImg = await _wikipediaService.GetArtistImageAsync(artist.Name);
                 if (!string.IsNullOrEmpty(wikiImg)) {
                     artist.AvatarUrl = wikiImg;
                     artist.BannerUrl = wikiImg;
                     modified = true;
                 } else {
-                    var tracks = await dz.SearchTracksAsync(artist.Name, 1);
+                    var tracks = await _deezerService.SearchTracksAsync(artist.Name, 1);
                     var dArtistId = tracks?.FirstOrDefault()?.DeezerArtistId;
                     if (!string.IsNullOrEmpty(dArtistId)) {
-                        var info = await dz.GetArtistInfoAsync(dArtistId);
+                        var info = await _deezerService.GetArtistInfoAsync(dArtistId);
                         if (info != null) {
                             artist.AvatarUrl = info.ImageUrl;
                             artist.BannerUrl = info.ImageUrl;
@@ -351,17 +330,18 @@ public class ArtistService : IArtistService
             }
 
             if (modified) {
-                uow.Repository<Artist>().Update(artist);
-                await uow.CompleteAsync(ct);
+                _unitOfWork.Repository<Artist>().Update(artist);
+                await _unitOfWork.CompleteAsync(ct);
             }
 
-            var existingSongsCount = await uow.Repository<SongArtist>().Query().CountAsync(sa => sa.ArtistId == artistId, ct);
+            // Discovery of songs if none exist
+            var existingSongsCount = await _unitOfWork.Repository<SongArtist>().Query().CountAsync(sa => sa.ArtistId == artistId, ct);
             if (existingSongsCount == 0) {
-                var searchResults = await yt.SearchVideosAsync($"{artist.Name} official audio", 10);
-                var songsToAdd = new List<Song>();
+                var searchResults = await _youtubeService.SearchVideosAsync($"{artist.Name} official audio", 10);
+                var songsToMap = new List<Song>();
                 
                 foreach (var v in searchResults) {
-                    var song = await uow.Repository<Song>().FirstOrDefaultAsync(s => s.YoutubeVideoId == v.YoutubeVideoId && !s.IsDeleted, ct);
+                    var song = await _unitOfWork.Repository<Song>().FirstOrDefaultAsync(s => s.YoutubeVideoId == v.YoutubeVideoId && !s.IsDeleted, ct);
                     if (song == null) {
                         song = new Song {
                             Title = v.Title,
@@ -371,27 +351,38 @@ public class ArtistService : IArtistService
                             PlayCount = v.ViewCount / 1000,
                             ReleaseDate = DateTime.UtcNow
                         };
-                        await uow.Repository<Song>().AddAsync(song, ct);
-                        songsToAdd.Add(song);
+                        await _unitOfWork.Repository<Song>().AddAsync(song, ct);
                     }
+                    songsToMap.Add(song);
                 }
                 
-                await uow.CompleteAsync(ct); // Batch save songs
+                // Save all discovered songs first
+                await _unitOfWork.CompleteAsync(ct); 
 
-                foreach (var song in songsToAdd) {
-                    if (!await uow.Repository<SongArtist>().AnyAsync(sa => sa.SongId == song.SongId && sa.ArtistId == artistId, ct)) {
-                        await uow.Repository<SongArtist>().AddAsync(new SongArtist { SongId = song.SongId, ArtistId = artistId }, ct);
+                // Add mappings
+                foreach (var song in songsToMap) {
+                    if (!await _unitOfWork.Repository<SongArtist>().AnyAsync(sa => sa.SongId == song.SongId && sa.ArtistId == artistId, ct)) {
+                        await _unitOfWork.Repository<SongArtist>().AddAsync(new SongArtist { SongId = song.SongId, ArtistId = artistId }, ct);
                     }
                 }
-                await uow.CompleteAsync(ct); // Batch save mappings
+                await _unitOfWork.CompleteAsync(ct); // Save mappings
             }
 
             return artist.Bio;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Metadata Sync for Artist {ArtistId} was canceled.", artistId);
+            return null;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Metadata Sync Error for Artist {ArtistId}", artistId);
             return null;
+        }
+        finally
+        {
+            if (acquired) myLock.Release();
         }
     }
 
@@ -485,6 +476,7 @@ public class ArtistService : IArtistService
     public async Task<ArtistDto> GetOrCreateArtistStubAsync(string name, string? avatarUrl = null, CancellationToken ct = default)
     {
         var existing = await _unitOfWork.Repository<Artist>().Query()
+            .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Name.ToLower() == name.ToLower() && !a.IsDeleted, ct);
 
         if (existing != null) return MapToDto(existing);
@@ -501,10 +493,10 @@ public class ArtistService : IArtistService
         await _unitOfWork.CompleteAsync(ct);
 
         // Queue background sync for biography and real images
-        await _backgroundQueue.QueueBackgroundWorkItemAsync(async sp => 
+        await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp, cancellationToken) => 
         {
             var svc = sp.GetRequiredService<IArtistService>();
-            await svc.SyncArtistMetadataAsync(artist.ArtistId);
+            await svc.SyncArtistMetadataAsync(artist.ArtistId, cancellationToken);
         });
 
         return MapToDto(artist);

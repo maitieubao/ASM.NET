@@ -106,73 +106,76 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Activate static reveal sections (like Top Artists)
-            document.querySelectorAll('.section-reveal').forEach(el => {
-                if (!el.closest('.section-placeholder')) {
-                    setTimeout(() => el.classList.add('active'), 200);
-                }
-            });
-            
-            loadAllSections();
+<input type="hidden" id="page-title-data" value="Khám phá - Música" />
+
+<script>
+    // These functions need to be globally accessible for the SPA router to re-init
+    window.loadAllSections = async function() {
+        const placeholders = document.querySelectorAll('.section-placeholder');
+        const promises = Array.from(placeholders).map(el => loadSection(el));
+        await Promise.all(promises);
+    }
+
+    async function loadSection(el, forceRefresh = false) {
+        const type = el.getAttribute('data-type');
+        try {
+            const response = await fetch(`/Home/GetHomeSection?type=${type}&refresh=${forceRefresh}`);
+            const html = await response.text();
+            if (html && html.trim().length > 0) {
+                el.innerHTML = html;
+                el.classList.add('loaded');
+                // Add active class for reveal animation
+                const reveal = el.querySelector('.section-reveal');
+                if (reveal) setTimeout(() => reveal.classList.add('active'), 100);
+            } else if (!forceRefresh) {
+                el.remove();
+            }
+        } catch (err) {
+            console.error('Error loading section:', type, err);
+            if (!forceRefresh) el.remove();
+        }
+    }
+
+    window.refreshSection = async function(btn) {
+        const placeholder = btn.closest('.section-placeholder');
+        if (!placeholder) return;
+        
+        btn.classList.add('fa-spin');
+        btn.disabled = true;
+        
+        await loadSection(placeholder, true);
+    }
+
+    window.scrollCarousel = function(btn, direction) {
+        const container = btn.closest('.carousel-wrapper').querySelector('.horizontal-carousel') || btn.closest('.carousel-wrapper').querySelector('.song-list-grid');
+        if (container) {
+            container.scrollBy({ left: direction * 500, behavior: 'smooth' });
+        }
+    }
+
+    window.applyFilter = async function(btn, tag) {
+        if (tag === 'Tất cả') {
+            if (window.SPARouter) window.SPARouter.navigateTo('/');
+            else window.location.href = '/';
+            return;
+        }
+        document.querySelectorAll('.tag-filter').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const url = `/Home/Discovery?tag=${encodeURIComponent(tag)}`;
+        if (window.SPARouter) window.SPARouter.navigateTo(url);
+        else window.location.href = url;
+    }
+
+    // Manual init for full page reloads
+    (function() {
+        // Activate static reveal sections
+        document.querySelectorAll('.section-reveal').forEach(el => {
+            if (!el.closest('.section-placeholder')) {
+                setTimeout(() => el.classList.add('active'), 200);
+            }
         });
-
-        async function loadAllSections() {
-            const placeholders = document.querySelectorAll('.section-placeholder');
-            const promises = Array.from(placeholders).map(el => loadSection(el));
-            await Promise.all(promises);
-        }
-
-        async function loadSection(el, forceRefresh = false) {
-            const type = el.getAttribute('data-type');
-            try {
-                const response = await fetch(`/Home/GetHomeSection?type=${type}&refresh=${forceRefresh}`);
-                const html = await response.text();
-                if (html && html.trim().length > 0) {
-                    el.innerHTML = html;
-                    el.classList.add('loaded');
-                    // Add active class for reveal animation
-                    const reveal = el.querySelector('.section-reveal');
-                    if (reveal) setTimeout(() => reveal.classList.add('active'), 100);
-                } else if (!forceRefresh) {
-                    el.remove();
-                }
-            } catch (err) {
-                console.error('Error loading section:', type, err);
-                if (!forceRefresh) el.remove();
-            }
-        }
-
-        async function refreshSection(btn) {
-            const placeholder = btn.closest('.section-placeholder');
-            if (!placeholder) return;
-            
-            btn.classList.add('fa-spin');
-            btn.disabled = true;
-            
-            await loadSection(placeholder, true);
-            
-            // Animation is reset because innerHTML was replaced, btn is gone
-        }
-
-        function scrollCarousel(btn, direction) {
-            // Updated to handle complex nesting in _HomeSection
-            const container = btn.closest('.carousel-wrapper').querySelector('.horizontal-carousel') || btn.closest('.carousel-wrapper').querySelector('.song-list-grid');
-            if (container) {
-                container.scrollBy({ left: direction * 500, behavior: 'smooth' });
-            }
-        }
-
-        async function applyFilter(btn, tag) {
-            if (tag === 'Tất cả') {
-                window.location.href = '/';
-                return;
-            }
-            document.querySelectorAll('.tag-filter').forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
-            window.location.href = `/Home/Discovery?tag=${encodeURIComponent(tag)}`;
-        }
-    </script>
-}
+        
+        window.loadAllSections();
+    })();
+</script>

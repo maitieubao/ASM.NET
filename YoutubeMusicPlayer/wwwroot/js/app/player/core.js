@@ -76,9 +76,13 @@ $(function() {
 
         if (audioPlayer.paused) {
             if (typeof safePlayCurrentTrack === 'function') await safePlayCurrentTrack();
+            // Sync play to other tabs
+            window.syncChannel.postMessage({ type: 'play', track: window.playQueue[window.currentIndex] });
         } else {
             audioPlayer.pause();
             if (typeof updatePlayPauseUI === 'function') updatePlayPauseUI(false);
+            // Sync pause to other tabs
+            window.syncChannel.postMessage({ type: 'pause' });
         }
     });
 
@@ -131,18 +135,33 @@ $(function() {
         window.restorePlayerState();
     }
 
-    // 5. Periodic State Sync (Save current time during playback)
+    // 5. Periodic State Sync & ANTI-THROTTLING (HEARTBEAT)
     setInterval(() => {
-        if (window.audioPlayer && !window.audioPlayer.paused && window.saveQueueState) {
-            // We append the current time to the state for resumption
-            const raw = localStorage.getItem('ytm-player-state');
-            if (raw) {
-                const state = JSON.parse(raw);
-                state.currentTime = window.audioPlayer.currentTime;
-                localStorage.setItem('ytm-player-state', JSON.stringify(state));
-                
-                // Also broadcast for other tabs
-                window.syncChannel.postMessage({ type: 'sync_time', time: audioPlayer.currentTime });
+        if (window.audioPlayer && window.playQueue[window.currentIndex]) {
+            // A. Anti-Throttling Logic: If it should be playing but is paused abnormally
+            // We only do this if it's NOT a manual pause and NOT loading
+            const isManualPause = $playPauseBtn.hasClass('fa-play'); // UI shows Play icon means it's paused by user
+            
+            if (!isManualPause && audioPlayer.paused && !window.isSongLoading) {
+                console.log("[Heartbeat] Detected abnormal pause (likely tab throttling). Resuming...");
+                if (typeof safePlayCurrentTrack === 'function') {
+                    window.safePlayCurrentTrack().catch(e => console.warn("[StayAwake] Auto-resume failed:", e));
+                } else {
+                    audioPlayer.play().catch(() => {});
+                }
+            }
+
+            // B. State Persistence
+            if (!audioPlayer.paused) {
+                const raw = localStorage.getItem('ytm-player-state');
+                if (raw) {
+                    const state = JSON.parse(raw);
+                    state.currentTime = window.audioPlayer.currentTime;
+                    localStorage.setItem('ytm-player-state', JSON.stringify(state));
+                    
+                    // Also broadcast for other tabs
+                    window.syncChannel.postMessage({ type: 'sync_time', time: audioPlayer.currentTime });
+                }
             }
         }
     }, 3000);
@@ -150,9 +169,7 @@ $(function() {
     // 6. Cross-Tab Synchronization (BroadcastChannel)
     window.syncChannel = new BroadcastChannel('ytm-player-sync');
     
-    // Listen for local trigger events
-    $audioPlayer.on('play', () => window.syncChannel.postMessage({ type: 'play', track: window.playQueue[window.currentIndex] }));
-    $audioPlayer.on('pause', () => window.syncChannel.postMessage({ type: 'pause' }));
+    // REMOVED auto-sync on audio events to prevent browser tab-switching pause issues
     
     window.syncChannel.onmessage = (event) => {
         const { type, time, track } = event.data;

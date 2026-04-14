@@ -102,12 +102,10 @@
                                 <a asp-action="Edit" asp-route-id="@p.PlaylistId" onclick="event.stopPropagation();" class="btn btn-link text-dim hover-text-accent p-0 border-0 extra-small" title="Sửa">
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
-                                <form asp-action="Delete" method="post" onsubmit="event.stopPropagation(); return confirm('Xóa playlist này?')" class="d-inline">
-                                    <input type="hidden" name="playlistId" value="@p.PlaylistId" />
-                                    <button type="submit" class="btn btn-link text-dim hover-text-danger p-0 border-0 extra-small" title="Xóa">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-link text-dim hover-text-danger p-0 border-0 extra-small" 
+                                        onclick="event.stopPropagation(); deletePlaylist(@p.PlaylistId, this)" title="Xóa">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -208,3 +206,40 @@
         width: 100%;
     }
 </style>
+
+<script>
+    async function deletePlaylist(playlistId, btn) {
+        if (!confirm('Bạn có chắc chắn muốn xóa playlist này không?')) return;
+        
+        try {
+            const formData = new FormData();
+            formData.append('playlistId', playlistId);
+            
+            // Add Anti-Forgery Token if available
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            
+            const res = await fetch('/Playlist/Delete', { 
+                method: 'POST', 
+                body: formData,
+                headers: token ? { "RequestVerificationToken": token } : {}
+            });
+            
+            const data = await res.json();
+            
+            if (data.success) {
+                $(btn).closest('.music-card').fadeOut(400, function() {
+                    $(this).remove();
+                    if ($('.music-card').length === 0) {
+                        location.reload(); // Show the empty state if last one was deleted
+                    }
+                });
+                toastr.success("Đã xóa playlist thành công.");
+            } else {
+                toastr.error(data.message || "Lỗi khi xóa playlist.");
+            }
+        } catch (e) {
+            console.error(e);
+            toastr.error("Lỗi kết nối máy chủ.");
+        }
+    }
+</script>

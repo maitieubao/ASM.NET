@@ -7,54 +7,44 @@ const searchInput = document.getElementById('globalSearchInput');
 const searchDropdown = document.getElementById('searchDropdown');
 const searchBtn = document.getElementById('globalSearchBtn');
 
-if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.trim();
-        clearTimeout(searchDebounce);
-        if (query.length < 2) {
-            return;
-        }
+window.initSearchUI = function() {
+    console.log("[Search] Initializing UI...");
+    const searchInput = document.getElementById('globalSearchInput');
+    const searchBtn = document.getElementById('globalSearchBtn');
+    
+    if (searchInput) {
+        // Clear previous listeners to avoid duplicates
+        const newInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newInput, searchInput);
+        
+        newInput.onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performFullSearch();
+            }
+        };
+    }
 
-        searchDebounce = setTimeout(async () => {
-             // We no longer show dropdown results automatically.
-             // Users must press Enter or click search button.
-        }, 400);
-    });
-
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') performFullSearch();
-    });
-}
-
-if (searchBtn) {
-    searchBtn.onclick = (e) => {
-        if (e) e.preventDefault();
-        performFullSearch();
-    };
-}
-
-// Ensure Enter key works on input (overwriting previous keypress if exists)
-if (searchInput) {
-    searchInput.onkeypress = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
+    if (searchBtn) {
+        searchBtn.onclick = (e) => {
+            if (e) e.preventDefault();
             performFullSearch();
-        }
-    };
-}
-
-// Also bind to the magnifying glass icon inside the wrapper
-const searchIcon = document.querySelector('.search-input-wrapper i.fa-magnifying-glass');
-if (searchIcon) {
-    searchIcon.style.cursor = 'pointer';
-    searchIcon.onclick = (e) => {
-        if (e) e.preventDefault();
-        performFullSearch();
-    };
-}
+        };
+    }
+    
+    const searchIcon = document.querySelector('.search-input-wrapper i.fa-magnifying-glass');
+    if (searchIcon) {
+        searchIcon.style.cursor = 'pointer';
+        searchIcon.onclick = (e) => {
+            if (e) e.preventDefault();
+            performFullSearch();
+        };
+    }
+};
 
 window.performFullSearch = async function() {
-    const query = searchInput.value.trim();
+    const searchInput = document.getElementById('globalSearchInput');
+    const query = searchInput?.value.trim();
     if (!query) return;
 
     if (searchDropdown) searchDropdown.classList.remove('show');
@@ -78,7 +68,7 @@ window.performFullSearch = async function() {
         // Show Search View
         searchMain.style.display = 'block';
         searchMain.classList.add('active'); // Trigger animation
-        queryTitle.innerText = `Tìm kiếm cho "${query}"`;
+        if (queryTitle) queryTitle.innerText = `Tìm kiếm cho "${query}"`;
         searchContent.className = "search-results-list"; // Vertical list
         searchContent.innerHTML = `
             <div class="text-center p-5">
@@ -92,7 +82,6 @@ window.performFullSearch = async function() {
             const data = await res.json();
             
             if (data && data.length > 0) {
-                // Prepare the track list for context playback
                 const trackList = data.filter(i => i.type === 'Song').map(s => ({
                     videoId: s.videoId,
                     title: s.title,
@@ -107,19 +96,16 @@ window.performFullSearch = async function() {
                     let imgClass = 'search-result-img';
                     
                     if (item.type === 'Album') {
-                        if (item.source === 'Internal') {
-                            onclick = `window.location.href='/Album/Details/${item.albumId}'`;
-                        } else {
-                            onclick = `window.location.href='/Album/DetailsEx?source=${item.source}&id=${item.externalId}'`;
-                        }
+                        const url = item.source === 'Internal' ? `/Album/Details/${item.albumId}` : `/Album/DetailsEx?source=${item.source}&id=${item.externalId}`;
+                        onclick = `(window.SPARouter ? window.SPARouter.navigateTo('${url}') : window.location.href='${url}')`;
                         typeLabel = 'Album';
                     } else if (item.type === 'Artist') {
-                        onclick = `window.location.href='/Artist/Details/${item.artistId}'`;
+                        const url = `/Artist/Details/${item.artistId}`;
+                        onclick = `(window.SPARouter ? window.SPARouter.navigateTo('${url}') : window.location.href='${url}')`;
                         typeLabel = 'Nghệ sĩ';
                         itemClass += ' is-artist';
                         imgClass += ' rounded-circle';
                     } else {
-                        // Find this song's index in the trackList
                         const songIdx = trackList.findIndex(s => s.videoId === item.videoId);
                         onclick = `playTrackInContext(${JSON.stringify(trackList).replace(/"/g, '&quot;')}, ${songIdx})`;
                         typeLabel = item.author || 'Bài hát';
@@ -168,16 +154,17 @@ window.performFullSearch = async function() {
             searchContent.innerHTML = '<div id="search-error" class="col-12 p-5 text-center text-danger">Có lỗi xảy ra khi tìm kiếm bài hát. Vui lòng thử lại.</div>';
         }
     } else {
-        window.location.href = `/Home/Discovery?tag=${encodeURIComponent(query)}`;
+        const url = `/Home/Discovery?tag=${encodeURIComponent(query)}`;
+        if (window.SPARouter) window.SPARouter.navigateTo(url);
+        else window.location.href = url;
     }
-}
+};
 
 window.exitSearchMode = function() {
     const searchMain = document.getElementById('search-results-main');
     if (searchMain) {
         searchMain.style.display = 'none';
         
-        // Restore all standard Home page sections
         const greetingParent = document.querySelector('.greeting-text')?.parentElement;
         const recentParent = document.querySelector('.recent-grid')?.parentElement;
         const homeSections = document.getElementById('home-dynamic-sections');
@@ -188,6 +175,12 @@ window.exitSearchMode = function() {
         if (homeSections) homeSections.style.display = 'block';
         if (artistSection) artistSection.classList.remove('d-none');
         
+        const searchInput = document.getElementById('globalSearchInput');
         if (searchInput) searchInput.value = '';
     }
 };
+
+// Auto-boot
+$(function() {
+    window.initSearchUI();
+});

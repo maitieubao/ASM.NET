@@ -9,8 +9,12 @@ using YoutubeMusicPlayer.Domain.Entities;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Fix PostgreSQL DateTime issue (Enable legacy timestamp behavior)
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
@@ -19,10 +23,63 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddMemoryCache();
 builder.Services.AddResponseCaching();
 
-// Performance// 2. Database (Tối ưu hóa tốc độ bằng pooling và giảm độ trễ DNS)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// --- SMART DATABASE CONNECTION DISCOVERY (Thích nghi mọi loại Wifi) ---
+var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
+var fallbacks = builder.Configuration.GetSection("ConnectionStrings:ConnectionStringsFallback").Get<string[]>() ?? Array.Empty<string>();
+var connectionStrings = new List<string> { defaultConn! };
+connectionStrings.AddRange(fallbacks);
+
+string? activeConnectionString = null;
+Console.WriteLine("[DB-SMART] Đang dò tìm phương thức kết nối tối ưu cho Wifi hiện tại...");
+
+foreach (var connStr in connectionStrings.Distinct())
+{
+    if (string.IsNullOrEmpty(connStr)) continue;
+    
+    try
+    {
+        // Thử kết nối nhanh (timeout 4s)
+        var connectionBuilder = new Npgsql.NpgsqlConnectionStringBuilder(connStr) 
+        { 
+            Timeout = 4, 
+            CommandTimeout = 4,
+            Pooling = false 
+        };
+        
+        using var testConn = new Npgsql.NpgsqlConnection(connectionBuilder.ConnectionString);
+        await testConn.OpenAsync();
+        
+        activeConnectionString = connStr;
+        
+        // 1. CLEAR ALL POOLS & LOG STARTUP
+        NpgsqlConnection.ClearAllPools();
+        Console.WriteLine("[STARTUP] Database connection pools cleared.");
+
+        var host = new Npgsql.NpgsqlConnectionStringBuilder(connStr).Host;
+        var port = new Npgsql.NpgsqlConnectionStringBuilder(connStr).Port;
+        Console.WriteLine($"[DB-SMART] THÀNH CÔNG: Đã kết nối qua {host}:{port}");
+        break;
+    }
+    catch (Exception ex)
+    {
+        var host = new Npgsql.NpgsqlConnectionStringBuilder(connStr).Host;
+        Console.WriteLine($"[DB-SMART] BỎ QUA: Không thể tới {host} trên mạng này. ({ex.Message.Split(':')[0]})");
+    }
+}
+
+if (string.IsNullOrEmpty(activeConnectionString))
+{
+    Console.WriteLine("[DB-SMART] CẢNH BÁO: Không tìm thấy đường truyền tới Database! Ứng dụng sẽ dùng mặc định.");
+    activeConnectionString = defaultConn; 
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(activeConnectionString, npgsqlOptions => {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorCodesToAdd: null);
+    }));
 
 // Authentication & Identity
 builder.Services.AddAuthentication(options =>
@@ -75,6 +132,7 @@ builder.Services.AddHostedService<QueuedHostedService>();
 
 // External Services
 builder.Services.AddScoped<IYoutubeService, YoutubeService>();
+builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<ILyricsService, LyricsService>();
 builder.Services.AddHttpClient<IDeezerService, DeezerService>();
 builder.Services.AddHttpClient<IITunesService, ITunesService>();

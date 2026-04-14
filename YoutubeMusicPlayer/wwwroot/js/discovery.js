@@ -1,18 +1,17 @@
-/**
- * discovery.js - Logic for the music discovery page
- */
+window.discoveryPage = 1;
+window.discoveryTag = '';
 
-let discoveryPage = 1;
-let discoveryTag = '';
-
-// Initialize from DOM if present
-document.addEventListener('DOMContentLoaded', () => {
+window.initDiscovery = function() {
+    console.log("[Discovery] Initializing components...");
     const container = document.getElementById('discoveryContainer');
     if (container) {
-        discoveryPage = parseInt(container.getAttribute('data-current-page')) || 1;
-        discoveryTag = container.getAttribute('data-tag') || '';
+        window.discoveryPage = parseInt(container.getAttribute('data-current-page')) || 1;
+        window.discoveryTag = container.getAttribute('data-tag') || '';
     }
-});
+};
+
+// Auto-init for full page load
+document.addEventListener('DOMContentLoaded', window.initDiscovery);
 
 window.loadMoreDiscovery = async function() {
     const btn = document.getElementById('loadMoreBtn');
@@ -23,10 +22,10 @@ window.loadMoreDiscovery = async function() {
     btn.classList.add('d-none');
     spinner.classList.remove('d-none');
     
-    discoveryPage++;
+    window.discoveryPage++;
     
     try {
-        const response = await fetch(`/Home/Discovery?tag=${encodeURIComponent(discoveryTag)}&page=${discoveryPage}&json=true`);
+        const response = await fetch(`/Home/Discovery?tag=${encodeURIComponent(window.discoveryTag)}&page=${window.discoveryPage}&json=true`);
         const data = await response.json();
         
         if (data && data.length > 0) {

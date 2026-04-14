@@ -54,11 +54,15 @@ public class PaymentController : BaseController
         var plan = await _subscriptionService.GetPlanByIdAsync(planId);
         if (plan == null) return NotFound("Plan not found");
 
+        // 1. Đảm bảo OrderCode duy nhất và an toàn (12-13 chữ số)
         long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        // New: 10 digit timestamp + 3 digit user snippet = 13 digits (Safe for JS Number.MAX_SAFE_INTEGER)
-        long orderCode = long.Parse($"{timestamp}{CurrentUserId % 1000:D3}");
+        int randomPart = new Random().Next(100, 999);
+        long orderCode = long.Parse($"{timestamp % 1000000000}{randomPart}"); // 9 digits timestamp + 3 digits random
 
-        string description = $"Thanh toán gói {plan.Name}";
+        // 2. Bỏ dấu hoàn toàn cho mô tả (PayOS cực kỳ khắt khe phần này)
+        string cleanName = RemoveDiacritics(plan.Name);
+        string description = $"Thanh toan {cleanName}";
+        if (description.Length > 25) description = description.Substring(0, 25);
         string returnUrl = Url.Action("Success", "Payment", new { orderCode = orderCode }, Request.Scheme) ?? "";
         string cancelUrl = Url.Action("Cancel", "Payment", null, Request.Scheme) ?? "";
 
@@ -132,5 +136,31 @@ public class PaymentController : BaseController
         }
         
         return BadRequest();
+    }
+
+    private string RemoveDiacritics(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+        
+        string[] arr1 = new string[] { "á", "à", "ả", "ã", "ạ", "â", "ấ", "ầ", "ẩ", "ẫ", "ậ", "ă", "ắ", "ằ", "ẳ", "ẵ", "ặ",
+            "đ",
+            "é","è","ẻ","ẽ","ẹ","ê","ế","ề","ể","ễ","ệ",
+            "í","ì","ỉ","ĩ","ị",
+            "ó","ò","ỏ","õ","ọ","ô","ố","ồ","ổ","ỗ","ộ","ơ","ớ","ờ","ở","ỡ","ợ",
+            "ú","ù","ủ","ũ","ụ","ư","ứ","ừ","ử","ữ","ự",
+            "ý","ỳ","ỷ","ỹ","ỵ",};
+        string[] arr2 = new string[] { "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a",
+            "d",
+            "e","e","e","e","e","e","e","e","e","e","e",
+            "i","i","i","i","i",
+            "o","o","o","o","o","o","o","o","o","o","o","o","o","o","o","o","o",
+            "u","u","u","u","u","u","u","u","u","u","u",
+            "y","y","y","y","y",};
+        for (int i = 0; i < arr1.Length; i++)
+        {
+            text = text.Replace(arr1[i], arr2[i]);
+            text = text.Replace(arr1[i].ToUpper(), arr2[i].ToUpper());
+        }
+        return text;
     }
 }

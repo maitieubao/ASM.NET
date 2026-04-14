@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
         handle: '.drag-handle', // Drag handle selector
         ghostClass: 'sortable-ghost',
         onEnd: async function () {
+            // Immediately update index numbers in the UI (Optimistic UI) - Fixes PL-07
+            updateRowIndexes();
+            
             const songIds = Array.from(el.querySelectorAll('.song-row')).map(row => row.dataset.songId);
             
             try {
@@ -27,10 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (response.ok) {
                     toastr.success("Đã cập nhật thứ tự bài hát.");
-                    // Update index numbers in the UI
-                    updateRowIndexes();
                 } else {
                     toastr.error("Không thể lưu thứ tự bài hát.");
+                    // Optional: revert if server fails? 
+                    // Usually better to just notify the user their change didn't persist.
                 }
             } catch (error) {
                 console.error('Error reordering songs:', error);

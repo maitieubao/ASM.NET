@@ -62,6 +62,7 @@ public class SongService : ISongService
                                .Include(s => s.SongArtists).ThenInclude(sa => sa.Artist)
                                .ToListAsync(ct);
 
+        System.Console.WriteLine($"[DB-LOAD] Fetched {songs.Count} songs for Admin Dashboard. (Latest data)");
         return (songs.Select(MapToDto), totalCount);
     }
 
@@ -160,11 +161,11 @@ public class SongService : ISongService
             if (string.IsNullOrEmpty(existing.LyricsText))
             {
                 var targetId = existing.SongId;
-                await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) =>
+                await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp, ct) =>
                 {
                     // Use a fresh scope or ensure service availability
                     var scopeSongService = sp.GetRequiredService<ISongService>();
-                    await scopeSongService.EnrichSongAsync(targetId);
+                    await scopeSongService.EnrichSongAsync(targetId, ct);
                 });
             }
             return await GetSongByIdAsync(existing.SongId, ct);
@@ -234,9 +235,9 @@ public class SongService : ISongService
         await _unitOfWork.CompleteAsync(ct);
 
         var targetSongId = song.SongId;
-        await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) => { 
+        await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp, ct) => { 
             var scopeSongService = sp.GetRequiredService<ISongService>();
-            await scopeSongService.EnrichSongAsync(targetSongId); 
+            await scopeSongService.EnrichSongAsync(targetSongId, ct); 
         });
 
         return MapToDto(song);
@@ -355,30 +356,46 @@ public class SongService : ISongService
             .FirstOrDefaultAsync(s => s.SongId == songId, ct);
         if (song == null) return;
 
+        _logger.LogInformation("[SongService] Starting robust enrichment for song {SongId} ({VideoId})", songId, details.YoutubeVideoId);
+
+        // 1. Deezer Metadata Enrichment
         try {
             var dt = await dz.SearchTrackAsync(details.CleanedTitle, details.CleanedArtist);
-            if (dt == null) {
-                _logger.LogInformation("[SongService] Track {SongId} not found on Deezer. Skipping further enrichment to save resources.", songId);
-                return;
+            if (dt != null) {
+                song.Title = dt.TrackName;
+                song.IsExplicit = dt.IsExplicit;
+                if (DateTime.TryParse(dt.ReleaseDate, out var rd))
+                {
+                    song.ReleaseDate = DateTime.SpecifyKind(rd, DateTimeKind.Utc);
+                }
+                _logger.LogInformation("[SongService] Updated metadata from Deezer for {SongId}", songId);
+            } else {
+                _logger.LogInformation("[SongService] No Deezer match for {SongId}", songId);
             }
+        } catch (Exception ex) {
+            _logger.LogWarning("[SongService] Deezer enrichment failed for {SongId}: {Message}", songId, ex.Message);
+        }
 
-            // Update with high-quality metadata from Deezer
-            song.Title = dt.TrackName;
-            song.IsExplicit = dt.IsExplicit;
-            if (DateTime.TryParse(dt.ReleaseDate, out var rd))
-                song.ReleaseDate = DateTime.SpecifyKind(rd, DateTimeKind.Utc);
-
-            // Lyrics enrichment using both metadata and direct subtitle extraction
+        // 2. Lyrics Enrichment (Crucial step but shouldn't block)
+        try {
             var lyricsResult = await ls.GetLyricsAsync(details.CleanedArtist, details.CleanedTitle, details.YoutubeVideoId);
             if (lyricsResult.Status == "SUCCESS" && !string.IsNullOrEmpty(lyricsResult.Lyrics)) {
                 song.LyricsText = lyricsResult.Lyrics;
+                _logger.LogInformation("[SongService] Updated lyrics for {SongId}", songId);
+            } else {
+                _logger.LogInformation("[SongService] No lyrics found for {SongId} (Status: {Status})", songId, lyricsResult.Status);
             }
+        } catch (Exception ex) {
+            _logger.LogWarning("[SongService] Lyrics enrichment failed for {SongId}: {Message}", songId, ex.Message);
+        }
 
+        // Final Save for all successful updates
+        try {
             uow.Repository<Song>().Update(song);
             await uow.CompleteAsync(ct);
-            _logger.LogInformation("[SongService] Deep enrichment completed for song {SongId} ({VideoId})", songId, details.YoutubeVideoId);
+            _logger.LogInformation("[SongService] Completed enrichment save for song {SongId}", songId);
         } catch (Exception ex) {
-            _logger.LogError(ex, "[SongService] Enrichment failed for song {SongId} ({VideoId})", songId, details.YoutubeVideoId);
+            _logger.LogError(ex, "[SongService] Database update failed during enrichment for {SongId}", songId);
         }
     }
 
@@ -422,10 +439,10 @@ public class SongService : ISongService
             (data.Bio != null && (data.Bio.Contains("automatically imported") || data.Bio.Contains("đang được cập nhật"))))
         {
             var targetId = data.SongId;
-            await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp) =>
+            await _backgroundQueue.QueueBackgroundWorkItemAsync(async (sp, ct) =>
             {
                 var scopeSongService = sp.GetRequiredService<ISongService>();
-                await scopeSongService.EnrichSongAsync(targetId);
+                await scopeSongService.EnrichSongAsync(targetId, ct);
             });
         }
 

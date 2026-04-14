@@ -25,6 +25,9 @@ public class PlaybackStreamDto
     public bool ShowAd { get; set; }
     public string? Error { get; set; }
     public string? Message { get; set; }
+    public string? Title { get; set; }
+    public string? Author { get; set; }
+    public string? ThumbnailUrl { get; set; }
 }
 
 public class CaptionTrackDto

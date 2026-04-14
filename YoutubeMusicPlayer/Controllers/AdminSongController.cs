@@ -10,6 +10,7 @@ using YoutubeMusicPlayer.Models.Admin;
 namespace YoutubeMusicPlayer.Controllers;
 
 [Authorize(Roles = "Admin")]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class AdminSongController : BaseController
 {
     private readonly ISongService _songService;

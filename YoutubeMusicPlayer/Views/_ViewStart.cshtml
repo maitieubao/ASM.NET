@@ -1,3 +1,4 @@
-﻿@{
-    Layout = "_Layout";
+@{
+    bool isSpa = Context.Request.Headers["X-SPA-Request"] == "true";
+    Layout = isSpa ? null : "_Layout";
 }

@@ -1,62 +1,88 @@
 @model IEnumerable<YoutubeMusicPlayer.Application.DTOs.ArtistDto>
 
 @{
-    ViewData["Title"] = "Manage Artists";
+    ViewData["Title"] = "Khám phá Nghệ sĩ";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int pageSize = ViewBag.PageSize ?? 18;
+    int totalCount = ViewBag.TotalCount ?? 0;
+    int totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 }
 
-<div class="management-container animate__animated animate__fadeIn">
-    <div class="management-header">
-        <h2 class="fw-bold mb-0">Artists</h2>
-        <a asp-action="Create" class="btn btn-premium">
-            <i class="bi bi-plus-lg me-2"></i> Add Artist
-        </a>
-    </div>
+<div class="discovery-page animate-fade-in py-5">
+    <div class="container">
+        <!-- Header Section -->
+        <div class="d-flex align-items-center justify-content-between mb-5">
+            <div>
+                <h1 class="display-5 fw-black text-white m-0">Nghệ sĩ</h1>
+                <p class="text-dim mt-2">Khám phá những giọng ca bạn yêu thích</p>
+            </div>
+            @if (User.IsInRole("Admin"))
+            {
+                <a href="/AdminArtist" class="btn btn-premium rounded-pill px-4">
+                    <i class="fa-solid fa-gear me-2"></i> Quản lý
+                </a>
+            }
+        </div>
 
-    <div class="table-responsive">
-        <table class="table-glass">
-            <thead>
-                <tr>
-                    <th>Photo</th>
-                    <th>Name</th>
-                    <th>Bio</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model) {
-                <tr>
-                    <td>
-                        @if (!string.IsNullOrEmpty(item.AvatarUrl)) {
-                            <img src="@item.AvatarUrl" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;" />
-                        } else {
-                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="bi bi-person"></i>
-                            </div>
-                        }
-                    </td>
-                    <td class="fw-bold">@item.Name</td>
-                    <td><div class="text-truncate" style="max-width: 400px; color: var(--subtext-color);">@item.Bio</div></td>
-                    <td class="text-end">
-                        <div class="d-flex justify-content-end gap-2">
-                            <a asp-action="Details" asp-route-id="@item.ArtistId" class="btn-outline-prem">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a asp-action="Edit" asp-route-id="@item.ArtistId" class="btn-outline-prem">
-                                <i class="bi bi-pencil-square"></i>
-                            </a>
-                            <a asp-action="Delete" asp-route-id="@item.ArtistId" class="btn-outline-prem text-danger">
-                                <i class="bi bi-trash"></i>
-                            </a>
+        <!-- Artist Grid -->
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-4 mb-5">
+            @foreach (var item in Model)
+            {
+                <div class="col">
+                    <div class="artist-card-modern group cursor-pointer" onclick="window.location.href='/Artist/Details/@item.ArtistId'">
+                        <div class="avatar-wrapper mb-3 shadow-lg">
+                            <img src="@(item.AvatarUrl ?? "https://ui-avatars.com/api/?name=" + item.Name + "&size=200&background=random")" 
+                                 class="artist-img transition-all group-hover-scale-110" alt="@item.Name">
+                            <div class="play-overlay"><i class="fa-solid fa-play"></i></div>
                         </div>
-                    </td>
-                </tr>
-                }
-                @if (!Model.Any()) {
-                <tr>
-                    <td colspan="4" class="text-center py-5 text-muted small">No artists found. Start by adding one.</td>
-                </tr>
-                }
-            </tbody>
-        </table>
+                        <div class="text-center px-2">
+                            <div class="fw-bold text-white text-truncate mb-1">
+                                @item.Name
+                                @if (item.IsVerified) {
+                                    <i class="fa-solid fa-circle-check text-accent ms-1 small"></i>
+                                }
+                            </div>
+                            <div class="text-dim extra-small uppercase tracking-widest">Nghệ sĩ</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Pagination -->
+        @if (totalPages > 1)
+        {
+            <div class="d-flex justify-content-center mt-5">
+                <nav class="glass-pagination p-2 rounded-pill border border-white border-opacity-10">
+                    <ul class="pagination m-0 gap-2 border-0">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link rounded-circle border-0 bg-white bg-opacity-5 text-white" href="?page=@(currentPage - 1)">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        
+                        @for (int i = 1; i <= totalPages; i++)
+                        {
+                            if (i == 1 || i == totalPages || (i >= currentPage - 2 && i <= currentPage + 2))
+                            {
+                                <li class="page-item @(i == currentPage ? "active" : "")">
+                                    <a class="page-link rounded-circle border-0 @(i == currentPage ? "bg-accent text-white" : "bg-white bg-opacity-5 text-dim")" href="?page=@i">@i</a>
+                                </li>
+                            }
+                            else if (i == currentPage - 3 || i == currentPage + 3)
+                            {
+                                <li class="page-item disabled"><span class="page-link bg-transparent border-0 text-dim">...</span></li>
+                            }
+                        }
+
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link rounded-circle border-0 bg-white bg-opacity-5 text-white" href="?page=@(currentPage + 1)">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
     </div>
 </div>

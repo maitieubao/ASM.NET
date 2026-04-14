@@ -95,8 +95,11 @@ window.playPlaylist = async function(data, shuffled = false, defaultThumb = null
         thumbnail: s.thumbnailUrl || s.thumbnail || s.ThumbnailUrl || s.CoverImageUrl || s.image || defaultThumb
     }));
 
-    if (shuffled) window.playQueue.sort(() => Math.random() - 0.5);
-
+    if (shuffled) {
+        window.playQueue.sort(() => Math.random() - 0.5);
+        window.isShuffle = true;
+        $('#shuffleBtn').addClass('active text-primary');
+    }
     window.currentIndex = 0;
     if (typeof loadAndPlay === 'function') loadAndPlay(window.playQueue[0]);
     if (typeof renderQueue === 'function') renderQueue();

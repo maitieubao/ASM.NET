@@ -12,6 +12,7 @@ public interface IInteractionService
     
     // Advanced Tracking (A+ Recommendation features)
     Task UpdateListeningStatsAsync(int userId, int songId, double durationSeconds);
+    Task IncrementPlayCountAsync(int songId);
     Task<IEnumerable<string>> GetTopPreferredGenresAsync(int userId, int count = 5);
     Task<Dictionary<string, double>> GetTopPreferredGenresWithWeightsAsync(int userId, int count = 5);
     Task<IEnumerable<string>> GetTopPreferredArtistsAsync(int userId, int count = 10);

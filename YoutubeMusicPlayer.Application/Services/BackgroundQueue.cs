@@ -8,7 +8,7 @@ namespace YoutubeMusicPlayer.Application.Services;
 
 public class BackgroundQueue : IBackgroundQueue
 {
-    private readonly Channel<Func<IServiceProvider, Task>> _queue;
+    private readonly Channel<Func<IServiceProvider, CancellationToken, Task>> _queue;
 
     public BackgroundQueue()
     {
@@ -17,16 +17,16 @@ public class BackgroundQueue : IBackgroundQueue
         {
             FullMode = BoundedChannelFullMode.Wait
         };
-        _queue = Channel.CreateBounded<Func<IServiceProvider, Task>>(options);
+        _queue = Channel.CreateBounded<Func<IServiceProvider, CancellationToken, Task>>(options);
     }
 
-    public async ValueTask QueueBackgroundWorkItemAsync(Func<IServiceProvider, Task> workItem)
+    public async ValueTask QueueBackgroundWorkItemAsync(Func<IServiceProvider, CancellationToken, Task> workItem)
     {
         if (workItem == null) throw new ArgumentNullException(nameof(workItem));
         await _queue.Writer.WriteAsync(workItem);
     }
 
-    public async Task<Func<IServiceProvider, Task>> DequeueAsync(CancellationToken cancellationToken)
+    public async Task<Func<IServiceProvider, CancellationToken, Task>> DequeueAsync(CancellationToken cancellationToken)
     {
         return await _queue.Reader.ReadAsync(cancellationToken);
     }

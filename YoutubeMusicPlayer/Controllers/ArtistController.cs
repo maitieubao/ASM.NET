@@ -41,6 +41,7 @@ public class ArtistController : BaseController
     }
 
     [HttpPost]
+    [Route("ToggleFollow/{id}")]
     public async Task<IActionResult> ToggleFollow(int id)
     {
         if (CurrentUserId == null) return Unauthorized();

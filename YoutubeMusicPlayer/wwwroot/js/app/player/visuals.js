@@ -22,18 +22,78 @@ window.setPlayerMessage = function(title, author) {
 window.updateDynamicTheme = function(thumbUrl) {
     if (!thumbUrl) return;
     
-    const bgStyle = `linear-gradient(to bottom, rgba(0,0,0,0.4), #0f0f0f), url(${thumbUrl})`;
+    // 1. Update Blurred Background (Optimized Brightness)
+    const bgStyle = `linear-gradient(to bottom, rgba(0,0,0,0.3), #070707), url(${thumbUrl})`;
     
     $('#dynamicBG').css({
         'background-image': bgStyle,
         'background-size': 'cover',
         'background-position': 'center',
-        'filter': 'blur(100px) brightness(0.4)',
-        'opacity': '0.5'
+        'filter': 'blur(80px) saturate(1.5) brightness(0.8)', // Increased brightness & saturation
+        'opacity': '0.6'
     });
     
-    $('#fullPlayerBackdrop').css('background-image', `url(${thumbUrl})`);
+    $('#fullPlayerBackdrop').css({
+        'background-image': `url(${thumbUrl})`,
+        'filter': 'blur(100px) saturate(1.8) brightness(0.7)',
+        'opacity': '0.5'
+    });
+
+    // 2. Extract Dominant Color for Global UI Sync
+    extractDominantColor(thumbUrl, (color) => {
+        if (!color) return;
+        
+        // Update Root Variables for Global Consistency
+        const root = document.documentElement;
+        root.style.setProperty('--accent-primary', color);
+        root.style.setProperty('--accent-glow', `${color}80`); // 50% opacity for glow
+        
+        console.log(`[Visuals] Dynamic Theme Updated: ${color}`);
+    });
 };
+
+/**
+ * Extracts average color from an image URL using a hidden canvas.
+ * Handles CORS issues by falling back gracefully.
+ */
+function extractDominantColor(url, callback) {
+    const img = new Image();
+    img.crossOrigin = "Anonymous"; 
+    img.src = url;
+    
+    img.onload = function() {
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 1;
+            canvas.height = 1;
+            
+            // Draw 1x1 to get average color automatically
+            ctx.drawImage(img, 0, 0, 1, 1);
+            const data = ctx.getImageData(0, 0, 1, 1).data;
+            
+            // Adjust color to be more vibrant if it's too dark
+            let r = data[0], g = data[1], b = data[2];
+            const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            
+            if (luminance < 40) { // Too dark, boost it
+                r = Math.min(255, r + 50);
+                g = Math.min(255, g + 50);
+                b = Math.min(255, b + 50);
+            }
+            
+            const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            callback(hex);
+        } catch (e) {
+            console.warn("[Visuals] Color extraction blocked by CORS or error:", e);
+            callback("#6C5CE7"); // Fallback to default brand purple
+        }
+    };
+    
+    img.onerror = function() {
+        callback("#6C5CE7");
+    };
+}
 
 window.renderQueue = function() {
     const $container = $('#queueContainer');

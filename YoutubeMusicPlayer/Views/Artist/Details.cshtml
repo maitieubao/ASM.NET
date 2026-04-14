@@ -62,7 +62,7 @@
                 <section id="popular" class="mb-5 section-reveal">
                     <div class="d-flex align-items-center justify-content-between mb-4">
                         <h3 class="section-title">Phổ biến</h3>
-                        <button class="btn btn-link text-accent fw-bold text-decoration-none small">Xem tất cả</button>
+                        <button class="btn btn-link text-accent fw-bold text-decoration-none small">Bài hát hàng đầu</button>
                     </div>
                     <div class="popular-list">
                         @if (Model.TopSongs.Any())
@@ -97,17 +97,49 @@
                                 </div>
                             }
                         }
-                        else
-                        {
-                            <div class="text-center py-5 glass-card rounded-5 border-white border-opacity-5">
-                                <div class="opacity-10 mb-2"><i class="fa-solid fa-music fs-1"></i></div>
-                                <p class="small text-muted mb-3">Đang đồng bộ bài hát của @Model.Name...</p>
-                                <form asp-action="RefreshBio" asp-route-id="@Model.ArtistId" method="post">
-                                    <button type="submit" class="btn btn-sm btn-outline-accent rounded-pill px-4">Đồng bộ ngay</button>
-                                </form>
-                            </div>
-                        }
                     </div>
+                </section>
+
+                <!-- NEW: ALL SONGS PAGINATED -->
+                <section id="all-songs" class="mb-5 section-reveal">
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <h4 class="fw-bold text-white m-0">Tất cả bài hát</h4>
+                        <div class="text-dim extra-small">@Model.TotalSongsCount bài hát</div>
+                    </div>
+                    <div id="paginatedSongsContainer">
+                         @foreach (var song in Model.PaginatedSongs) {
+                            <div class="song-row-premium group" onclick="playSingleTrack('@song.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(song.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(Model.Name)', '@song.ThumbnailUrl')">
+                                <div class="thumb-wrapper">
+                                    <img src="@song.ThumbnailUrl" loading="lazy">
+                                    <div class="play-icon"><i class="fa-solid fa-play text-white"></i></div>
+                                </div>
+                                <div class="title-meta">
+                                    <div class="song-title text-truncate">@song.Title</div>
+                                    <div class="text-dim extra-small">@Model.Name</div>
+                                </div>
+                                <div class="actions">
+                                    <button class="btn-icon" onclick="event.stopPropagation(); showAddToPlaylistModal('@song.YoutubeVideoId')">
+                                        <i class="fa-solid fa-plus extra-small"></i>
+                                    </button>
+                                    <div class="duration ms-3 text-dim extra-small">@(song.Duration.HasValue ? TimeSpan.FromSeconds(song.Duration.Value).ToString(@"m\:ss") : "--:--")</div>
+                                </div>
+                            </div>
+                         }
+                    </div>
+                    
+                    @if (Model.TotalPages > 1) {
+                        <div class="d-flex justify-content-center mt-4 pt-3 border-top border-white border-opacity-5">
+                            <div class="d-flex gap-2">
+                                <a href="?page=@(Model.CurrentPage - 1)" class="btn btn-dark btn-sm rounded-pill px-3 @(Model.CurrentPage == 1 ? "disabled opacity-25" : "")">
+                                    <i class="fa-solid fa-chevron-left me-1"></i> Trước
+                                </a>
+                                <span class="px-3 d-flex align-items-center text-dim small">Trang @Model.CurrentPage / @Model.TotalPages</span>
+                                <a href="?page=@(Model.CurrentPage + 1)" class="btn btn-dark btn-sm rounded-pill px-3 @(Model.CurrentPage == Model.TotalPages ? "disabled opacity-25" : "")">
+                                    Tiếp <i class="fa-solid fa-chevron-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    }
                 </section>
 
                 <!-- B. DISCOGRAPHY -->
@@ -265,9 +297,14 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        async function playArtistTopTracks(artistId) {
+<input type="hidden" id="page-title-data" value="@Model.Name - Nghệ sĩ" />
+
+<script>
+    (function() {
+        console.log("[Artist] Initializing view...");
+        
+        // Define localized functions for this view
+        window.playArtistTopTracks = async function(artistId) {
             try {
                 const res = await fetch(`/Home/GetArtistSongs?artistId=${artistId}`);
                 const songs = await res.json();
@@ -275,28 +312,41 @@
                     playPlaylist(songs);
                 }
             } catch(e) { console.error(e); }
-        }
+        };
 
-        async function toggleFollow(artistId) {
+        window.toggleFollow = async function(artistId) {
             const btn = document.getElementById('followBtn');
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            
             try {
-                const res = await fetch(`/Artist/ToggleFollow/${artistId}`, { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    if (data.isFollowing) {
+                const res = await fetch(`/Artist/ToggleFollow/${artistId}`, { 
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': token || '' }
+                });
+                const json = await res.json();
+                const data = json.data || json;
+                
+                if (json.success || json.Success || data.success) {
+                    const isFollowing = data.isFollowing !== undefined ? data.isFollowing : data.data.isFollowing;
+                    if (isFollowing) {
                         btn.innerText = "Đang theo dõi";
                         btn.classList.add('following');
+                        if(typeof toastr !== 'undefined') toastr.success("Đã theo dõi nghệ sĩ!");
                     } else {
                         btn.innerText = "Theo dõi";
                         btn.classList.remove('following');
+                        if(typeof toastr !== 'undefined') toastr.info("Đã bỏ theo dõi.");
                     }
                 } else if(res.status === 401) {
-                    window.location.href = '/Auth/Login';
+                    if (window.SPARouter) window.SPARouter.navigateTo('/Auth/Login');
+                    else window.location.href = '/Auth/Login';
                 }
-            } catch (e) {}
-        }
+            } catch (e) {
+                console.error('[Artist] Follow error:', e);
+            }
+        };
 
-        async function toggleLikeByYoutubeId(youtubeId, btn) {
+        window.toggleLikeByYoutubeId = async function(youtubeId, btn) {
             try {
                 const formData = new FormData();
                 formData.append('youtubeId', youtubeId);
@@ -307,13 +357,17 @@
                     else btn.classList.remove('liked');
                 }
             } catch(e) {}
-        }
+        };
 
-        function showFullBio() {
-             const modal = new bootstrap.Modal(document.getElementById('bioModal'));
-             modal.show();
-        }
+        window.showFullBio = function() {
+             const $modal = $('#bioModal');
+             if ($modal.length) {
+                const modal = new bootstrap.Modal($modal[0]);
+                modal.show();
+             }
+        };
 
+        // Scroll reveal logic
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -323,6 +377,6 @@
             });
         }, { threshold: 0.1 });
         document.querySelectorAll('.section-reveal').forEach(el => observer.observe(el));
-    </script>
-}
+    })();
+</script>
 

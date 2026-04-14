@@ -38,7 +38,17 @@ public class UserController : BaseController
         if (CurrentUserId == null) return Unauthorized();
         var user = await _userService.GetUserByIdAsync(CurrentUserId.Value);
         if (user == null) return NotFound();
-        return View(user);
+
+        // Map UserDto to UpdateUserRequest for View compatibility (Fixes USR-02)
+        var model = new UpdateUserRequest
+        {
+            UserId = user.UserId,
+            Username = user.Username,
+            AvatarUrl = user.AvatarUrl,
+            DateOfBirth = user.DateOfBirth
+        };
+        
+        return View(model);
     }
 
     [HttpPost]
@@ -52,6 +62,7 @@ public class UserController : BaseController
             var success = await _userService.UpdateUserAsync(model);
             if (success)
             {
+                TempData["Success"] = "Đã cập nhật hồ sơ thành công!";
                 return RedirectToAction(nameof(Profile));
             }
             ModelState.AddModelError("", "Something went wrong updating your profile.");
@@ -60,10 +71,11 @@ public class UserController : BaseController
     }
 
     [HttpPost]
+    [Route("User/MarkNotificationRead/{id}")]
     public async Task<IActionResult> MarkNotificationRead(int id)
     {
         await _notificationService.MarkAsReadAsync(id);
-        return SuccessResponse(new { success = true });
+        return SuccessResponse(new { success = true, id = id });
     }
 
     public async Task<IActionResult> History()

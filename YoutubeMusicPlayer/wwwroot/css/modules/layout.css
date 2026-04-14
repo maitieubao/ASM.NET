@@ -22,12 +22,70 @@
 }
 
 .logo-container {
-    height: 48px;
+    height: 60px;
     width: 100%;
     display: flex;
     align-items: center;
     padding: 0 16px;
     margin-bottom: 32px;
+    gap: 12px;
+}
+
+.brand-logo {
+    width: 40px;
+    height: 40px;
+    background: var(--accent-gradient);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: white;
+    transform: rotate(-5deg);
+    transition: transform 0.3s;
+}
+
+.brand-logo:hover { transform: rotate(0deg) scale(1.1); }
+
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+}
+
+.brand-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 900;
+    font-size: 1.2rem;
+    color: white;
+    letter-spacing: -0.5px;
+}
+
+.brand-sub {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--accent-primary);
+    letter-spacing: 2px;
+    margin-top: 2px;
+}
+
+.shadow-accent-glow {
+    box-shadow: 0 0 20px rgba(108, 92, 231, 0.4);
+}
+
+.brand-logo-mini {
+    width: 38px;
+    height: 38px;
+    background: var(--accent-gradient);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    box-shadow: var(--glow-shadow);
 }
 
 .nav-group {

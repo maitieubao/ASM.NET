@@ -65,9 +65,9 @@ public class SongController : BaseController
         try
         {
             // Background processing
-            await _backgroundQueue.QueueBackgroundWorkItemAsync(async (serviceProvider) =>
+            await _backgroundQueue.QueueBackgroundWorkItemAsync(async (serviceProvider, ct) =>
             {
-                await _songService.ImportFromYoutubeAsync(videoUrl);
+                await _songService.ImportFromYoutubeAsync(videoUrl, ct);
             });
 
             TempData["SuccessMessage"] = "Yêu cầu nhập bài hát đang được xử lý ngầm. Bài hát sẽ xuất hiện trong giây lát.";
