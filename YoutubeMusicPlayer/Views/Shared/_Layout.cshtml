@@ -1,16 +1,19 @@
 @using YoutubeMusicPlayer.Application.Interfaces
 @inject ISubscriptionService SubService
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Antigravity Music</title>
+    <script>
+        window.userIsPremium = @(User.FindFirst("IsPremium")?.Value?.ToLower() ?? "false");
+    </script>
     
-    <!-- Fonts -->
+    <!-- Fonts: Optimized Vietnamese Support -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
     
     <!-- Frameworks & Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
@@ -33,10 +36,15 @@
 </head>
 <body>
     <div id="app-root">
-        <!-- SIDEBAR -->
-        <aside class="sidebar">
-            <div class="logo-container">
-                <i class="fa-solid fa-bars" style="color: white; font-size: 20px; cursor: pointer;"></i>
+        <aside class="sidebar" id="sidebar">
+            <div class="logo-container d-none d-lg-flex">
+                <div class="brand-logo shadow-accent-glow">
+                    <i class="fa-solid fa-bolt-lightning text-white"></i>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-name">Antigravity</span>
+                    <span class="brand-sub">Music</span>
+                </div>
             </div>
 
             <nav class="nav-group">
@@ -85,9 +93,14 @@
             
             <!-- Global Header -->
             <div class="global-header d-flex align-items-center px-4">
+                <button id="mobileMenuBtn" class="btn btn-link text-white p-0 me-3 d-lg-none" title="Menu">
+                    <i class="fa-solid fa-bars fs-4"></i>
+                </button>
+
                 <a href="/" class="header-logo-container flex-shrink-0">
-                    <i class="fa-brands fa-youtube"></i>
-                    <span>Music</span>
+                    <div class="brand-logo-mini">
+                        <i class="fa-solid fa-bolt-lightning"></i>
+                    </div>
                 </a>
 
                 <div class="search-container flex-grow-1 mx-lg-5 mx-3">
@@ -103,10 +116,6 @@
                 </div>
                 
                 <div class="user-actions d-flex align-items-center gap-3 flex-shrink-0">
-                    <button class="btn btn-link text-white-50 p-0 d-none d-md-block" title="Truyền dữ liệu">
-                        <i class="fa-solid fa-display fs-5"></i>
-                    </button>
-                    
                     @if (User.Identity?.IsAuthenticated == true)
                     {
                         var avatar = User.FindFirst("AvatarUrl")?.Value ?? "https://ui-avatars.com/api/?name=" + User.Identity.Name;
@@ -131,7 +140,9 @@
                 </div>
             </div>
 
-            @RenderBody()
+            <div id="spa-container" class="animate-fade-in">
+                @RenderBody()
+            </div>
             
             <!-- Global TempData Flash Holders for Toastr -->
             <input type="hidden" id="tempDataSuccess" value="@TempData["Success"]" />
@@ -233,7 +244,7 @@
                     <p id="fullPlayerArtist" class="artist">Chọn bài hát bạn yêu thích</p>
                     
                     <div class="mt-5 d-flex gap-4">
-                        <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" onclick="togglePlayerLike()">
+                        <button id="fullPlayerLikeBtn" class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" onclick="togglePlayerLike()">
                             <i class="fa-regular fa-heart me-2"></i> Yêu thích
                         </button>
                         <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" onclick="showAddToPlaylistModal(playQueue[currentIndex]?.videoId)">
@@ -292,7 +303,7 @@
                                     <div class="text-dim extra-small mb-1 uppercase">Lượt xem</div>
                                     <div id="detailsViews" class="fw-bold">0</div>
                                 </div>
-                            </div>
+                             </div>
                             <div class="col-6">
                                 <div class="bg-white bg-opacity-5 p-3 rounded-4">
                                     <div class="text-dim extra-small mb-1 uppercase">Thể loại</div>
@@ -301,6 +312,40 @@
                             </div>
                         </div>
                         <div class="mt-4 d-flex flex-wrap gap-2" id="detailsTags"></div>
+                        
+                        <!-- COMMENT SECTION -->
+                        <div class="mt-5 pt-4 border-top border-white border-opacity-5">
+                            <div class="d-flex align-items-center justify-content-between mb-4">
+                                <h5 class="m-0 fw-black text-white"><i class="fa-solid fa-comments me-2 text-accent"></i> Bình luận</h5>
+                                <span id="commentCount" class="badge bg-accent bg-opacity-10 text-accent rounded-pill">0</span>
+                            </div>
+                            
+                            <!-- Comment List Area -->
+                            <div id="commentList" class="overflow-y-auto mb-4 custom-scrollbar" style="max-height: 400px;">
+                                <div class="text-center py-5 text-dim opacity-50">
+                                    <i class="fa-solid fa-message fs-1 d-block mb-3"></i>
+                                    <p>Đang tải bình luận...</p>
+                                </div>
+                            </div>
+
+                            <!-- Comment Input Form -->
+                            <div class="comment-input-area bg-white bg-opacity-5 rounded-4 p-3 border border-white border-opacity-5">
+                                <form id="commentForm" onsubmit="submitComment(event)">
+                                    <div class="d-flex gap-3">
+                                        <div id="replyIndicator" class="small text-accent mb-2 d-none w-100">
+                                            Đang trả lời... <button type="button" class="btn btn-link btn-sm text-dim p-0" onclick="cancelReply()">Hủy</button>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-3 align-items-start">
+                                        <textarea id="commentInput" class="form-control bg-transparent border-0 text-white shadow-none p-0 custom-scrollbar" 
+                                                  placeholder="Cảm nhận của bạn về bài hát này..." rows="2" style="resize: none;"></textarea>
+                                        <button type="submit" class="btn btn-accent rounded-circle shadow-lg d-flex align-items-center justify-content-center flex-shrink-0" style="width: 45px; height: 45px;">
+                                            <i class="fa-solid fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -331,8 +376,10 @@
     <script src="~/js/app/ui/interactions.js" asp-append-version="true"></script>
     <script src="~/js/app/ui/ads.js" asp-append-version="true"></script>
     <script src="~/js/app/ui/metadata.js" asp-append-version="true"></script>
+    <script src="~/js/app/spa-router.js" asp-append-version="true"></script>
 
     <!-- Other Utils -->
+    <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/search.js" asp-append-version="true"></script>
     <script src="~/js/playlist-sort.js" asp-append-version="true"></script>
     <script src="~/js/admin_notifications.js" asp-append-version="true"></script>
@@ -341,6 +388,7 @@
         // Global Auth state for JS access if needed
         window.YTM_CONFIG = {
             isAuthenticated: @(User.Identity?.IsAuthenticated == true ? "true" : "false"),
+            userId: @(User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0") : 0),
             isPremium: @(User.Identity?.IsAuthenticated == true ? (await SubService.IsUserPremiumAsync(int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0"))).ToString().ToLower() : "false")
         };
     </script>

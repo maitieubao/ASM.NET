@@ -1,4 +1,6 @@
 /* variables.css - Theme constants and resets */
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
+
 :root {
     /* Base Colors - Ultra Deep */
     --bg-main: #070707;
@@ -43,9 +45,29 @@
 body {
     background-color: #030303;
     color: var(--text-main);
-    font-family: 'Inter', 'Outfit', sans-serif;
+    font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
+    line-height: 1.6;
     overflow: hidden; 
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Be Vietnam Pro', 'Inter', -apple-system, sans-serif !important;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.greeting-text {
+    font-size: clamp(1.8rem, 5vw, 2.5rem);
+    font-weight: 800 !important;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(to bottom, #fff 0%, #aaa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-family: 'Be Vietnam Pro', sans-serif !important;
 }
 
 a { text-decoration: none; color: inherit; transition: var(--transition-speed); }

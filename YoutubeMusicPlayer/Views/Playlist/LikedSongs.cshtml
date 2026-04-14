@@ -63,7 +63,9 @@
                                 <button class="btn btn-icon btn-like liked" onclick="event.stopPropagation(); toggleLike(@s.SongId, this)">
                                     <i class="fa-solid fa-heart"></i>
                                 </button>
-                                <a asp-controller="Subscription" asp-action="Download" asp-route-youtubeId="@s.YoutubeVideoId" asp-route-title="@s.Title" class="btn btn-icon text-dim hover-text-accent" title="Tải xuống">
+                                <a href="javascript:void(0)" 
+                                   onclick="handlePremiumDownload('/Subscription/Download?youtubeId=@s.YoutubeVideoId&title=@Uri.EscapeDataString(s.Title)')"
+                                   class="btn btn-icon text-dim hover-text-accent" title="Tải xuống">
                                     <i class="fa-solid fa-download"></i>
                                 </a>
                                 <button class="btn btn-icon" onclick="event.stopPropagation(); openAddToPlaylist(@s.SongId, '@s.YoutubeVideoId')">

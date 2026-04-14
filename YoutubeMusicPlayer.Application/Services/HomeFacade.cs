@@ -48,30 +48,55 @@ public class HomeFacade : IHomeFacade
         _logger = logger;
     }
 
-    public async Task<HomeViewModel> BuildHomeViewModelAsync(int? userId)
+    public async Task<HomeViewModel> BuildHomeViewModelAsync(int? userId, string? userName = null)
     {
         var model = new HomeViewModel();
+        
+        // Dynamic Greeting Logic
         int hour = DateTime.Now.Hour;
-        model.Greeting = hour < 12 ? "Chào buổi sáng" : (hour < 18 ? "Chào buổi chiều" : "Chào buổi tối");
+        string greetingBase = hour switch
+        {
+            >= 5 and < 11 => "Chào buổi sáng",
+            >= 11 and < 13 => "Chào buổi trưa",
+            >= 13 and < 18 => "Chào buổi chiều",
+            >= 18 and < 22 => "Chào buổi tối",
+            _ => "Chào ban đêm"
+        };
+
+        // Add user name if provided from Controller
+        if (!string.IsNullOrEmpty(userName))
+        {
+            greetingBase += $", {userName}";
+        }
+        
+        model.Greeting = greetingBase;
 
         // FIRE ALL TASKS CONCURRENTLY
         var tasks = new List<Task>();
 
         // Task 1: Artists (Isolated Scope)
         var artistTask = Task.Run(async () => {
-            using var scope = _scopeFactory.CreateScope();
-            var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
-            var result = await artistSvc.GetPaginatedArtistsAsync(1, 50);
-            model.TopArtists = result.Artists.OrderBy(_ => Random.Shared.Next()).Take(12).ToList();
+            try {
+                using var scope = _scopeFactory.CreateScope();
+                var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
+                var result = await artistSvc.GetPaginatedArtistsAsync(1, 50);
+                model.TopArtists = result.Artists.OrderBy(_ => Random.Shared.Next()).Take(12).ToList();
+            } catch (Exception ex) {
+                _logger.LogError(ex, "[HOME-FACADE] Error loading Top Artists");
+            }
         });
         tasks.Add(artistTask);
 
         // Task 2: Genres (Isolated Scope)
         var genreTask = Task.Run(async () => {
-            using var scope = _scopeFactory.CreateScope();
-            var genreSvc = scope.ServiceProvider.GetRequiredService<IGenreService>();
-            var result = await genreSvc.GetAllGenresAsync();
-            model.Genres = result.OrderBy(_ => Random.Shared.Next()).ToList();
+            try {
+                using var scope = _scopeFactory.CreateScope();
+                var genreSvc = scope.ServiceProvider.GetRequiredService<IGenreService>();
+                var result = await genreSvc.GetAllGenresAsync();
+                model.Genres = result.OrderBy(_ => Random.Shared.Next()).ToList();
+            } catch (Exception ex) {
+                _logger.LogError(ex, "[HOME-FACADE] Error loading Genres");
+            }
         });
         tasks.Add(genreTask);
 
@@ -80,28 +105,36 @@ public class HomeFacade : IHomeFacade
         {
             // 3.1 Followed Artists
             var followedTask = Task.Run(async () => {
-                using var scope = _scopeFactory.CreateScope();
-                var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
-                model.FollowedArtists = await artistSvc.GetFollowedArtistsAsync(userId.Value);
+                try {
+                    using var scope = _scopeFactory.CreateScope();
+                    var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
+                    model.FollowedArtists = await artistSvc.GetFollowedArtistsAsync(userId.Value);
+                } catch (Exception ex) {
+                    _logger.LogError(ex, "[HOME-FACADE] Error loading Followed Artists");
+                }
             });
             tasks.Add(followedTask);
 
             // 3.2 Listening History & Recent Listened
             var historyTask = Task.Run(async () => {
-                using var scope = _scopeFactory.CreateScope();
-                var interactionSvc = scope.ServiceProvider.GetRequiredService<IInteractionService>();
-                var songSvc = scope.ServiceProvider.GetRequiredService<ISongService>();
+                try {
+                    using var scope = _scopeFactory.CreateScope();
+                    var interactionSvc = scope.ServiceProvider.GetRequiredService<IInteractionService>();
+                    var songSvc = scope.ServiceProvider.GetRequiredService<ISongService>();
 
-                var historyIds = await interactionSvc.GetRecentListeningHistoryAsync(userId.Value, 6);
-                if (historyIds != null && historyIds.Any())
-                {
-                    var historySongs = await songSvc.GetSongsByIdsAsync(historyIds);
-                    model.RecentListened = historySongs.Select(s => new YoutubeVideoDetails {
-                        YoutubeVideoId = s.YoutubeVideoId,
-                        Title = s.Title,
-                        ThumbnailUrl = s.ThumbnailUrl,
-                        AuthorName = s.AuthorName ?? "Nghệ sĩ"
-                    }).ToList();
+                    var historyIds = await interactionSvc.GetRecentListeningHistoryAsync(userId.Value, 6);
+                    if (historyIds != null && historyIds.Any())
+                    {
+                        var historySongs = await songSvc.GetSongsByIdsAsync(historyIds);
+                        model.RecentListened = historySongs.Select(s => new YoutubeVideoDetails {
+                            YoutubeVideoId = s.YoutubeVideoId,
+                            Title = s.Title,
+                            ThumbnailUrl = s.ThumbnailUrl,
+                            AuthorName = s.AuthorName ?? "Nghệ sĩ"
+                        }).ToList();
+                    }
+                } catch (Exception ex) {
+                    _logger.LogError(ex, "[HOME-FACADE] Error loading Listening History");
                 }
             });
             tasks.Add(historyTask);
@@ -120,63 +153,109 @@ public class HomeFacade : IHomeFacade
             case SectionTypes.Trending:
                 section.Title = "Thịnh hành hôm nay";
                 section.Layout = "Wide";
-                section.Songs = (await _youtubeService.GetTrendingMusicAsync(10, refresh));
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var youtubeSvc = scope.ServiceProvider.GetRequiredService<IYoutubeService>();
+                    section.Songs = (await youtubeSvc.GetTrendingMusicAsync(10, refresh));
+                }
                 break;
             case SectionTypes.Albums:
                 section.Title = "Album & EP phổ biến";
                 section.Layout = "Square";
-                section.Albums = (await _albumService.GetTrendingAlbumsAsync(10)).Take(10);
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var albumSvc = scope.ServiceProvider.GetRequiredService<IAlbumService>();
+                    section.Albums = (await albumSvc.GetTrendingAlbumsAsync(10)).Take(10);
+                }
                 break;
             case SectionTypes.DailyMix:
             case SectionTypes.Mix1:
                 section.Title = "Hỗn hợp dành cho bạn";
-                section.Songs = userId.HasValue 
-                    ? (await _recommendationService.GetDailyMixVariantAsync(userId.Value, 0, null, refresh)).Take(10)
-                    : await _youtubeService.GetTrendingMusicAsync(10, refresh);
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+                    var youtubeSvc = scope.ServiceProvider.GetRequiredService<IYoutubeService>();
+                    section.Songs = userId.HasValue 
+                        ? (await recommendationSvc.GetDailyMixVariantAsync(userId.Value, 0, null, refresh)).Take(10)
+                        : await youtubeSvc.GetTrendingMusicAsync(10, refresh);
+                }
                 break;
             case SectionTypes.Mix2:
                 if (!userId.HasValue) return null;
                 section.Title = "Khám phá mới";
-                section.Songs = (await _recommendationService.GetDailyMixVariantAsync(userId.Value, 1, null, refresh)).Take(10);
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+                    section.Songs = (await recommendationSvc.GetDailyMixVariantAsync(userId.Value, 1, null, refresh)).Take(10);
+                }
                 break;
             case SectionTypes.Mix3:
                 if (!userId.HasValue) return null;
                 section.Title = "Giai điệu yêu thích";
-                section.Songs = (await _recommendationService.GetDailyMixVariantAsync(userId.Value, 2, null, refresh)).Take(10);
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+                    section.Songs = (await recommendationSvc.GetDailyMixVariantAsync(userId.Value, 2, null, refresh)).Take(10);
+                }
                 break;
             case SectionTypes.Contextual:
                 string? artist = null;
-                if (userId.HasValue) 
+                using (var scope = _scopeFactory.CreateScope())
                 {
-                    var history = await _interactionService.GetRecentListeningHistoryAsync(userId.Value, 1);
-                    if (history != null && history.Any()) {
-                        var songs = await _songService.GetSongsByIdsAsync(history);
-                        artist = songs.FirstOrDefault()?.AuthorName;
+                    var interactionSvc = scope.ServiceProvider.GetRequiredService<IInteractionService>();
+                    var songSvc = scope.ServiceProvider.GetRequiredService<ISongService>();
+                    var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+                    var youtubeSvc = scope.ServiceProvider.GetRequiredService<IYoutubeService>();
+
+                    if (userId.HasValue) 
+                    {
+                        var history = await interactionSvc.GetRecentListeningHistoryAsync(userId.Value, 1);
+                        if (history != null && history.Any()) {
+                            var songsList = await songSvc.GetSongsByIdsAsync(history);
+                            artist = songsList.FirstOrDefault()?.AuthorName;
+                        }
                     }
+                    var contextual = userId.HasValue 
+                                     ? await recommendationSvc.GetBecauseYouListenedToAsync(userId.Value, artist, refresh)
+                                     : await youtubeSvc.GetTrendingMusicAsync(10, refresh);
+                    
+                    if (contextual == null || !contextual.Any()) return null;
+                    section.Title = contextual.First().SectionTitle ?? "Gợi ý dành cho bạn";
+                    section.Songs = contextual.Take(10);
                 }
-                var contextual = userId.HasValue 
-                                 ? await _recommendationService.GetBecauseYouListenedToAsync(userId.Value, artist, refresh)
-                                 : await _youtubeService.GetTrendingMusicAsync(10, refresh);
-                if (contextual == null || !contextual.Any()) return null;
-                section.Title = contextual.First().SectionTitle ?? "Gợi ý dành cho bạn";
-                section.Songs = contextual.Take(10);
                 break;
             case SectionTypes.Focus:
                 section.Title = "Tập trung làm việc";
-                section.Songs = (await _recommendationService.GetMoodMusicAsync("focus", 10, refresh));
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+                    section.Songs = (await recommendationSvc.GetMoodMusicAsync("focus", 10, refresh));
+                }
                 break;
             case SectionTypes.Chill:
                 section.Title = "Giai điệu Chill";
-                section.Songs = (await _recommendationService.GetMoodMusicAsync("chill", 10, refresh));
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+                    section.Songs = (await recommendationSvc.GetMoodMusicAsync("chill", 10, refresh));
+                }
                 break;
             case SectionTypes.Sad:
                 section.Title = "Tâm trạng";
-                section.Songs = (await _recommendationService.GetMoodMusicAsync("sad", 10, refresh));
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+                    section.Songs = (await recommendationSvc.GetMoodMusicAsync("sad", 10, refresh));
+                }
                 break;
             case SectionTypes.Compilations:
                 section.Title = "Nhạc tổng hợp";
                 section.Layout = "Wide";
-                section.Songs = (await _recommendationService.GetCompilationsAsync(10, refresh));
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+                    section.Songs = (await recommendationSvc.GetCompilationsAsync(10, refresh));
+                }
                 break;
             default:
                 return null;
@@ -236,14 +315,18 @@ public class HomeFacade : IHomeFacade
         var itunesAlbums = await itunesTask;
 
         // Ensure external artists found have a place in our system
-        foreach (var da in deezerArtists)
+        if (deezerArtists != null && deezerArtists.Any())
         {
-            if (!internalArtists.Any(a => a.Name.ToLower() == da.Name.ToLower()))
+            using var scope = _scopeFactory.CreateScope();
+            var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
+            
+            foreach (var da in deezerArtists)
             {
-                using var scope = _scopeFactory.CreateScope();
-                var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
-                var stub = await artistSvc.GetOrCreateArtistStubAsync(da.Name, da.ImageUrl);
-                internalArtists.Add(stub);
+                if (!internalArtists.Any(a => a.Name.ToLower() == da.Name.ToLower()))
+                {
+                    var stub = await artistSvc.GetOrCreateArtistStubAsync(da.Name, da.ImageUrl);
+                    if (stub != null) internalArtists.Add(stub);
+                }
             }
         }
 

@@ -5,7 +5,7 @@ namespace YoutubeMusicPlayer.Application.Interfaces;
 
 public interface IHomeFacade
 {
-    Task<HomeViewModel> BuildHomeViewModelAsync(int? userId);
+    Task<HomeViewModel> BuildHomeViewModelAsync(int? userId, string? userName = null);
     Task<MusicSection?> GetHomeSectionAsync(string type, int? userId, bool refresh = false);
     Task<List<SearchResultDto>> SearchAllAsync(string query, int? userId);
     Task<IEnumerable<SongDto>> GetSongsByArtistAsync(string name);

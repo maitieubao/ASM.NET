@@ -33,10 +33,12 @@
                         var totalSeconds = Model.TotalDurationSeconds;
                         var hours = totalSeconds / 3600;
                         var minutes = (totalSeconds % 3600) / 60;
+                        var seconds = totalSeconds % 60;
+                        
                         if (hours > 0) {
-                            @($"{hours} giờ {minutes} phút")
+                            @($"{hours} giờ {minutes} phút {seconds} giây")
                         } else {
-                            @($"{minutes} phút")
+                            @($"{minutes} phút {seconds} giây")
                         }
                     }</span>
                 </div>
@@ -107,10 +109,13 @@
                                 <button class="btn-icon" title="Thêm vào Playlist" onclick="event.stopPropagation(); showAddToPlaylistModal('@s.YoutubeVideoId')">
                                     <i class="fa-solid fa-folder-plus text-accent"></i>
                                 </button>
-                                <a href="javascript:void(0)" onclick="event.stopPropagation(); gracefulDownload('@s.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(s.Title)')" class="btn btn-icon text-dim hover-text-accent" title="Tải xuống">
+                                <a href="javascript:void(0)" 
+                                   onclick="handlePremiumDownload('/Subscription/Download?youtubeId=@s.YoutubeVideoId&title=@Uri.EscapeDataString(s.Title)')"
+                                   class="btn btn-icon text-dim hover-text-accent" title="Tải xuống">
                                     <i class="fa-solid fa-download"></i>
                                 </a>
-                                <button type="button" class="btn btn-icon text-danger hover-bg-danger bg-opacity-10" onclick="event.stopPropagation(); removeSong(@Model.PlaylistId, @s.SongId, this)" title="Gỡ khỏi Playlist">
+                                <button type="button" class="btn btn-icon text-danger hover-bg-danger bg-opacity-10" 
+                                        onclick="removeSong(event, @Model.PlaylistId, @s.SongId, this)" title="Gỡ khỏi Playlist">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
                             </div>
@@ -282,7 +287,12 @@
         } catch(e) {}
     }
 
-    async function removeSong(playlistId, songId, btn) {
+    async function removeSong(event, playlistId, songId, btn) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
         if (!confirm('Gỡ bài hát này khỏi playlist?')) return;
         
         try {
@@ -290,16 +300,27 @@
             formData.append('playlistId', playlistId);
             formData.append('songId', songId);
             
-            const res = await fetch('/Playlist/RemoveSong', { method: 'POST', body: formData });
+            // Add Anti-Forgery Token if available
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            
+            const res = await fetch('/Playlist/RemoveSong', { 
+                method: 'POST', 
+                body: formData,
+                headers: token ? { "RequestVerificationToken": token } : {}
+            });
             const data = await res.json();
             
             if (data.success) {
                 $(btn).closest('tr').fadeOut(300, function() { 
                     $(this).remove(); 
-                    // Update index numbers
+                    // Update index numbers immediately
                     $('.row-index').each(function(idx) {
                         $(this).text(idx + 1);
                     });
+                    
+                    if ($('.song-row').length === 0) {
+                        location.reload(); // Show empty state
+                    }
                 });
                 if (typeof toastr !== 'undefined') toastr.success("Đã gỡ bài hát khỏi playlist");
             } else {

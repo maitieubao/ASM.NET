@@ -22,12 +22,12 @@ public class HomeController : BaseController
 
     public async Task<IActionResult> Index()
     {
-        var model = await _homeFacade.BuildHomeViewModelAsync(CurrentUserId);
+        var model = await _homeFacade.BuildHomeViewModelAsync(CurrentUserId, User.Identity?.Name);
         return View(model);
     }
 
     [HttpGet]
-    [ResponseCache(Duration = 300, VaryByQueryKeys = new[] { "type" })]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetHomeSection(string type, bool refresh = false)
     {
         // Personalized sections (e.g. Recommendations) should skip cache if necessary, 
@@ -107,6 +107,34 @@ public class HomeController : BaseController
             bio = metadata.Bio,
             availableCaptions = metadata.AvailableCaptions
         });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetVideoDetails(string videoUrl)
+    {
+        if (string.IsNullOrEmpty(videoUrl)) return BadRequestResponse("URL cannot be empty.");
+        
+        try 
+        {
+            // We use GetStreamAsync which resolves/creates the song in our DB and returns the metadata
+            var result = await _playbackFacade.GetStreamAsync(videoUrl, null, null, CurrentUserId);
+            
+            // Re-fetch more metadata if needed, or use the result
+            return SuccessResponse(new {
+                songId = result.SongId,
+                videoId = result.VideoId,
+                title = result.Title,
+                authorName = result.Author,
+                thumbnailUrl = result.ThumbnailUrl,
+                viewCount = 123456, // Placeholder or fetch real views if available in result
+                genre = "Music",
+                tags = new string[] { "Popular", "Music" }
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequestResponse("Failed to retrieve song details.");
+        }
     }
     
     [HttpGet]

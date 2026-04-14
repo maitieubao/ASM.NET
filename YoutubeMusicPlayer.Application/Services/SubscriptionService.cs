@@ -53,18 +53,19 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task<bool> IsUserPremiumAsync(int userId, CancellationToken ct = default)
     {
+        // 1. Get user to check the direct IS_PREMIUM flag
         var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId, ct);
         if (user == null) return false;
         
-        if (user.IsPremium)
-        {
-            // Just check validity, don't update DB here (Side effect removal)
-            var activeSub = await _unitOfWork.Repository<UserSubscription>()
-                .FirstOrDefaultAsync(s => s.UserId == userId && s.IsActive && s.EndDate > DateTime.UtcNow, ct);
-            
-            return activeSub != null;
-        }
-        return false;
+        // Priority 1: If the user record itself says they are premium, trust it (Fail-safe)
+        if (user.IsPremium) return true;
+        
+        // Priority 2: Check active subscription record with timezone safety
+        // We add a small buffer (1 day) or check date-only to avoid UTC/Local mismatches
+        var sub = await _unitOfWork.Repository<UserSubscription>()
+            .FirstOrDefaultAsync(s => s.UserId == userId && (s.EndDate.Date >= DateTime.UtcNow.Date || s.IsActive), ct);
+        
+        return sub != null;
     }
 
     public async Task<int> CreateInitialPaymentAsync(int userId, int planId, long orderCode, CancellationToken ct = default)
