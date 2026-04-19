@@ -1,0 +1,225 @@
+@model YoutubeMusicPlayer.Application.DTOs.HomeViewModel
+@{
+    ViewData["Title"] = "Khám phá - Música";
+}
+
+<div class="home-page-container">
+    
+    <!-- GREETING & QUICK ACCESS -->
+    <div class="mb-4">
+        <h1 class="greeting-text">@Model.Greeting</h1>
+        <div class="tag-filters mt-3">
+            <a class="tag-filter active text-decoration-none" href="/" onclick="return applyFilter(event, this, 'Tất cả')">Dành cho bạn</a>
+            <a class="tag-filter text-decoration-none" href="/Home/Discovery?tag=Chill" onclick="return applyFilter(event, this, 'Chill')">Giai điệu Chill</a>
+            <a class="tag-filter text-decoration-none" href="/Home/Discovery?tag=Tập%20trung" onclick="return applyFilter(event, this, 'Tập trung')">Tập trung làm việc</a>
+            <a class="tag-filter text-decoration-none" href="/Home/Discovery?tag=V-Pop%20hot" onclick="return applyFilter(event, this, 'V-Pop hot')">V-Pop Hot</a>
+            <a class="tag-filter text-decoration-none" href="/Home/Discovery?tag=Sôi%20động" onclick="return applyFilter(event, this, 'Sôi động')">Sôi động</a>
+            <a class="tag-filter text-decoration-none" href="/Home/Discovery?tag=Workout" onclick="return applyFilter(event, this, 'Workout')">Tập thể dục</a>
+            @foreach (var genre in Model.Genres.Take(5))
+            {
+                <a class="tag-filter text-decoration-none"
+                   href="/Home/Discovery?tag=@System.Net.WebUtility.UrlEncode(genre.Name)"
+                   onclick="return applyFilter(event, this, '@System.Web.HttpUtility.JavaScriptStringEncode(genre.Name)')">@genre.Name</a>
+            }
+        </div>
+    </div>
+
+    <!-- 1. NGHE LẠI GẦN ĐÂY (High-Density Grid - Spotify Style) -->
+    @if (Model.RecentListened != null && Model.RecentListened.Any())
+    {
+        <div class="mb-5">
+            <div class="recent-grid">
+                @foreach (var item in Model.RecentListened.Take(6))
+                {
+                    <div class="recent-card" onclick="playSingleTrack('@item.YoutubeVideoId', '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(item.AuthorName)', '@item.ThumbnailUrl')">
+                        <img src="@item.ThumbnailUrl" 
+                             alt="@item.Title" 
+                             onerror="this.src='https://ui-avatars.com/api/?name=@(System.Net.WebUtility.UrlEncode(item.Title))&background=181818&color=6C5CE7&size=64'">
+                        <div class="recent-card-info">
+                            <span class="recent-card-title">@item.Title</span>
+                        </div>
+                        <div class="recent-card-play"><i class="fa-solid fa-play"></i></div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- 2. DYNAMIC SECTIONS (Now Loaded via AJAX for Performance) -->
+    <div id="home-dynamic-sections">
+        <!-- Placeholders for AJAX loading -->
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <div class="section-placeholder" data-type="mix1"><div class="section-skeleton"></div></div>
+            <div class="section-placeholder" data-type="mix2"><div class="section-skeleton"></div></div>
+            <div class="section-placeholder" data-type="mix3"><div class="section-skeleton"></div></div>
+            <div class="section-placeholder" data-type="Contextual"><div class="section-skeleton"></div></div>
+        }
+        else
+        {
+            <div class="section-placeholder" data-type="mix1"><div class="section-skeleton"></div></div>
+        }
+        
+        <div class="section-placeholder" data-type="Trending"><div class="section-skeleton"></div></div>
+        <div class="section-placeholder" data-type="Focus"><div class="section-skeleton"></div></div>
+        <div class="section-placeholder" data-type="Chill"><div class="section-skeleton"></div></div>
+        <div class="section-placeholder" data-type="compilations"><div class="section-skeleton"></div></div>
+        <div class="section-placeholder" data-type="Sad"><div class="section-skeleton"></div></div>
+        <div class="section-placeholder" data-type="Albums"><div class="section-skeleton"></div></div>
+    </div>
+
+    <!-- 3. TOP NGHỆ SĨ (Circular Cards) -->
+    @if (Model.TopArtists != null && Model.TopArtists.Any())
+    {
+        <div class="mb-5 section-reveal">
+            <div class="section-header align-items-center mb-3">
+                <h2 class="section-title">Nghệ sĩ dành cho bạn</h2>
+            </div>
+            <div class="carousel-wrapper">
+                <button class="carousel-nav carousel-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <button class="carousel-nav carousel-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
+                <div class="horizontal-carousel scrollbar-hide">
+                    @foreach (var artist in Model.TopArtists.Take(10))
+                    {
+                        <div class="artist-card" onclick="window.location.href='/Artist/Details/@artist.ArtistId'">
+                            <img src="@(artist.AvatarUrl ?? "https://ui-avatars.com/api/?name="+artist.Name)" alt="@artist.Name" class="artist-thumb">
+                            <div class="artist-info mt-2 text-center">
+                                <div class="ytm-card-title text-center">@artist.Name</div>
+                                <div class="ytm-card-meta">Nghệ sĩ</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- 4. SEARCH RESULTS (Hidden by default, swapped via AJAX) -->
+    <style>
+        .section-placeholder {
+            min-height: 100px;
+            transition: opacity 0.5s ease;
+        }
+        
+        .section-skeleton {
+            height: 200px;
+            width: 100%;
+            background: linear-gradient(90.1deg, rgba(255,255,255,0.03) 0.6%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 99%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 16px;
+            margin-bottom: 40px;
+        }
+        
+        @@keyframes skeleton-loading {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+    </style>
+    <div id="search-results-main" style="display: none;" class="section-reveal">
+        <div class="section-header d-flex justify-content-between align-items-center mb-4">
+            <h2 class="section-title" id="search-query-title">Kết quả tìm kiếm</h2>
+            <button class="btn btn-link text-accent fw-bold text-decoration-none" onclick="exitSearchMode()">
+                <i class="fa-solid fa-xmark me-2"></i> Đóng tìm kiếm
+            </button>
+        </div>
+        <div id="search-results-content" class="song-list-grid pb-5">
+            <!-- Results will be injected here -->
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="page-title-data" value="Khám phá - Música" />
+
+<script>
+    window.loadAllSections = async function() {
+        console.log("[Home] loadAllSections triggered.");
+        const placeholders = document.querySelectorAll('.section-placeholder:not(.loaded)');
+        console.log("[Home] Found placeholders:", placeholders.length);
+        
+        const promises = Array.from(placeholders).map(el => loadSection(el));
+        await Promise.all(promises);
+    };
+
+    // Immediate execution for both SPA and direct load
+    (function() {
+        console.log("[Home] Self-invoking init...");
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => window.loadAllSections());
+        } else {
+            window.loadAllSections();
+        }
+    })();
+
+    async function loadSection(el, forceRefresh = false) {
+        if (el.classList.contains('loading-active')) return;
+        el.classList.add('loading-active');
+        
+        const type = el.getAttribute('data-type');
+        try {
+            const response = await fetch(`/Home/GetHomeSection?type=${type}&refresh=${forceRefresh}`);
+            if (response.status === 204) {
+                 el.remove();
+                 return;
+            }
+            
+            const html = await response.text();
+            if (html && html.trim().length > 0) {
+                el.innerHTML = html;
+                el.classList.add('loaded');
+                setTimeout(() => {
+                    const reveal = el.querySelector('.section-reveal');
+                    if (reveal) reveal.classList.add('active');
+                }, 50);
+            } else {
+                el.remove();
+            }
+        } catch (err) {
+            console.error('Error loading section:', type, err);
+            el.remove();
+        } finally {
+            el.classList.remove('loading-active');
+        }
+    }
+
+    window.refreshSection = async function(btn) {
+        const placeholder = btn.closest('.section-placeholder');
+        if (!placeholder) return;
+        
+        btn.classList.add('fa-spin');
+        btn.disabled = true;
+        
+        await loadSection(placeholder, true);
+    }
+
+    window.scrollCarousel = function(btn, direction) {
+        const container = btn.closest('.carousel-wrapper').querySelector('.horizontal-carousel') || btn.closest('.carousel-wrapper').querySelector('.song-list-grid');
+        if (container) {
+            container.scrollBy({ left: direction * 500, behavior: 'smooth' });
+        }
+    }
+
+    window.applyFilter = function(event, btn, tag) {
+        if (event) event.preventDefault();
+
+        if (tag === 'Tất cả') {
+            if (window.SPARouter) window.SPARouter.navigateTo('/');
+            else window.location.href = '/';
+            return false;
+        }
+        document.querySelectorAll('.tag-filter').forEach(t => t.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        
+        const url = `/Home/Discovery?tag=${encodeURIComponent(tag)}`;
+        if (window.SPARouter) window.SPARouter.navigateTo(url);
+        else window.location.href = url;
+        return false;
+    }
+
+    // Manual init tracking for static sections reveal
+    document.querySelectorAll('.section-reveal:not(.active)').forEach(el => {
+        if (!el.closest('.section-placeholder')) {
+            setTimeout(() => el.classList.add('active'), 200);
+        }
+    });
+</script>

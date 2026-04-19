@@ -1,0 +1,105 @@
+# Implementation Plan
+
+- [ ] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Premium Grant/Revoke ObjectDisposedException
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the ObjectDisposedException occurs when admins grant or revoke premium
+  - **Scoped PBT Approach**: Scope the property to concrete failing cases: admin grant premium (userId=1, planId=1), admin grant premium (userId=2, planId=3), admin revoke premium (userId=3 with active subscription)
+  - Test implementation details from Bug Condition in design:
+    - Test that `GrantPremiumByPlanAsync(userId, planId, ct)` throws ObjectDisposedException for valid userId and planId
+    - Test that `RevokePremiumAsync(userId, ct)` throws ObjectDisposedException for valid userId with active subscription
+    - Exception message should contain "Cannot access a disposed object" and "ManualResetEventSlim"
+    - Exception should occur at `GenericRepository.GetByIdAsync` line 22
+  - The test assertions should match the Expected Behavior Properties from design:
+    - After fix: operations should complete successfully without ObjectDisposedException
+    - After fix: transactions should commit successfully
+    - After fix: database changes should be persisted (user.IsPremium updated, UserSubscription records created/updated)
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS with ObjectDisposedException (this is correct - it proves the bug exists)
+  - Document counterexamples found to understand root cause:
+    - Which specific operation failed (grant 1-month, grant lifetime, revoke)
+    - Exact exception message and stack trace
+    - Whether exception occurs at GetByIdAsync or other async operation
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4_
+
+- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Other User Management Operations
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for non-buggy inputs:
+    - Test `GetAllUsersAsync()` returns all users correctly
+    - Test `GetPaginatedUsersAsync(page, pageSize)` returns paginated results correctly
+    - Test `ToggleUserLockAsync(userId)` locks/unlocks users correctly
+    - Test `DeleteUserAsync(userId)` soft deletes users correctly
+    - Test `SearchUsersAsync(searchTerm)` searches users correctly
+  - Write property-based tests capturing observed behavior patterns from Preservation Requirements:
+    - For all user management operations NOT involving premium grant/revoke, behavior should be unchanged
+    - For all non-admin user operations (login, play music, playlists), behavior should be unchanged
+    - For transaction rollback on exceptions, behavior should be unchanged
+    - For subscription plan queries, behavior should be unchanged (3 active plans ordered by duration)
+  - Property-based testing generates many test cases for stronger guarantees:
+    - Generate random user IDs for lock/unlock operations
+    - Generate random search terms for search operations
+    - Generate random page numbers and page sizes for pagination
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [ ] 3. Fix for ObjectDisposedException in premium grant/revoke operations
+
+  - [ ] 3.1 Implement the fix in UserService.cs
+    - Change `using var transaction` to `await using var transaction` in `GrantPremiumByPlanAsync` method
+    - Change `using var transaction` to `await using var transaction` in `RevokePremiumAsync` method
+    - Add `.ConfigureAwait(false)` to all await statements in both methods to prevent synchronization context capture
+    - Verify all async operations are properly awaited before using block exits:
+      - `await _unitOfWork.Repository<User>().GetByIdAsync(userId, ct).ConfigureAwait(false)`
+      - `await _unitOfWork.Repository<SubscriptionPlan>().FirstOrDefaultAsync(...).ConfigureAwait(false)`
+      - `await _unitOfWork.Repository<UserSubscription>().FirstOrDefaultAsync(...).ConfigureAwait(false)`
+      - `await _unitOfWork.Repository<UserSubscription>().AddAsync(...).ConfigureAwait(false)`
+      - `await _unitOfWork.Repository<UserSubscription>().FindAsync(...).ConfigureAwait(false)`
+      - `await _unitOfWork.CompleteAsync(ct).ConfigureAwait(false)`
+      - `await transaction.CommitAsync(ct).ConfigureAwait(false)`
+    - Verify CancellationToken is properly passed to all async operations
+    - Ensure transaction is committed/rolled back before using block exits (no early returns)
+    - _Bug_Condition: isBugCondition(input) where (input.operation == "GrantPremium" OR input.operation == "RevokePremium") AND input.userId IS valid integer AND transactionDisposedBeforeAsyncOperationsComplete()_
+    - _Expected_Behavior: For any admin operation where premium grant or revoke is invoked with valid userId and planId (for grant), the fixed methods SHALL complete all database operations without throwing ObjectDisposedException, SHALL commit the transaction successfully, and SHALL dispose of the transaction and DbContext only after all async operations have completed_
+    - _Preservation: All other user management operations (Index, Details, ToggleUserLock, Delete, Search) must continue to work exactly as before. Non-admin user operations must remain completely unaffected. Transaction rollback behavior on exceptions must continue to work correctly._
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5_
+
+  - [ ] 3.2 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Premium Grant/Revoke Operations Complete Successfully
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied:
+      - `GrantPremiumByPlanAsync(userId, planId, ct)` completes successfully without ObjectDisposedException
+      - `RevokePremiumAsync(userId, ct)` completes successfully without ObjectDisposedException
+      - Transactions commit successfully
+      - Database changes are persisted (user.IsPremium updated, UserSubscription records created/updated)
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+  - [ ] 3.3 Verify preservation tests still pass
+    - **Property 2: Preservation** - Other User Management Operations Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2:
+      - GetAllUsersAsync test
+      - GetPaginatedUsersAsync test
+      - ToggleUserLockAsync test
+      - DeleteUserAsync test
+      - SearchUsersAsync test
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all tests still pass after fix (no regressions in other user management operations)
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [ ] 4. Checkpoint - Ensure all tests pass
+  - Run all bug condition exploration tests - should PASS
+  - Run all preservation property tests - should PASS
+  - Run any existing unit tests for UserService - should PASS
+  - Run any existing integration tests for AdminUser controller - should PASS
+  - Verify no ObjectDisposedException occurs in admin premium grant/revoke operations
+  - Verify all other user management operations continue to work correctly
+  - Ask the user if questions arise

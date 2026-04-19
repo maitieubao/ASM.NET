@@ -1,0 +1,145 @@
+@model YoutubeMusicPlayer.Models.Admin.AdminReportListViewModel
+@{
+    ViewData["Title"] = "Reports Management";
+}
+
+<div class="container-fluid py-4 animate-fade-in">
+    <div class="mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3 px-lg-4">
+        <div>
+            <h2 class="text-white fw-bold"><i class="bi bi-flag-fill me-2 text-danger"></i> User Reports</h2>
+            <p class="text-muted small mb-0">Review content and conduct reports from users.</p>
+        </div>
+        <form asp-controller="AdminReport" asp-action="Index" method="get" class="glass-panel p-3 d-flex flex-wrap gap-2 align-items-center" style="max-width: 620px;">
+            <select name="status" class="form-select bg-dark text-white border-secondary" style="width: 180px;">
+                <option value="All" selected="@(string.IsNullOrWhiteSpace(Model.Status) ? "selected" : null)">All statuses</option>
+                <option value="Pending" selected="@(Model.Status == "Pending" ? "selected" : null)">Pending</option>
+                <option value="Resolved" selected="@(Model.Status == "Resolved" ? "selected" : null)">Resolved</option>
+                <option value="Dismissed" selected="@(Model.Status == "Dismissed" ? "selected" : null)">Dismissed</option>
+            </select>
+            <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control bg-transparent border-secondary text-white" placeholder="Search reporter, target, reason..." style="min-width: 240px;">
+            <button type="submit" class="btn btn-warning"><i class="bi bi-search"></i></button>
+        </form>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success mx-lg-4">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger mx-lg-4">@TempData["Error"]</div>
+    }
+
+    <div class="glass-panel p-0 overflow-hidden shadow-2xl mx-lg-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="text-white-50 border-bottom border-secondary border-opacity-10">
+                        <th class="ps-4">Reporter</th>
+                        <th>Target</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Reported At</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var report in Model.Reports)
+                    {
+                        <tr class="border-bottom border-secondary border-opacity-10 @(report.Status == "Pending" ? "bg-danger bg-opacity-5" : string.Empty)">
+                            <td class="ps-4">
+                                <div class="fw-bold text-white">@report.UserName</div>
+                                <div class="text-muted extra-small">ID: @report.UserId</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary mb-1">@report.TargetType</span>
+                                <div class="fw-bold text-white">@report.TargetName</div>
+                                <div class="text-muted extra-small">Target ID: @report.TargetId</div>
+                            </td>
+                            <td>
+                                <div class="text-white">@report.Reason</div>
+                                <div class="text-muted small">@report.Details</div>
+                            </td>
+                            <td>
+                                <span class="badge @(report.Status == "Pending" ? "bg-danger" : report.Status == "Resolved" ? "bg-success" : "bg-secondary") rounded-pill px-3">
+                                    @report.Status
+                                </span>
+                            </td>
+                            <td class="small text-muted">@report.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="text-end pe-4">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a asp-action="Details" asp-route-id="@report.ReportId" class="btn btn-sm btn-outline-info rounded-3" title="View details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    @if (report.Status == "Pending")
+                                    {
+                                        <form asp-action="Resolve" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@report.ReportId" />
+                                            <input type="hidden" name="takeAction" value="true" />
+                                            <input type="hidden" name="status" value="@Model.Status" />
+                                            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-3" title="Take action">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                        <form asp-action="Resolve" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@report.ReportId" />
+                                            <input type="hidden" name="takeAction" value="false" />
+                                            <input type="hidden" name="status" value="@Model.Status" />
+                                            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                                            <button type="submit" class="btn btn-sm btn-outline-success rounded-3" title="Mark resolved">
+                                                <i class="bi bi-check-circle-fill"></i>
+                                            </button>
+                                        </form>
+                                        <form asp-action="Dismiss" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@report.ReportId" />
+                                            <input type="hidden" name="status" value="@Model.Status" />
+                                            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary rounded-3" title="Dismiss">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!Model.Reports.Any())
+        {
+            <div class="p-5 text-center">
+                <i class="bi bi-flag display-1 text-white opacity-10 mb-3"></i>
+                <h4 class="text-muted">No reports found.</h4>
+            </div>
+        }
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="d-flex justify-content-between align-items-center p-4 border-top border-secondary border-opacity-10">
+                <div class="extra-small text-muted">Page @Model.CurrentPage of @Model.TotalPages</div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 gap-1">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : string.Empty)">
+                            <a class="page-link rounded-2 bg-dark border-secondary border-opacity-25" asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)" asp-route-status="@Model.Status" asp-route-searchTerm="@Model.SearchTerm">Prev</a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(Model.CurrentPage == i ? "active" : string.Empty)">
+                                <a class="page-link rounded-2 @(Model.CurrentPage == i ? "bg-warning border-warning text-dark" : "bg-dark border-secondary border-opacity-25 text-white")" asp-action="Index" asp-route-page="@i" asp-route-status="@Model.Status" asp-route-searchTerm="@Model.SearchTerm">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : string.Empty)">
+                            <a class="page-link rounded-2 bg-dark border-secondary border-opacity-25" asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)" asp-route-status="@Model.Status" asp-route-searchTerm="@Model.SearchTerm">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,429 @@
+@using YoutubeMusicPlayer.Application.Interfaces
+@inject ISubscriptionService SubService
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Antigravity Music</title>
+    <script>
+        window.userIsPremium = @(User.FindFirst("IsPremium")?.Value?.ToLower() ?? "false");
+    </script>
+    
+    <!-- Fonts: Optimized Vietnamese Support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Frameworks & Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    
+    <!-- SYSTEMATIC CSS MODULARIZATION -->
+    <link rel="stylesheet" href="~/css/modules/variables.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/layout.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/header.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/cards.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/player.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/drawers.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/ui-elements.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/immersive.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/artist.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modules/responsive.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <div id="app-root">
+        <aside class="sidebar" id="sidebar">
+            <div class="logo-container d-none d-lg-flex">
+                <div class="brand-logo shadow-accent-glow">
+                    <i class="fa-solid fa-bolt-lightning text-white"></i>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-name">Antigravity</span>
+                    <span class="brand-sub">Music</span>
+                </div>
+            </div>
+
+            <nav class="nav-group">
+                <a class="nav-item active" asp-controller="Home" asp-action="Index">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Trang chủ</span>
+                </a>
+                <a class="nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "Discovery" ? "active" : "")" 
+                   asp-controller="Home" asp-action="Discovery" asp-route-tag="Tất cả">
+                    <i class="fa-solid fa-compass"></i>
+                    <span>Khám phá</span>
+                </a>
+                <a class="nav-item" asp-controller="Playlist" asp-action="Index">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Thư viện</span>
+                </a>
+                <a class="nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "LikedSongs" ? "active" : "")" asp-controller="Playlist" asp-action="LikedSongs">
+                    <i class="fa-solid fa-heart text-danger"></i>
+                    <span>Bài hát đã thích</span>
+                </a>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-header-mini d-flex justify-content-between align-items-center mb-2 px-1">
+                    <span class="text-dim extra-small fw-bold uppercase">Playlist của bạn</span>
+                    <a href="/Playlist" class="btn btn-icon btn-sm text-dim hover-text-accent p-0"><i class="fa-solid fa-plus"></i></a>
+                </div>
+                <div id="sidebarPlaylists" class="sidebar-playlist-list scrollbar-hide d-flex flex-column gap-1">
+                    <!-- Dynamic playlists -->
+                </div>
+                <a class="nav-item" asp-controller="Subscription" asp-action="Index">
+                    <i class="fa-solid fa-gem text-accent"></i>
+                    <span>Tài khoản Premium</span>
+                </a>
+                @if (User.IsInRole("Admin"))
+                {
+                    <a class="nav-item" asp-controller="AdminDashboard" asp-action="Index">
+                        <i class="fa-solid fa-shield-halved text-danger"></i>
+                        <span>Admin Dashboard</span>
+                    </a>
+                }
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content scrollbar-hide">
+            <div id="dynamicBG" class="dynamic-bg-gradient"></div>
+            
+            <!-- Global Header -->
+            <div class="global-header d-flex align-items-center px-4">
+                <button id="mobileMenuBtn" class="btn btn-link text-white p-0 me-3 d-lg-none" title="Menu">
+                    <i class="fa-solid fa-bars fs-4"></i>
+                </button>
+
+                <a href="/" class="header-logo-container flex-shrink-0">
+                    <div class="brand-logo-mini">
+                        <i class="fa-solid fa-bolt-lightning"></i>
+                    </div>
+                </a>
+
+                <div class="search-container flex-grow-1 mx-lg-5 mx-3">
+                    <div class="search-input-wrapper d-flex align-items-center">
+                        <i class="fa-solid fa-magnifying-glass text-muted me-2"></i>
+                        <input type="text" id="globalSearchInput" placeholder="Tìm bài hát, nghệ sĩ, podcast..." autocomplete="off" />
+                        <button id="globalSearchBtn" class="btn-search ms-2" title="Tìm kiếm">
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    <!-- Results Dropdown -->
+                    <div id="searchDropdown" class="search-dropdown scrollbar-hide"></div>
+                </div>
+                
+                <div class="user-actions d-flex align-items-center gap-3 flex-shrink-0">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        var avatar = User.FindFirst("AvatarUrl")?.Value ?? "https://ui-avatars.com/api/?name=" + User.Identity.Name;
+                        <div class="dropdown">
+                            <img src="@avatar" class="rounded-circle cursor-pointer border border-white border-opacity-10" 
+                                 style="width: 34px; height: 34px; object-fit: cover;" 
+                                 data-bs-toggle="dropdown" aria-expanded="false">
+                            <ul class="dropdown-menu dropdown-menu-end glass-card border-white border-opacity-10 shadow-lg mt-2">
+                                <li><a class="dropdown-item py-2" href="/User/Profile"><i class="fa-solid fa-user me-2"></i> Hồ sơ của tôi</a></li>
+                                <li><a class="dropdown-item py-2" href="/Subscription"><i class="fa-solid fa-gem me-2"></i> Gói Premium</a></li>
+                                <li><hr class="dropdown-divider border-white border-opacity-10"></li>
+                                <li><a class="dropdown-item py-2 text-danger" href="/Auth/Logout" data-no-spa><i class="fa-solid fa-right-from-bracket me-2"></i> Đăng xuất</a></li>
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <a class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-accent" asp-controller="Auth" asp-action="Login" data-no-spa>
+                             Đăng nhập
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <div id="spa-container" class="animate-fade-in">
+                @RenderBody()
+            </div>
+            
+            <!-- Global TempData Flash Holders for Toastr -->
+            <input type="hidden" id="tempDataSuccess" value="@TempData["Success"]" />
+            <input type="hidden" id="tempDataError" value="@TempData["Error"]" />
+        </main>
+
+        <!-- PLAYER BAR -->
+        <footer class="player-bar">
+            <!-- Info -->
+            <div class="player-info">
+                <img src="https://ui-avatars.com/api/?name=Music&background=181818&color=6C5CE7" id="currentThumbnail" class="player-thumb" alt="Current Track" />
+                <div class="player-text">
+                    <div id="currentTitle" class="player-title">Sẵn sàng phát nhạc</div>
+                    <div id="currentAuthor" class="player-artist">Chọn bài hát bạn yêu thích</div>
+                </div>
+                <button class="btn btn-link text-dim ms-3 p-0 border-0" id="playerLikeBtn" onclick="togglePlayerLike()" title="Yêu thích">
+                    <i class="fa-regular fa-heart fs-5"></i>
+                </button>
+            </div>
+
+            <!-- Visualizer Overlay -->
+            <canvas id="visualizerCanvas"></canvas>
+
+            <!-- Controls -->
+            <div class="player-controls">
+                <div class="control-btns">
+                    <i class="fa-solid fa-shuffle" id="shuffleBtn" onclick="toggleShuffle()" title="Trộn bài" aria-label="Trộn bài"></i>
+                    <i class="fa-solid fa-backward-step" onclick="prevTrack()" title="Bài trước" aria-label="Bài trước"></i>
+                    <i class="fa-solid fa-play play-main" id="playPauseBtn" title="Phát/Tạm dừng" aria-label="Phát hoặc Tạm dừng"></i>
+                    <i class="fa-solid fa-forward-step" onclick="nextTrack()" title="Bài tiếp" aria-label="Bài tiếp theo"></i>
+                    <i class="fa-solid fa-repeat" id="repeatBtn" onclick="toggleRepeat()" title="Lặp lại" aria-label="Chế độ lặp lại"></i>
+                </div>
+                <div class="progress-container">
+                    <span id="currentTime">0:00</span>
+                    <input type="range" class="progress-bar-slider" id="progressSlider" min="0" max="100" value="0">
+                    <span id="durationTime">0:00</span>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="d-flex align-items-center justify-content-end gap-3 px-3">
+                <div class="d-none d-lg-flex align-items-center me-2">
+                    <select id="playbackSpeed" class="form-select form-select-sm bg-transparent border-0 text-white-50 p-0" style="width: 60px; font-size: 0.8rem;" onchange="setPlaybackSpeed(this.value)">
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1" selected>1.0x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2.0x</option>
+                    </select>
+                </div>
+                <button class="btn btn-link text-white-50 p-0" title="Lời bài hát & Nghệ sĩ" onclick="toggleMetadata()">
+                    <i class="fa-solid fa-microphone-lines"></i>
+                </button>
+                <button class="btn btn-link text-white-50 p-0" title="Chi tiết bài hát" onclick="showSongDetails(playQueue[currentIndex]?.videoId)">
+                    <i class="fa-solid fa-circle-info"></i>
+                </button>
+                <button class="btn btn-link text-white-50 p-0" id="queueBtn" onclick="toggleQueue()">
+                    <i class="fa-solid fa-list-ul"></i>
+                </button>
+                <button class="btn btn-link text-white-50 p-0" title="Thêm vào danh sách phát" onclick="showAddToPlaylistModal(playQueue[currentIndex]?.videoId, window.currentSongDbId)">
+                    <i class="fa-solid fa-folder-plus"></i>
+                </button>
+                <div class="d-flex align-items-center gap-2" style="width: 150px;">
+                    <i class="fa-solid fa-volume-high text-muted"></i>
+                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.01" value="0.8">
+                </div>
+            </div>
+            
+            <audio id="audioPlayer" class="d-none" preload="none" playsinline></audio>
+        </footer>
+    </div>
+
+    <!-- QUEUE DRAWER -->
+    <div id="queueDrawer" class="queue-drawer scrollbar-hide">
+        <div class="p-4 border-bottom border-white border-opacity-5 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 fw-bold">Tiếp theo</h5>
+            <button class="btn-close btn-close-white" onclick="toggleQueue()"></button>
+        </div>
+        <div id="queueContainer" class="p-3">
+            <!-- Queue items -->
+        </div>
+    </div>
+
+    <!-- FULL SCREEN PLAYER OVERLAY (Lyrics & Bio) -->
+    <div id="fullPlayerOverlay" class="full-player-overlay">
+        <div id="fullPlayerBackdrop" class="full-player-backdrop"></div>
+        
+        <div class="full-player-close" onclick="toggleMetadata()">
+            <i class="fa-solid fa-chevron-down fs-4"></i>
+        </div>
+
+        <div class="full-player-content">
+            <!-- Visuals Side -->
+            <div class="full-player-visuals">
+                <img id="fullPlayerThumb" src="" class="full-player-thumb" alt="Album Art">
+                <div class="full-player-info mt-3 w-100">
+                    <h1 id="fullPlayerTitle" class="title">Sẵn sàng phát nhạc</h1>
+                    <p id="fullPlayerArtist" class="artist">Chọn bài hát bạn yêu thích</p>
+                    
+                    <div class="mt-5 d-flex gap-4">
+                        <button id="fullPlayerLikeBtn" class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" onclick="togglePlayerLike()">
+                            <i class="fa-regular fa-heart me-2"></i> Yêu thích
+                        </button>
+                        <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" onclick="showAddToPlaylistModal(playQueue[currentIndex]?.videoId, window.currentSongDbId)">
+                            <i class="fa-solid fa-folder-plus me-2"></i> Playlist
+                        </button>
+                        <button class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold" data-bs-toggle="collapse" data-bs-target="#bioCollapse">
+                            <i class="fa-solid fa-user-tag me-2"></i> Nghệ sĩ
+                        </button>
+                    </div>
+
+                    <div class="collapse mt-4" id="bioCollapse">
+                        <div class="glass-card p-4 rounded-4 small text-dim" id="bioContent" style="max-height: 200px; overflow-y: auto;">
+                            Thông tin nghệ sĩ đang được tải...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lyrics Side -->
+            <div class="lyrics-container scrollbar-hide">
+                <div id="lyricsHeader" class="d-flex justify-content-end p-3 sticky-top">
+                    <!-- Caption Switcher dynamically inserted here -->
+                </div>
+                <div id="lyricsContent" class="lyrics-text" style="white-space: pre-line;">
+                    Chọn bài hát để xem lời...
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+        <div id="adOverlay" class="position-fixed inset-0 bg-black bg-opacity-95 z-excessive d-none flex-column align-items-center justify-content-center text-center animate-fade-in" style="z-index: 9999;">
+            <div class="spinner-grow text-accent mb-4" role="status" style="width: 3rem; height: 3rem;"></div>
+            <h2 class="fw-black text-white mb-2">QUẢNG CÁO</h2>
+            <p class="text-dim">Nhạc của bạn sẽ bắt đầu sau vài giây...</p>
+            <div class="mt-4">
+                <a href="/Subscription" class="btn bg-accent text-white rounded-pill px-5 py-3 fw-bold shadow-lg">NÂNG CẤP PREMIUM ĐỂ TẮT QUẢNG CÁO</a>
+            </div>
+            <span id="adCountdown" class="position-absolute bottom-0 end-0 p-5 text-dim fs-1 fw-bold">5</span>
+        </div>
+
+        <!-- Song Details Modal -->
+        <div class="modal fade" id="songDetailsModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable song-details-dialog">
+                <div class="modal-content glass-card border-0 overflow-hidden bg-dark song-details-modal-content">
+                    <div class="modal-body p-0 song-details-layout">
+                        <div class="song-details-info-pane">
+                            <div id="detailsHero" class="p-4 text-center position-relative overflow-hidden">
+                                <div id="detailsBlur" class="position-absolute inset-0 z-0"></div>
+                                <img id="detailsThumb" src="" class="rounded-4 mb-3 shadow-2xl position-relative z-1 song-details-thumb" style="object-fit: cover;">
+                                <h3 id="detailsTitle" class="fw-black text-white position-relative z-1 mb-1"></h3>
+                                <p id="detailsArtist" class="text-accent fw-bold position-relative z-1 mb-0"></p>
+                            </div>
+                            <div class="p-4 pt-3">
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <div class="song-details-stat-card p-3 rounded-4">
+                                            <div class="text-dim extra-small mb-1 uppercase">Lượt xem</div>
+                                            <div id="detailsViews" class="fw-bold text-white">0</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="song-details-stat-card p-3 rounded-4">
+                                            <div class="text-dim extra-small mb-1 uppercase">Thể loại</div>
+                                            <div id="detailsGenre" class="fw-bold text-white">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 d-flex flex-wrap gap-2" id="detailsTags"></div>
+                            </div>
+                        </div>
+
+                        <div class="song-details-comment-pane p-4 border-start border-white border-opacity-10">
+                            <div class="d-flex align-items-center justify-content-between mb-4">
+                                <h5 class="m-0 fw-black text-white"><i class="fa-solid fa-comments me-2 text-accent"></i> Bình luận</h5>
+                                <span id="commentCount" class="badge bg-accent bg-opacity-10 text-accent rounded-pill">0</span>
+                            </div>
+
+                            <div id="commentList" class="overflow-y-auto mb-4 custom-scrollbar song-details-comment-list">
+                                <div class="text-center py-5 text-dim opacity-50">
+                                    <i class="fa-solid fa-message fs-1 d-block mb-3"></i>
+                                    <p>Đang tải bình luận...</p>
+                                </div>
+                            </div>
+
+                            <div class="comment-input-area song-details-input-area rounded-4 p-3 border border-white border-opacity-10">
+                                <form id="commentForm" onsubmit="submitComment(event)">
+                                    <div class="d-flex gap-3">
+                                        <div id="replyIndicator" class="small text-accent mb-2 d-none w-100">
+                                            Đang trả lời... <button type="button" class="btn btn-link btn-sm text-dim p-0" onclick="cancelReply()">Hủy</button>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-3 align-items-start">
+                                        <textarea id="commentInput" class="form-control song-details-comment-input border-0 text-white shadow-none p-0 custom-scrollbar" 
+                                                  placeholder="Cảm nhận của bạn về bài hát này..." rows="2" style="resize: none;"></textarea>
+                                        <button type="submit" class="btn btn-accent rounded-circle shadow-lg d-flex align-items-center justify-content-center flex-shrink-0" style="width: 45px; height: 45px;">
+                                            <i class="fa-solid fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    
+    <!-- YTM Logic -->
+    <!-- Core Music Logic Modules -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    
+    <!-- Player Module -->
+    <script src="~/js/app/player/state.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/visuals.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/engine.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/queue.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/sync.js" asp-append-version="true"></script>
+    <script src="~/js/app/player/core.js" asp-append-version="true"></script>
+
+    <!-- UI Module -->
+    <script src="~/js/app/ui/navigation.js" asp-append-version="true"></script>
+    <script src="~/js/app/ui/modals.js" asp-append-version="true"></script>
+    <script src="~/js/app/ui/interactions.js" asp-append-version="true"></script>
+    <script src="~/js/app/ui/ads.js" asp-append-version="true"></script>
+    <script src="~/js/app/ui/metadata.js" asp-append-version="true"></script>
+    <script src="~/js/app/spa-router.js" asp-append-version="true"></script>
+
+    <!-- Other Utils -->
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/app/ui/warmup.js" asp-append-version="true"></script>
+    <script src="~/js/search.js" asp-append-version="true"></script>
+    <script src="~/js/playlist-sort.js" asp-append-version="true"></script>
+    <script src="~/js/admin_notifications.js" asp-append-version="true"></script>
+
+    <script>
+        // Global Auth state for JS access if needed
+        window.YTM_CONFIG = {
+            isAuthenticated: @(User.Identity?.IsAuthenticated == true ? "true" : "false"),
+            userId: @(User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0") : 0),
+            isPremium: @(User.Identity?.IsAuthenticated == true ? (await SubService.IsUserPremiumAsync(int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0"))).ToString().ToLower() : "false")
+        };
+    </script>
+    
+    @await RenderSectionAsync("Scripts", required: false)
+    <!-- ADD TO PLAYLIST MODAL -->
+    <div class="modal fade" id="addToPlaylistModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-card border-0 shadow-2xl overflow-hidden p-0">
+                <div class="modal-header bg-gradient-accent border-0 p-4">
+                    <h5 class="modal-title fw-black text-white"><i class="fa-solid fa-list-check me-2"></i> Thêm vào Playlist</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-dark bg-opacity-50">
+                    <!-- Create New Input Section -->
+                    <div class="mb-4 pb-3 border-bottom border-white border-opacity-10">
+                        <div class="d-flex gap-2">
+                            <input type="text" id="newPlaylistTitle" class="form-control bg-white bg-opacity-5 border-white border-opacity-10 text-white rounded-3 shadow-none" placeholder="Tên playlist mới...">
+                            <button onclick="createNewPlaylistFromModal()" class="btn btn-accent rounded-3 px-3">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="playlistListContainer" class="d-flex flex-column gap-2 overflow-auto" style="max-height: 300px;">
+                        <!-- Playlists list will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    @await Html.PartialAsync("_AiChatAssistant")
+</body>
+</html>

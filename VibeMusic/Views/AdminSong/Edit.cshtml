@@ -1,0 +1,144 @@
+@model YoutubeMusicPlayer.Application.DTOs.SongDto
+@{
+    ViewData["Title"] = "Edit Song";
+    var genres = ViewBag.Genres as IEnumerable<YoutubeMusicPlayer.Application.DTOs.GenreDto> ?? new List<YoutubeMusicPlayer.Application.DTOs.GenreDto>();
+}
+
+<div class="container mt-4 pb-5 text-white animate-fade-in">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-black m-0">Edit Song</h2>
+            <div class="text-dim small">ID: #@Model.SongId • @Model.PlayCount plays</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Index" class="btn btn-outline-light rounded-pill px-4">Cancel</a>
+            <button type="submit" form="songForm" class="btn btn-accent rounded-pill px-5 fw-bold">Save Song</button>
+        </div>
+    </div>
+
+    <div class="row g-5">
+        <div class="col-lg-4">
+            <div class="glass-card p-4 rounded-5 border-0 shadow-lg text-center mb-4 sticky-sidebar" style="top: 100px;">
+                <div class="position-relative mb-4 group">
+                    <img src="@(string.IsNullOrEmpty(Model.ThumbnailUrl) ? "https://placehold.co/600x600/111/444?text=Preview" : Model.ThumbnailUrl)" class="w-100 rounded-4 shadow-2xl" style="aspect-ratio: 1; object-fit: cover;">
+                </div>
+                <h4 class="fw-bold text-white mb-1">@Model.Title</h4>
+                <div class="text-dim small mb-4">Youtube ID: @Model.YoutubeVideoId</div>
+
+                <div class="d-grid gap-2">
+                    <a href="https://www.youtube.com/watch?v=@Model.YoutubeVideoId" target="_blank" class="btn btn-outline-danger rounded-pill fw-bold btn-sm py-2">
+                        <i class="fa-brands fa-youtube me-2"></i>Open On YouTube
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <form id="songForm" asp-action="Edit" method="post">
+                <input type="hidden" asp-for="SongId" />
+                <input type="hidden" asp-for="Duration" />
+
+                <div class="glass-card rounded-5 border-0 overflow-hidden shadow-2xl">
+                    <ul class="nav nav-tabs admin-tabs border-0 px-4 pt-4" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#general-info" type="button">General</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#lyrics-tab" type="button">Lyrics</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#config-tab" type="button">Settings</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content p-5">
+                        <div class="tab-pane fade show active" id="general-info">
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Song Title</label>
+                                    <input asp-for="Title" class="form-control-pro" placeholder="Song title..." required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Album ID</label>
+                                    <input asp-for="AlbumId" type="number" class="form-control-pro" placeholder="Album ID..." />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Youtube Video ID</label>
+                                    <input asp-for="YoutubeVideoId" class="form-control-pro" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Thumbnail URL</label>
+                                    <input asp-for="ThumbnailUrl" class="form-control-pro" placeholder="https://..." />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label x-small uppercase fw-bold text-dim">Genres</label>
+                                    <div class="genre-selector-grid p-4 rounded-4 bg-dark bg-opacity-25 border border-white border-opacity-5">
+                                        <div class="row row-cols-2 row-cols-md-3 g-3">
+                                            @foreach (var genre in genres)
+                                            {
+                                                <div class="col">
+                                                    <div class="form-check custom-check">
+                                                        <input class="form-check-input" type="checkbox" name="GenreIds" value="@genre.GenreId" id="g-@genre.GenreId" @(Model.GenreIds.Contains(genre.GenreId) ? "checked" : "")>
+                                                        <label class="form-check-label small" for="g-@genre.GenreId">@genre.Name</label>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="lyrics-tab">
+                            <div class="mb-4">
+                                <label class="form-label x-small uppercase fw-bold text-dim">Lyrics</label>
+                                <textarea asp-for="LyricsText" class="form-control-pro font-monospace" rows="15" placeholder="Song lyrics..."></textarea>
+                            </div>
+                            <div>
+                                <label class="form-label x-small uppercase fw-bold text-dim">Lyrics Sync URL</label>
+                                <input asp-for="LyricsSyncUrl" type="text" class="form-control-pro" placeholder="https://example.com/sync-lyrics.lrc" />
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="config-tab">
+                            <div class="row g-5">
+                                <div class="col-md-6">
+                                    <div class="config-card glass-card p-4 rounded-4 border-0">
+                                        <h6 class="fw-bold mb-3">Rights</h6>
+                                        <div class="mb-3">
+                                            <label class="form-label x-small uppercase fw-bold text-dim">ISRC</label>
+                                            <input asp-for="Isrc" type="text" class="form-control-pro" placeholder="Optional ISRC" />
+                                        </div>
+                                        <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-3">
+                                            <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" asp-for="IsExplicit">
+                                            <label class="form-check-label small" asp-for="IsExplicit">Explicit Content</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="config-card glass-card p-4 rounded-4 border-0">
+                                        <h6 class="fw-bold mb-3">Access</h6>
+                                        <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-3 mb-3">
+                                            <input class="form-check-input ms-0 cursor-pointer" type="checkbox" role="switch" asp-for="IsPremiumOnly">
+                                            <label class="form-check-label small" asp-for="IsPremiumOnly">Premium Only</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .admin-tabs .nav-link { color: #888; border: 0 !important; background: transparent !important; padding: 12px 24px; font-weight: 700; font-size: 14px; position: relative; }
+    .admin-tabs .nav-link.active { color: var(--accent-primary); }
+    .admin-tabs .nav-link.active::after { content: ''; position: absolute; bottom: 0; left: 24px; right: 24px; height: 3px; background: var(--accent-primary); border-radius: 3px; }
+    .form-control-pro { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; padding: 12px 18px; width: 100%; transition: 0.2s; }
+    .form-control-pro:focus { background: rgba(255,255,255,0.08); border-color: var(--accent-primary); outline: none; }
+    .custom-check .form-check-input { background-color: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
+    .custom-check .form-check-input:checked { background-color: var(--accent-primary); border-color: var(--accent-primary); }
+</style>
