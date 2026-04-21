@@ -63,8 +63,12 @@ public class AdminSongMetadataControllerTests : BaseControllerTest<AdminSongMeta
     public async Task EnrichSong_Success_ReturnsJsonSuccess()
     {
         // Arrange
+        var songDto = new VibeMusic.Application.DTOs.SongDto { SongId = 1, Title = "Test Song", YoutubeVideoId = "abc" };
         _songServiceMock
-            .Setup(s => s.EnrichSongMetadataAsync(1, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetSongByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(songDto);
+        _metadataEnrichmentServiceMock
+            .Setup(s => s.EnrichSongMetadataAsync(It.IsAny<VibeMusic.Domain.Entities.Song>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var controller = BuildController();
@@ -91,8 +95,12 @@ public class AdminSongMetadataControllerTests : BaseControllerTest<AdminSongMeta
     public async Task EnrichSong_NotFound_ReturnsJsonFailure()
     {
         // Arrange
+        var songDto = new VibeMusic.Application.DTOs.SongDto { SongId = 1, Title = "Test Song", YoutubeVideoId = "abc" };
         _songServiceMock
-            .Setup(s => s.EnrichSongMetadataAsync(1, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetSongByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(songDto);
+        _metadataEnrichmentServiceMock
+            .Setup(s => s.EnrichSongMetadataAsync(It.IsAny<VibeMusic.Domain.Entities.Song>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         var controller = BuildController();
@@ -121,11 +129,13 @@ public class AdminSongMetadataControllerTests : BaseControllerTest<AdminSongMeta
     {
         // Arrange
         var songIds = new[] { 1, 2, 3 };
+        var songDtos = songIds.Select(id => new VibeMusic.Application.DTOs.SongDto { SongId = id, Title = $"Song {id}", YoutubeVideoId = $"vid{id}" });
 
         _songServiceMock
-            .Setup(s => s.EnrichMultipleSongsMetadataAsync(
-                It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(songIds)),
-                It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetSongsByIdsAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(songDtos);
+        _metadataEnrichmentServiceMock
+            .Setup(s => s.EnrichSongsMetadataAsync(It.IsAny<IEnumerable<VibeMusic.Domain.Entities.Song>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(3);
 
         var controller = BuildController();
@@ -197,7 +207,7 @@ public class AdminSongMetadataControllerTests : BaseControllerTest<AdminSongMeta
     public async Task RefreshOutdated_ValidBatchSize_ReturnsJsonWithCount()
     {
         // Arrange
-        _songServiceMock
+        _metadataEnrichmentServiceMock
             .Setup(s => s.RefreshOutdatedMetadataAsync(50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(25);
 

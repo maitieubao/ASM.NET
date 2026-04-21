@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace YoutubeMusicPlayer.Infrastructure.Migrations
+namespace VibeMusic.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class SyncSchema_AutoFixed : Migration

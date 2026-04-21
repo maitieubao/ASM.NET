@@ -1,10 +1,10 @@
-using System.Collections.Concurrent;
-using YoutubeMusicPlayer.Domain.Interfaces;
-using YoutubeMusicPlayer.Infrastructure.Persistence;
-using YoutubeMusicPlayer.Infrastructure.Repositories;
+﻿using System.Collections.Concurrent;
+using VibeMusic.Domain.Interfaces;
+using VibeMusic.Infrastructure.Persistence;
+using VibeMusic.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
-namespace YoutubeMusicPlayer.Infrastructure;
+namespace VibeMusic.Infrastructure;
 
 public class UnitOfWork : IUnitOfWork
 {

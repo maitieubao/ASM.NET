@@ -1,12 +1,12 @@
-using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Application.DTOs;
+﻿using System.Threading.Tasks;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Application.DTOs;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Linq;
 using System.Net.Http;
 
-namespace YoutubeMusicPlayer.Application.Services;
+namespace VibeMusic.Application.Services;
 
 public class LyricsService : ILyricsService
 {

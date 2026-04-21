@@ -1,6 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
-namespace YoutubeMusicPlayer.Application.DTOs;
+namespace VibeMusic.Application.DTOs;
 
 public class PlaylistDto
 {

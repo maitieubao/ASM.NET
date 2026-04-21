@@ -1,4 +1,4 @@
-namespace YoutubeMusicPlayer.Models;
+﻿namespace VibeMusic.Models;
 
 public class ErrorViewModel
 {

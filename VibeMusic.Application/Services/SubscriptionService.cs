@@ -1,14 +1,14 @@
 using System.Threading;
 using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Domain.Entities;
-using YoutubeMusicPlayer.Domain.Interfaces;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Domain.Entities;
+using VibeMusic.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace YoutubeMusicPlayer.Application.Services;
+namespace VibeMusic.Application.Services;
 
 public class SubscriptionService : ISubscriptionService
 {
@@ -136,7 +136,6 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task ProcessPaymentSuccessAsync(long orderCode, string transactionId, CancellationToken ct = default)
     {
-        using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             var payment = await _unitOfWork.Repository<Payment>()
@@ -199,11 +198,9 @@ public class SubscriptionService : ISubscriptionService
             }
 
             await _unitOfWork.CompleteAsync(ct);
-            await transaction.CommitAsync(ct);
         }
         catch (Exception)
         {
-            await transaction.RollbackAsync(ct);
             throw;
         }
     }

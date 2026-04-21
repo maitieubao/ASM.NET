@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
-namespace YoutubeMusicPlayer.Application.DTOs;
+namespace VibeMusic.Application.DTOs;
 
 public class DashboardDto
 {

@@ -1,7 +1,7 @@
-@model YoutubeMusicPlayer.Application.DTOs.SongDto
+@model VibeMusic.Application.DTOs.SongDto
 @{
     ViewData["Title"] = "Edit Song";
-    var genres = ViewBag.Genres as IEnumerable<YoutubeMusicPlayer.Application.DTOs.GenreDto> ?? new List<YoutubeMusicPlayer.Application.DTOs.GenreDto>();
+    var genres = ViewBag.Genres as IEnumerable<VibeMusic.Application.DTOs.GenreDto> ?? new List<VibeMusic.Application.DTOs.GenreDto>();
 }
 
 <div class="container mt-4 pb-5 text-white animate-fade-in">
@@ -48,6 +48,9 @@
                         </li>
                         <li class="nav-item">
                             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#config-tab" type="button">Settings</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#viewcount-tab" type="button">View Count</button>
                         </li>
                     </ul>
 
@@ -126,6 +129,48 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="tab-pane fade" id="viewcount-tab">
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <h6 class="fw-bold mb-3">View Count Management</h6>
+                                    <!-- Current view count display (loaded async) -->
+                                    <div id="viewCountInfo" class="glass-card p-4 rounded-4 border-0 mb-4">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="spinner-border spinner-border-sm text-accent" role="status" id="viewCountSpinner">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <span class="text-dim small" id="viewCountText">Đang tải view count...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="config-card glass-card p-4 rounded-4 border-0">
+                                        <h6 class="fw-bold mb-3">Nguồn View Count Ưu tiên</h6>
+                                        <label class="form-label x-small uppercase fw-bold text-dim">Priority Source</label>
+                                        <select id="prioritySourceSelect" class="form-control-pro mb-3">
+                                            <option value="">Auto (Cao nhất)</option>
+                                            <option value="0">Internal</option>
+                                            <option value="1">YouTube</option>
+                                            <option value="2">Deezer</option>
+                                        </select>
+                                        <button type="button" id="savePriorityBtn" class="btn btn-accent rounded-pill px-4 fw-bold btn-sm">
+                                            💾 Lưu Priority Source
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="config-card glass-card p-4 rounded-4 border-0">
+                                        <h6 class="fw-bold mb-3">Đồng bộ View Count</h6>
+                                        <p class="text-dim small mb-3">Trigger đồng bộ thủ công từ YouTube và Deezer.</p>
+                                        <button type="button" id="syncNowBtn" class="btn btn-outline-light rounded-pill px-4 fw-bold btn-sm">
+                                            🔄 Sync Now
+                                        </button>
+                                        <div id="syncStatus" class="mt-3 small"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </form>
@@ -142,3 +187,156 @@
     .custom-check .form-check-input { background-color: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
     .custom-check .form-check-input:checked { background-color: var(--accent-primary); border-color: var(--accent-primary); }
 </style>
+
+<script>
+    // View Count Management JavaScript
+    const songId = @Model.SongId;
+
+    // Load current view count on page load
+    async function loadViewCount() {
+        try {
+            const response = await fetch(`/api/songs/${songId}/view-count`);
+            if (!response.ok) {
+                throw new Error('Failed to load view count');
+            }
+            const data = await response.json();
+            
+            // Hide spinner
+            document.getElementById('viewCountSpinner').style.display = 'none';
+            
+            // Format view count
+            const formattedCount = formatViewCount(data.viewCount);
+            const sourceLabel = getSourceLabel(data.source);
+            const cacheLabel = data.isFromCache ? '(cached)' : '(live)';
+            
+            document.getElementById('viewCountText').innerHTML = `
+                <div class="d-flex align-items-center gap-3">
+                    <div>
+                        <div class="fw-bold text-white fs-4">${formattedCount}</div>
+                        <div class="text-dim small">${sourceLabel} ${cacheLabel}</div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error loading view count:', error);
+            document.getElementById('viewCountSpinner').style.display = 'none';
+            document.getElementById('viewCountText').innerHTML = '<span class="text-danger">Không thể tải view count</span>';
+        }
+    }
+
+    // Format view count (170886759 -> "170.9M")
+    function formatViewCount(count) {
+        if (count >= 1000000) {
+            return (count / 1000000).toFixed(1) + 'M';
+        } else if (count >= 1000) {
+            return (count / 1000).toFixed(1) + 'K';
+        }
+        return count.toString();
+    }
+
+    // Get source label
+    function getSourceLabel(source) {
+        const labels = {
+            'internal': 'lượt nghe nội bộ',
+            'youtube': 'từ YouTube',
+            'deezer': 'từ Deezer'
+        };
+        return labels[source.toLowerCase()] || source;
+    }
+
+    // Save priority source
+    document.getElementById('savePriorityBtn').addEventListener('click', async function() {
+        const select = document.getElementById('prioritySourceSelect');
+        const source = select.value === '' ? null : parseInt(select.value);
+        
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang lưu...';
+        
+        try {
+            const response = await fetch(`/api/admin/songs/${songId}/priority-source`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                },
+                body: JSON.stringify({ source: source })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to save priority source');
+            }
+            
+            // Show success toast
+            showToast('✅ Đã lưu Priority Source thành công!', 'success');
+            
+            // Reload view count
+            await loadViewCount();
+        } catch (error) {
+            console.error('Error saving priority source:', error);
+            showToast('❌ Lỗi khi lưu Priority Source', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    });
+
+    // Sync now button
+    document.getElementById('syncNowBtn').addEventListener('click', async function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        const statusDiv = document.getElementById('syncStatus');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang sync...';
+        statusDiv.innerHTML = '<span class="text-dim">Đang enqueue sync job...</span>';
+        
+        try {
+            const response = await fetch(`/api/admin/songs/${songId}/sync-view-count`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to sync view count');
+            }
+            
+            const data = await response.json();
+            statusDiv.innerHTML = '<span class="text-success">✅ Sync job đã được enqueue. View count sẽ được cập nhật trong vài giây.</span>';
+            showToast('✅ Sync job đã được enqueue!', 'success');
+            
+            // Reload view count after 3 seconds
+            setTimeout(async () => {
+                await loadViewCount();
+                statusDiv.innerHTML = '';
+            }, 3000);
+        } catch (error) {
+            console.error('Error syncing view count:', error);
+            statusDiv.innerHTML = '<span class="text-danger">❌ Lỗi khi sync view count</span>';
+            showToast('❌ Lỗi khi sync view count', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    });
+
+    // Simple toast notification
+    function showToast(message, type) {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed top-0 end-0 m-3`;
+        toast.style.zIndex = '9999';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    // Load view count on page load
+    document.addEventListener('DOMContentLoaded', loadViewCount);
+</script>

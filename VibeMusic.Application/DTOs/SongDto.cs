@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace YoutubeMusicPlayer.Application.DTOs;
+namespace VibeMusic.Application.DTOs;
 
 public class SongDto
 {
@@ -32,4 +32,27 @@ public class SongDto
     public bool IsLiked { get; set; }
     public string? AuthorName { get; set; }
     public string? AuthorBio { get; set; }
+    
+    // Deezer metadata properties
+    public string? DeezerTrackId { get; set; }
+    public string? DeezerArtistId { get; set; }
+    public string? DeezerAlbumId { get; set; }
+    public DateTime? EnrichedAt { get; set; }
+    public float? BPM { get; set; }
+    public string? PreviewUrl { get; set; }
+    public int? TrackNumber { get; set; }
+    public int? DiskNumber { get; set; }
+    public int? PopularityRank { get; set; }
+    public float? AudioGain { get; set; }
+    public List<string> AvailableCountries { get; set; } = new List<string>();
+    public string? AlbumName { get; set; }
+    public string? AlbumImageUrl { get; set; }
+    
+    // Computed properties
+    public string FormattedDuration => Duration.HasValue ? TimeSpan.FromSeconds(Duration.Value).ToString(@"mm\:ss") : "N/A";
+    public string FormattedPlayCount => PlayCount >= 1_000_000 ? $"{PlayCount / 1_000_000.0:F1}M" : PlayCount >= 1_000 ? $"{PlayCount / 1_000.0:F1}K" : PlayCount.ToString();
+    public string FormattedBPM => BPM.HasValue ? $"{BPM.Value:F0} BPM" : "N/A";
+    public string FormattedPopularity => PopularityRank.HasValue && PopularityRank.Value > 0 ? $"#{PopularityRank.Value}" : "N/A";
+    public bool HasDeezerMetadata => !string.IsNullOrEmpty(DeezerTrackId);
+    public bool IsMetadataFresh => EnrichedAt.HasValue && EnrichedAt.Value > DateTime.UtcNow.AddDays(-7);
 }

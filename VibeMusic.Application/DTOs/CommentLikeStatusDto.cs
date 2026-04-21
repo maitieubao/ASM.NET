@@ -1,4 +1,4 @@
-namespace YoutubeMusicPlayer.Application.DTOs;
+﻿namespace VibeMusic.Application.DTOs;
 
 public class CommentLikeStatusDto
 {

@@ -1,4 +1,4 @@
-namespace YoutubeMusicPlayer.Application.Common;
+﻿namespace VibeMusic.Application.Common;
 
 public class PayOSSettings
 {

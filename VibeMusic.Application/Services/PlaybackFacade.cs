@@ -1,7 +1,7 @@
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Domain.Entities;
-using YoutubeMusicPlayer.Domain.Interfaces;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Domain.Entities;
+using VibeMusic.Domain.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace YoutubeMusicPlayer.Application.Services;
+namespace VibeMusic.Application.Services;
 
 public class PlaybackFacade : IPlaybackFacade
 {
@@ -48,7 +48,7 @@ public class PlaybackFacade : IPlaybackFacade
         _logger = logger;
     }
 
-    public async Task<PlaybackStreamDto> ResolveAndGetStreamAsync(string query, string? title, string? artist, int? userId)
+    public async Task<PlaybackStreamDto> ResolveAndGetStreamAsync(string query, string? title, string? artist, int? userId, int? durationMs = null)
     {
         _logger.LogInformation("[PlaybackFacade] Resolving external track for query: {Query}", query);
 
@@ -56,7 +56,7 @@ public class PlaybackFacade : IPlaybackFacade
         if (_cache.TryGetValue(cacheKey, out List<YoutubeVideoDetails>? cachedResults) && cachedResults != null)
         {
             _logger.LogInformation("[PlaybackFacade] Cache HIT for search: {Query}", query);
-            return await ProcessSearchResultsAsync(cachedResults, title, artist, userId, query);
+            return await ProcessSearchResultsAsync(cachedResults, title, artist, userId, query, durationMs);
         }
 
         // 1. Fetch top 10 results (increase from 5 for better chance of finding a match)
@@ -64,52 +64,77 @@ public class PlaybackFacade : IPlaybackFacade
         
         _cache.Set(cacheKey, results, TimeSpan.FromMinutes(30));
 
-        return await ProcessSearchResultsAsync(results, title, artist, userId, query);
+        return await ProcessSearchResultsAsync(results, title, artist, userId, query, durationMs);
     }
 
-    private async Task<PlaybackStreamDto> ProcessSearchResultsAsync(List<YoutubeVideoDetails> results, string? title, string? artist, int? userId, string query)
+    private async Task<PlaybackStreamDto> ProcessSearchResultsAsync(List<YoutubeVideoDetails> results, string? title, string? artist, int? userId, string query, int? durationMs = null)
     {
         YoutubeVideoDetails? bestMatch = null;
+        double highestBaseScore = -1;
         
         if (!string.IsNullOrEmpty(title))
         {
-            _logger.LogInformation("[PlaybackFacade] Verifying results for: {Title} by {Artist}", title, artist ?? "Unknown");
+            _logger.LogInformation("[PlaybackFacade] Verifying results for: {Title} by {Artist} (Expected Duration: {Duration}ms)", 
+                title, artist ?? "Unknown", durationMs ?? 0);
+            
+            // Required Keywords (The heart of accuracy)
+            // Filter out common small words to find "unique" identifiers
+            var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "the", "a", "an", "of", "in", "on", "at", "to", "by", "for", "with", "and", "or", "is", "it" };
+            var titleTokens = title.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                  .Where(t => t.Length > 2 && !stopWords.Contains(t))
+                                  .ToList();
             
             foreach (var v in results)
             {
-                // Check 1: Direct title similarity match (Lower threshold for resilience)
-                if (_youtubeService.IsTooSimilar(v.Title, title, 0.45))
+                double currentScore = 0;
+                string vTitle = v.Title.ToLower();
+                
+                // 1. Keyword check (MUST HAVE at least 1-2 important title keywords if title is long)
+                bool hasKeyword = !titleTokens.Any() || titleTokens.Any(t => vTitle.Contains(t));
+                if (!hasKeyword) continue; 
+                
+                // 2. Similarity Score
+                double similarity = 0;
+                if (_youtubeService.IsTooSimilar(v.Title, title, 0.45)) similarity = 0.5;
+                if (_youtubeService.IsTooSimilar(v.Title, $"{artist} {title}", 0.55)) similarity = 0.8;
+                
+                currentScore += similarity * 1000;
+
+                // 3. Duration penalty/bonus (Critical for Opalite/intro issues)
+                if (durationMs > 0 && v.Duration.HasValue)
                 {
-                    _logger.LogInformation("[PlaybackFacade] Found match by similarity (threshold 0.45): {YtTitle}", v.Title);
-                    bestMatch = v;
-                    break;
+                    double diffSec = Math.Abs(v.Duration.Value.TotalMilliseconds - durationMs.Value) / 1000.0;
+                    if (diffSec < 10) currentScore += 500; // Perfect length
+                    else if (diffSec < 20) currentScore += 200;
+                    else if (diffSec > 45) currentScore -= 800; // Huge intro or mashup detected
                 }
                 
-                // Check 2: Combined Artist + Title match
-                if (!string.IsNullOrEmpty(artist) && _youtubeService.IsTooSimilar(v.Title, $"{artist} {title}", 0.55))
+                // 4. Artist matching bonus
+                if (!string.IsNullOrEmpty(artist) && v.AuthorName.ToLower().Contains(artist.ToLower()))
                 {
-                    _logger.LogInformation("[PlaybackFacade] Found match by artist+title similarity: {YtTitle}", v.Title);
+                    currentScore += 300;
+                }
+
+                if (currentScore > highestBaseScore && (similarity > 0.3 || hasKeyword))
+                {
+                    highestBaseScore = currentScore;
                     bestMatch = v;
-                    break;
                 }
             }
         }
         
-        // 2. Fuzzy fallback: If no similarity match, check if first keyword of title and artist exist in the search result title
-        if (bestMatch == null && !string.IsNullOrEmpty(title))
+        // Final gate: If bestMatch is still too low in similarity or far in duration, we yield.
+        if (bestMatch != null && !string.IsNullOrEmpty(title) && highestBaseScore < 300)
         {
-            var firstTitleWord = title.Split(' ').FirstOrDefault()?.ToLower();
-            var firstArtistWord = artist?.Split(' ').FirstOrDefault()?.ToLower();
-
-            bestMatch = results.FirstOrDefault(v => 
-                v.Title.ToLower().Contains(firstTitleWord ?? "---") && 
-                (string.IsNullOrEmpty(firstArtistWord) || v.Title.ToLower().Contains(firstArtistWord)));
-            
-            if (bestMatch != null) _logger.LogInformation("[PlaybackFacade] Found match by fuzzy keyword check: {YtTitle}", bestMatch.Title);
+             _logger.LogWarning("[PlaybackFacade] Best match for '{Title}' rejected due to low score ({Score})", title, highestBaseScore);
+             bestMatch = null; 
         }
 
-        // 3. Absolute Fallback: Use the very first search result if it exists
-        bestMatch ??= results.FirstOrDefault();
+        // Final last-resort fallback ONLY if we are confident (or if no title provided)
+        if (bestMatch == null && string.IsNullOrEmpty(title))
+        {
+            bestMatch = results.FirstOrDefault();
+        }
         
         if (bestMatch == null)
         {
@@ -117,14 +142,15 @@ public class PlaybackFacade : IPlaybackFacade
             return new PlaybackStreamDto { Error = "NotFound", Message = "Không tìm thấy bài hát này trên YouTube." };
         }
 
-        _logger.LogInformation("[PlaybackFacade] Selected best match for playback: {Title} ({Id})", bestMatch.Title, bestMatch.YoutubeVideoId);
+        _logger.LogInformation("[PlaybackFacade] Selected best match for playback: {Title} ({Id}) - Score: {Score}", 
+            bestMatch.Title, bestMatch.YoutubeVideoId, highestBaseScore);
 
-        var streamResult = await GetStreamAsync(bestMatch.YoutubeVideoId, title ?? bestMatch.Title, artist ?? bestMatch.AuthorName, userId);
+        var streamResult = await GetStreamAsync(bestMatch.YoutubeVideoId, title ?? bestMatch.Title, artist ?? bestMatch.AuthorName, userId, durationMs);
         streamResult.VideoId = bestMatch.YoutubeVideoId;
         return streamResult;
     }
 
-    public async Task<PlaybackStreamDto> GetStreamAsync(string videoUrl, string? title, string? artist, int? userId)
+    public async Task<PlaybackStreamDto> GetStreamAsync(string videoUrl, string? title, string? artist, int? userId, int? durationMs = null)
     {
         string youtubeId = ExtractYoutubeId(videoUrl);
         if (string.IsNullOrEmpty(youtubeId)) return new PlaybackStreamDto { Error = "InvalidURL", Message = "Đường dẫn không hợp lệ." };
@@ -171,8 +197,8 @@ public class PlaybackFacade : IPlaybackFacade
         var streamUrlTask = _youtubeService.GetAudioStreamUrlAsync(videoUrl, title, artist, false);
 
         // We only wait for DB/Premium check for a short duration (Optimize for speed)
-        // If it takes longer than 600ms, we proceed with the stream URL alone
-        var dbTimeoutTask = Task.Delay(600); 
+        // If it takes longer than 1500ms, we proceed with the stream URL alone
+        var dbTimeoutTask = Task.Delay(1500); 
         var metadataTask = Task.WhenAll(isPremiumTask, songTask);
 
         // Level 3 Ultra-Priority: Try to resolve SongId from YouTube mapping cache first
@@ -234,7 +260,6 @@ public class PlaybackFacade : IPlaybackFacade
         SongDto? song = songInput;
 
         // Level 2 Optimization: If they are null/not provided, we check cache first
-        // If still not there, we only await if we absolutely must (e.g., this is not an optimistic path)
         if (isPremiumInput == null || songInput == null)
         {
              string userCacheKey = $"user_premium_{userId ?? 0}";
@@ -242,10 +267,41 @@ public class PlaybackFacade : IPlaybackFacade
 
              if (_cache.TryGetValue(userCacheKey, out bool cachedPrem)) isPremium = cachedPrem;
              if (_cache.TryGetValue(songCacheKey, out SongDto? cachedSong)) song = cachedSong;
+        }
 
-             // If still null and we're NOT in a background warmup/prefetch situation
-             // we return whatever we have (optimistic). 
-             // Metadata will be updated on the client side via subsequent calls (GetRichMetadata)
+        // HIGH PRIORITY FALLBACK: If song metadata is missing or generic (e.g. "Nghệ sĩ")
+        // we pull from YouTube's basic details to avoid "Nghệ sĩ" and empty tags.
+        bool isGenericArtist = song?.AuthorName == "Nghệ sĩ" || string.IsNullOrEmpty(song?.AuthorName);
+        var genreList = song?.GenreNames?.ToList() ?? new List<string>();
+        bool isGenericTags = genreList.Count == 0 || (genreList.Count == 1 && genreList[0] == "Music");
+
+        if (song == null || isGenericArtist || isGenericTags)
+        {
+            try {
+                var ytDetails = await _youtubeService.GetBasicVideoDetailsAsync(youtubeId);
+                if (ytDetails != null)
+                {
+                    // Bridge artist name and tags directly from YouTube if DB is generic
+                    if (isGenericArtist) artist = ytDetails.AuthorName;
+                    
+                    var bridgedTags = new List<string>();
+                    if (!string.IsNullOrEmpty(ytDetails.Genre)) bridgedTags.Add(ytDetails.Genre);
+                    if (ytDetails.Hashtags?.Any() == true) bridgedTags.AddRange(ytDetails.Hashtags);
+                    
+                    if (song == null) {
+                        song = new SongDto {
+                            Title = title ?? ytDetails.Title,
+                            AuthorName = artist,
+                            ThumbnailUrl = ytDetails.ThumbnailUrl,
+                            GenreNames = bridgedTags
+                        };
+                    } else {
+                        // Patch existing song object with better metadata for display
+                        if (isGenericArtist) song.AuthorName = artist;
+                        if (isGenericTags && bridgedTags.Any()) song.GenreNames = bridgedTags;
+                    }
+                }
+            } catch { /* Suppress and fallback */ }
         }
 
         var result = new PlaybackStreamDto 
@@ -255,8 +311,9 @@ public class PlaybackFacade : IPlaybackFacade
             SongId = song?.SongId, 
             ShowAd = !isPremium,
             Title = song?.Title ?? title,
-            Author = song?.AuthorName ?? artist,
-            ThumbnailUrl = song?.ThumbnailUrl
+            Author = song?.AuthorName ?? artist ?? "Nghệ sĩ",
+            ThumbnailUrl = song?.ThumbnailUrl,
+            GenreNames = song?.GenreNames?.ToList() ?? new List<string>()
         };
 
         // If we don't have the song object yet, we skip premium/explicit checks for now

@@ -1,13 +1,13 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
-using YoutubeMusicPlayer.Domain.Entities;
+using VibeMusic.Domain.Entities;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace YoutubeMusicPlayer.Infrastructure.Persistence;
+namespace VibeMusic.Infrastructure.Persistence;
 
 public static class DbInitializer
 {

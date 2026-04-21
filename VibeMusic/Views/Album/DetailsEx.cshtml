@@ -1,7 +1,6 @@
-@model YoutubeMusicPlayer.Application.DTOs.ExternalAlbumViewModel
+@model VibeMusic.Application.DTOs.ExternalAlbumViewModel
 @{
     ViewData["Title"] = Model.Title + " - " + Model.Source;
-    Layout = "_Layout";
 }
 
 <div class="container-fluid py-5 px-lg-5">
@@ -52,7 +51,7 @@
                 <tbody>
                     @foreach (var track in Model.Tracks)
                     {
-                        <tr class="track-row border-0" onclick="playSong('@track.Title', '@track.ArtistName', '@Model.CoverImageUrl')">
+                        <tr class="track-row border-0" onclick="playSingleTrack(null, '@System.Web.HttpUtility.JavaScriptStringEncode(track.Title)', '@System.Web.HttpUtility.JavaScriptStringEncode(track.ArtistName)', '@Model.CoverImageUrl')">
                             <td class="ps-4 text-dim">@track.TrackNumber</td>
                             <td>
                                 <div class="fw-bold text-white mb-0">@track.Title</div>
@@ -108,48 +107,42 @@
 </style>
 
 <script>
-    const albumData = @Html.Raw(Json.Serialize(Model.Tracks));
-
-    async function playSong(title, artist, thumb) {
-        // We use the search endpoint to find the video on YouTube dynamically
-        const query = `${artist} - ${title}`;
-        toastr.info("Đang xử lý âm thanh...", "", { timeOut: 0, extendedTimeOut: 0 });
-        
-        try {
-            // Using query instead of videoUrl to trigger backend resolution with similarity check
-            const res = await fetch(`/Home/GetStreamUrl?query=${encodeURIComponent(query)}&title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`);
-            const json = await res.json();
-            const data = json.success ? json.data : json;
-            
-            toastr.clear(); 
-            
-            if (data && data.streamUrl) {
-                window.playerModule.playDirect(data.streamUrl, {
-                    title: title,
-                    author: artist,
-                    thumbnail: thumb,
-                    videoId: data.videoId || '' 
-                });
-            } else {
-                const errorMsg = data.message || "Không tìm thấy luồng phát cho bài hát này trên YouTube.";
-                toastr.warning(errorMsg);
-            }
-        } catch (err) {
-            console.error("Playback resolution error:", err);
-            toastr.clear();
-            toastr.error("Có lỗi xảy ra khi kết nối máy chủ.");
-        }
-    }
-
     function playAlbumTracks() {
-        if (albumData.length === 0) return;
+        const tracks = [];
+        @foreach (var track in Model.Tracks)
+        {
+            <text>
+            tracks.push({
+                videoId: null,
+                title: "@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(track.Title))",
+                author: "@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(track.ArtistName))",
+                thumbnail: "@Model.CoverImageUrl",
+                durationMs: @track.DurationMs
+            });
+            </text>
+        }
+
+        if (tracks.length === 0) return;
+
+        console.log("[View] Injecting tracks directly into queue:", tracks.length);
         
-        // Add all tracks to queue and play first
-        // This requires an update to window.playerModule to handle playlist addition by metadata
-        toastr.info("Đang chuẩn bị danh sách phát album...");
+        // Force direct update to bypass any potential mapping or async issues
+        window.playQueue = tracks;
+        window.currentIndex = 0;
+        window.queueSourceType = 'album';
         
-        // For now, play first song
-        const first = albumData[0];
-        playSong(first.title, first.artistName, '@Model.CoverImageUrl');
+        if (typeof window.saveQueueState === 'function') window.saveQueueState();
+        if (typeof window.renderQueue === 'function') window.renderQueue();
+        
+        if (typeof window.loadAndPlay === 'function') {
+            window.loadAndPlay(window.playQueue[0]);
+            
+            if (typeof toastr !== 'undefined') {
+                toastr.success(`Hệ thống đã nạp <b>${tracks.length}</b> bài hát vào hàng chờ.`, 'Thành công', { timeOut: 3000 });
+            }
+        } else {
+            console.error("loadAndPlay function not found");
+            if (typeof toastr !== 'undefined') toastr.error("Không tìm thấy trình phát nhạc.");
+        }
     }
 </script>

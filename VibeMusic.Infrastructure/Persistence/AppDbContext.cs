@@ -1,7 +1,7 @@
-using Microsoft.EntityFrameworkCore;
-using YoutubeMusicPlayer.Domain.Entities;
+﻿using Microsoft.EntityFrameworkCore;
+using VibeMusic.Domain.Entities;
 
-namespace YoutubeMusicPlayer.Infrastructure.Persistence;
+namespace VibeMusic.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext
 {
@@ -31,6 +31,7 @@ public class AppDbContext : DbContext
     public DbSet<SongLike> SongLikes => Set<SongLike>();
     public DbSet<ArtistFollower> ArtistFollowers => Set<ArtistFollower>();
     public DbSet<CommentLike> CommentLikes => Set<CommentLike>();
+    public DbSet<ExternalViewCount> ExternalViewCounts => Set<ExternalViewCount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -154,6 +155,23 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<SubscriptionPlan>().ToTable("subscription_plans");
         modelBuilder.Entity<UserSubscription>().ToTable("user_subscriptions");
         modelBuilder.Entity<Payment>().ToTable("payments");
+
+        // ExternalViewCount configuration
+        modelBuilder.Entity<ExternalViewCount>(entity =>
+        {
+            entity.ToTable("external_view_counts");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.SongId, e.Source }).IsUnique();
+            entity.HasOne(e => e.Song)
+                  .WithMany(s => s.ExternalViewCounts)
+                  .HasForeignKey(e => e.SongId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.Source).HasConversion<int>();
+        });
+
+        modelBuilder.Entity<Song>()
+            .Property(s => s.PrioritySource)
+            .HasConversion<int?>();
 
         // Global lowercasing of all tables and columns
         foreach (var entity in modelBuilder.Model.GetEntityTypes())

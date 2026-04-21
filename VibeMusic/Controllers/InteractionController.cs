@@ -1,13 +1,13 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.Interfaces;
+using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 public class InteractionController : BaseController
 {
@@ -71,7 +71,7 @@ public class InteractionController : BaseController
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ResetAllViewCounts(CancellationToken ct = default)
     {
-        var context = HttpContext.RequestServices.GetRequiredService<YoutubeMusicPlayer.Infrastructure.Persistence.AppDbContext>();
+        var context = HttpContext.RequestServices.GetRequiredService<VibeMusic.Infrastructure.Persistence.AppDbContext>();
         await context.Database.ExecuteSqlRawAsync("UPDATE songs SET playcount = 0", ct);
 
         // Clear relevant caches so UI/API reads zero counts immediately.

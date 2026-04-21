@@ -1,10 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Application.Services;
+namespace VibeMusic.Application.Services;
 
 public class ProfileFacade : IProfileFacade
 {

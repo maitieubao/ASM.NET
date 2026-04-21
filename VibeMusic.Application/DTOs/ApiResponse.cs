@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace YoutubeMusicPlayer.Application.DTOs;
+namespace VibeMusic.Application.DTOs;
 
 public class ApiResponse<T>
 {

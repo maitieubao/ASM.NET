@@ -1,9 +1,9 @@
-using Microsoft.SemanticKernel;
+﻿using Microsoft.SemanticKernel;
 using System.ComponentModel;
 using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.Interfaces;
+using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Infrastructure.External.AiPlugins;
+namespace VibeMusic.Infrastructure.External.AiPlugins;
 
 public class WikipediaPlugin
 {

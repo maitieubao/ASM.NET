@@ -1,14 +1,14 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Models.ViewModels;
-using YoutubeMusicPlayer.Models;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Models.ViewModels;
+using VibeMusic.Models;
 
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 [Authorize(Roles = "Admin")]
 public class SongController : BaseController

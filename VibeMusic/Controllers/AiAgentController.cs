@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -7,13 +7,13 @@ using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Application.Common;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Application.Common;
 using Microsoft.AspNetCore.Http;
 using System;
 
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 [Authorize]
 [ApiController]

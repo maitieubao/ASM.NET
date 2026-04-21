@@ -1,6 +1,6 @@
 using System.Threading;
 
-namespace YoutubeMusicPlayer.Domain.Interfaces;
+namespace VibeMusic.Domain.Interfaces;
 
 public interface IUnitOfWork : IDisposable
 {

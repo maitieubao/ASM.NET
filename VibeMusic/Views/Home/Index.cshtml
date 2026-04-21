@@ -1,4 +1,4 @@
-@model YoutubeMusicPlayer.Application.DTOs.HomeViewModel
+@model VibeMusic.Application.DTOs.HomeViewModel
 @{
     ViewData["Title"] = "Khám phá - Música";
 }
@@ -67,32 +67,6 @@
         <div class="section-placeholder" data-type="Sad"><div class="section-skeleton"></div></div>
         <div class="section-placeholder" data-type="Albums"><div class="section-skeleton"></div></div>
     </div>
-
-    <!-- 3. TOP NGHỆ SĨ (Circular Cards) -->
-    @if (Model.TopArtists != null && Model.TopArtists.Any())
-    {
-        <div class="mb-5 section-reveal">
-            <div class="section-header align-items-center mb-3">
-                <h2 class="section-title">Nghệ sĩ dành cho bạn</h2>
-            </div>
-            <div class="carousel-wrapper">
-                <button class="carousel-nav carousel-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
-                <button class="carousel-nav carousel-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
-                <div class="horizontal-carousel scrollbar-hide">
-                    @foreach (var artist in Model.TopArtists.Take(10))
-                    {
-                        <div class="artist-card" onclick="window.location.href='/Artist/Details/@artist.ArtistId'">
-                            <img src="@(artist.AvatarUrl ?? "https://ui-avatars.com/api/?name="+artist.Name)" alt="@artist.Name" class="artist-thumb">
-                            <div class="artist-info mt-2 text-center">
-                                <div class="ytm-card-title text-center">@artist.Name</div>
-                                <div class="ytm-card-meta">Nghệ sĩ</div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    }
 
     <!-- 4. SEARCH RESULTS (Hidden by default, swapped via AJAX) -->
     <style>

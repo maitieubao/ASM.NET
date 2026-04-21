@@ -1,0 +1,305 @@
+@{
+    ViewData["Title"] = "Quản lý Metadata Bài hát";
+}
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-database me-2"></i>
+                        Quản lý Metadata Bài hát
+                    </h4>
+                    <small class="text-light">Cập nhật thông tin bài hát từ Deezer API</small>
+                </div>
+                <div class="card-body">
+                    <!-- Quick Actions -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-sync me-1"></i>
+                                        Làm mới Metadata cũ
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted">Cập nhật metadata cho các bài hát chưa có hoặc đã cũ (>7 ngày)</p>
+                                    <div class="input-group mb-3">
+                                        <span class="input-group-text">Batch Size</span>
+                                        <input type="number" id="batchSize" class="form-control" value="50" min="1" max="200">
+                                        <button class="btn btn-info" onclick="refreshOutdated()">
+                                            <i class="fas fa-sync me-1"></i>
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-user me-1"></i>
+                                        Cập nhật theo Nghệ sĩ
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted">Cập nhật tất cả bài hát của một nghệ sĩ</p>
+                                    <div class="input-group mb-3">
+                                        <span class="input-group-text">Artist ID</span>
+                                        <input type="number" id="artistId" class="form-control" placeholder="Nhập ID nghệ sĩ">
+                                        <button class="btn btn-success" onclick="enrichArtistSongs()">
+                                            <i class="fas fa-music me-1"></i>
+                                            Cập nhật
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Individual Song Enrichment -->
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0">
+                                <i class="fas fa-music me-1"></i>
+                                Cập nhật bài hát cụ thể
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">Cập nhật metadata cho một bài hát cụ thể</p>
+                            <div class="input-group mb-3">
+                                <span class="input-group-text">Song ID</span>
+                                <input type="number" id="songId" class="form-control" placeholder="Nhập ID bài hát">
+                                <button class="btn btn-warning" onclick="enrichSingleSong()">
+                                    <i class="fas fa-sync me-1"></i>
+                                    Cập nhật
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Multiple Songs Enrichment -->
+                    <div class="card border-secondary mt-3">
+                        <div class="card-header bg-secondary text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-list me-1"></i>
+                                Cập nhật nhiều bài hát
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">Cập nhật metadata cho nhiều bài hát cùng lúc (tối đa 100)</p>
+                            <div class="mb-3">
+                                <label for="songIds" class="form-label">Song IDs (phân cách bằng dấu phẩy):</label>
+                                <textarea id="songIds" class="form-control" rows="3" placeholder="1,2,3,4,5..."></textarea>
+                            </div>
+                            <button class="btn btn-secondary" onclick="enrichMultipleSongs()">
+                                <i class="fas fa-sync me-1"></i>
+                                Cập nhật tất cả
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results Area -->
+                    <div id="resultsArea" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-chart-bar me-1"></i>
+                                    Kết quả
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="resultsContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.input-group-text {
+    min-width: 100px;
+}
+
+#resultsArea {
+    animation: fadeIn 0.5s;
+}
+
+@@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+async function makeRequest(url, data = null) {
+    const options = {
+        method: data ? 'POST' : 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+        }
+    };
+    
+    if (data) {
+        options.body = JSON.stringify(data);
+    }
+    
+    const response = await fetch(url, options);
+    return await response.json();
+}
+
+function showResults(result, operation) {
+    const resultsArea = document.getElementById('resultsArea');
+    const resultsContent = document.getElementById('resultsContent');
+    
+    let html = `<div class="alert ${result.success ? 'alert-success' : 'alert-warning'}" role="alert">`;
+    html += `<h6><i class="fas ${result.success ? 'fa-check' : 'fa-exclamation-triangle'} me-2"></i>${operation}</h6>`;
+    html += `<p class="mb-0">${result.message}</p>`;
+    
+    if (result.enrichedCount !== undefined) {
+        html += `<hr><small><strong>Đã cập nhật:</strong> ${result.enrichedCount} bài hát</small>`;
+    }
+    
+    if (result.totalCount !== undefined) {
+        html += `<br><small><strong>Tổng số:</strong> ${result.totalCount} bài hát</small>`;
+    }
+    
+    html += '</div>';
+    
+    resultsContent.innerHTML = html;
+    resultsArea.style.display = 'block';
+    resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function refreshOutdated() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    const batchSize = document.getElementById('batchSize').value;
+    
+    if (!batchSize || batchSize < 1 || batchSize > 200) {
+        alert('Batch size phải từ 1 đến 200');
+        return;
+    }
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+    
+    try {
+        const result = await makeRequest(`/Admin/SongMetadata/RefreshOutdated?batchSize=${batchSize}`, {});
+        showResults(result, 'Làm mới Metadata cũ');
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Có lỗi xảy ra khi làm mới metadata.');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+
+async function enrichArtistSongs() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    const artistId = document.getElementById('artistId').value;
+    
+    if (!artistId) {
+        alert('Vui lòng nhập Artist ID');
+        return;
+    }
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+    
+    try {
+        const result = await makeRequest(`/Admin/SongMetadata/EnrichArtistSongs/${artistId}`, {});
+        showResults(result, `Cập nhật bài hát của nghệ sĩ #${artistId}`);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Có lỗi xảy ra khi cập nhật metadata nghệ sĩ.');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+
+async function enrichSingleSong() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    const songId = document.getElementById('songId').value;
+    
+    if (!songId) {
+        alert('Vui lòng nhập Song ID');
+        return;
+    }
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+    
+    try {
+        const result = await makeRequest(`/Admin/SongMetadata/EnrichSong/${songId}`, {});
+        showResults(result, `Cập nhật bài hát #${songId}`);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Có lỗi xảy ra khi cập nhật metadata bài hát.');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+
+async function enrichMultipleSongs() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    const songIdsText = document.getElementById('songIds').value;
+    
+    if (!songIdsText.trim()) {
+        alert('Vui lòng nhập danh sách Song IDs');
+        return;
+    }
+    
+    const songIds = songIdsText.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+    
+    if (songIds.length === 0) {
+        alert('Không có Song ID hợp lệ nào');
+        return;
+    }
+    
+    if (songIds.length > 100) {
+        alert('Không thể xử lý quá 100 bài hát cùng lúc');
+        return;
+    }
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+    
+    try {
+        const result = await makeRequest('/Admin/SongMetadata/EnrichMultiple', songIds);
+        showResults(result, `Cập nhật ${songIds.length} bài hát`);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Có lỗi xảy ra khi cập nhật metadata nhiều bài hát.');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+</script>
+
+@section Scripts {
+    @Html.AntiForgeryToken()
+}

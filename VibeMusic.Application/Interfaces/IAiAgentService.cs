@@ -1,6 +1,6 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
-namespace YoutubeMusicPlayer.Application.Interfaces;
+namespace VibeMusic.Application.Interfaces;
 
 public class ChatMessageDto
 {

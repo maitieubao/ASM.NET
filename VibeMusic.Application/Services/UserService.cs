@@ -3,12 +3,12 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Domain.Entities;
-using YoutubeMusicPlayer.Domain.Interfaces;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Domain.Entities;
+using VibeMusic.Domain.Interfaces;
 
-namespace YoutubeMusicPlayer.Application.Services;
+namespace VibeMusic.Application.Services;
 
 public class UserService : IUserService
 {
@@ -81,7 +81,6 @@ public class UserService : IUserService
 
     public async Task<bool> ToggleUserLockAsync(int id, CancellationToken ct = default)
     {
-        using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(id, ct);
@@ -91,19 +90,16 @@ public class UserService : IUserService
             _unitOfWork.Repository<User>().Update(user);
             await _unitOfWork.CompleteAsync(ct);
             
-            await transaction.CommitAsync(ct);
             return true;
         }
         catch
         {
-            await transaction.RollbackAsync(ct);
             throw;
         }
     }
 
     public async Task<bool> DeleteUserAsync(int id, CancellationToken ct = default)
     {
-        using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(id, ct);
@@ -114,12 +110,10 @@ public class UserService : IUserService
             _unitOfWork.Repository<User>().Update(user);
             await _unitOfWork.CompleteAsync(ct);
             
-            await transaction.CommitAsync(ct);
             return true;
         }
         catch
         {
-            await transaction.RollbackAsync(ct);
             throw;
         }
     }
@@ -186,7 +180,6 @@ public class UserService : IUserService
 
     public async Task<bool> UpdateUserAsync(UpdateUserRequest request, CancellationToken ct = default)
     {
-        using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(request.UserId, ct);
@@ -206,19 +199,16 @@ public class UserService : IUserService
             _unitOfWork.Repository<User>().Update(user);
             await _unitOfWork.CompleteAsync(ct);
             
-            await transaction.CommitAsync(ct);
             return true;
         }
         catch
         {
-            await transaction.RollbackAsync(ct);
             throw;
         }
     }
 
     public async Task<bool> GrantPremiumByPlanAsync(int userId, int planId, CancellationToken ct = default)
     {
-        using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId, ct);
@@ -262,19 +252,16 @@ public class UserService : IUserService
             _unitOfWork.Repository<User>().Update(user);
 
             await _unitOfWork.CompleteAsync(ct);
-            await transaction.CommitAsync(ct);
             return true;
         }
         catch
         {
-            await transaction.RollbackAsync(ct);
             throw;
         }
     }
 
     public async Task<bool> RevokePremiumAsync(int userId, CancellationToken ct = default)
     {
-        using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId, ct);
@@ -293,12 +280,10 @@ public class UserService : IUserService
             }
 
             await _unitOfWork.CompleteAsync(ct);
-            await transaction.CommitAsync(ct);
             return true;
         }
         catch
         {
-            await transaction.RollbackAsync(ct);
             throw;
         }
     }

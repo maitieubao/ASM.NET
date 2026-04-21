@@ -7,14 +7,14 @@ using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Domain.Entities;
-using YoutubeMusicPlayer.Domain.Interfaces;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Domain.Entities;
+using VibeMusic.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
 
-namespace YoutubeMusicPlayer.Application.Services;
+namespace VibeMusic.Application.Services;
 
 public class SongService : ISongService
 {
@@ -226,15 +226,10 @@ public class SongService : ISongService
         await videoLock.WaitAsync(CancellationToken.None); // Không dùng ct — import phải hoàn thành dù request cancel
         try
         {
-            // FIX: Dùng fresh scope cho mỗi lần thử DB write
-            // Tránh dùng lại DbContext đã ở trạng thái lỗi sau SaveChangesAsync fail
-            const int maxAttempts = 3;
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            try
             {
-                try
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                using var scope = _scopeFactory.CreateScope();
+                var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
                     await _importWriteGate.WaitAsync(CancellationToken.None);
                     Song? song;
@@ -246,7 +241,6 @@ public class SongService : ISongService
                             .FirstOrDefaultAsync(s => s.YoutubeVideoId == details.YoutubeVideoId && !s.IsDeleted, CancellationToken.None);
                         if (existingSong != null) return MapToDto(existingSong);
 
-                        using var transaction = await uow.BeginTransactionAsync(CancellationToken.None);
                         try
                         {
                             song = new Song
@@ -281,11 +275,9 @@ public class SongService : ISongService
                                 CancellationToken.None);
 
                             await uow.CompleteAsync(CancellationToken.None);
-                            await transaction.CommitAsync(CancellationToken.None);
                         }
                         catch
                         {
-                            await transaction.RollbackAsync(CancellationToken.None);
                             throw;
                         }
                     }
@@ -303,28 +295,21 @@ public class SongService : ISongService
 
                     return MapToDto(song);
                 }
-                catch (Exception ex) when (attempt < maxAttempts)
-                {
-                    _logger.LogWarning("[SongService] DB save attempt {Attempt}/{Max} failed for {VideoId}: {Msg}. Retrying with fresh scope...",
-                        attempt, maxAttempts, details.YoutubeVideoId, ex.Message.Split('\n')[0]);
-                    await Task.Delay(TimeSpan.FromSeconds(attempt), CancellationToken.None); // 1s, 2s backoff
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "[SongService] DB save failed after {Max} attempts for {VideoId}, checking if already exists",
-                        maxAttempts, details.YoutubeVideoId);
-                    // Last resort: check if another thread succeeded
-                    using var fallbackScope = _scopeFactory.CreateScope();
-                    var fallbackUow = fallbackScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                    var fallback = await fallbackUow.Repository<Song>().Query()
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(s => s.YoutubeVideoId == details.YoutubeVideoId && !s.IsDeleted, CancellationToken.None);
-                    if (fallback != null) return MapToDto(fallback);
-                    return null;
-                }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[SongService] DB save failed for {VideoId}, checking if already exists",
+                    details.YoutubeVideoId);
+                // Last resort: check if another thread succeeded
+                using var fallbackScope = _scopeFactory.CreateScope();
+                var fallbackUow = fallbackScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                var fallback = await fallbackUow.Repository<Song>().Query()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.YoutubeVideoId == details.YoutubeVideoId && !s.IsDeleted, CancellationToken.None);
+                if (fallback != null) return MapToDto(fallback);
+                return null;
             }
 
-            return null; // Unreachable but required by compiler
+
         }
         finally
         {
@@ -455,6 +440,7 @@ public class SongService : ISongService
         IsPremiumOnly = s.IsPremiumOnly,
         AlbumId = s.AlbumId,
         AuthorName = s.SongArtists?.FirstOrDefault()?.Artist?.Name ?? "Nghệ sĩ",
+        GenreNames = s.SongGenres?.Select(sg => sg.Genre?.Name).Where(n => n != null).Cast<string>().ToList() ?? new List<string>(),
         LyricsText = s.LyricsText,
         ReleaseDate = s.ReleaseDate
     };
@@ -463,6 +449,7 @@ public class SongService : ISongService
     {
         var song = await uow.Repository<Song>().Query()
             .Include(s => s.SongArtists).ThenInclude(sa => sa.Artist)
+            .Include(s => s.SongGenres).ThenInclude(sg => sg.Genre)
             .FirstOrDefaultAsync(s => s.SongId == songId, ct);
         if (song == null) return;
 
@@ -478,7 +465,37 @@ public class SongService : ISongService
                 {
                     song.ReleaseDate = DateTime.SpecifyKind(rd, DateTimeKind.Utc);
                 }
-                _logger.LogInformation("[SongService] Updated metadata from Deezer for {SongId}", songId);
+                
+                // Fetch Genres from Deezer Artist
+                if (!string.IsNullOrEmpty(dt.DeezerArtistId))
+                {
+                    var artistInfo = await dz.GetArtistInfoAsync(dt.DeezerArtistId);
+                    if (artistInfo != null && artistInfo.Genres != null && artistInfo.Genres.Any())
+                    {
+                        var genreRepo = uow.Repository<Genre>();
+                        var songGenreRepo = uow.Repository<SongGenre>();
+                        
+                        foreach (var genreName in artistInfo.Genres)
+                        {
+                            var genre = await genreRepo.Query()
+                                .FirstOrDefaultAsync(g => g.Name.ToLower() == genreName.ToLower(), ct);
+                            
+                            if (genre == null)
+                            {
+                                genre = new Genre { Name = genreName };
+                                await genreRepo.AddAsync(genre, ct);
+                                await uow.CompleteAsync(ct); // Need ID for next step
+                            }
+                            
+                            if (!song.SongGenres.Any(sg => sg.GenreId == genre.GenreId))
+                            {
+                                await songGenreRepo.AddAsync(new SongGenre { SongId = song.SongId, GenreId = genre.GenreId }, ct);
+                            }
+                        }
+                    }
+                }
+                
+                _logger.LogInformation("[SongService] Updated metadata and genres from Deezer for {SongId}", songId);
             } else {
                 _logger.LogInformation("[SongService] No Deezer match for {SongId}", songId);
             }

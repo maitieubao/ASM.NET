@@ -1,7 +1,7 @@
-using System.Collections.Generic;
-using YoutubeMusicPlayer.Application.DTOs;
+﻿using System.Collections.Generic;
+using VibeMusic.Application.DTOs;
 
-namespace YoutubeMusicPlayer.Models.Admin;
+namespace VibeMusic.Models.Admin;
 
 public class AdminTaxonomyViewModel
 {

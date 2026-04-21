@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace YoutubeMusicPlayer.Application.Common;
+namespace VibeMusic.Application.Common;
 
 public class AppException : Exception
 {

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -7,12 +7,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Domain.Entities;
-using YoutubeMusicPlayer.Domain.Interfaces;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Domain.Entities;
+using VibeMusic.Domain.Interfaces;
 
-namespace YoutubeMusicPlayer.Application.Services;
+namespace VibeMusic.Application.Services;
 
 public class AlbumService : IAlbumService
 {
@@ -130,7 +130,7 @@ public class AlbumService : IAlbumService
             IsVerified = a.IsVerified
         });
         
-        dto.CopyrightText = $"© {album.ReleaseDate?.Year ?? DateTime.Now.Year} {album.RecordLabel ?? "YoutubeMusicPlayer Records"}";
+        dto.CopyrightText = $"© {album.ReleaseDate?.Year ?? DateTime.Now.Year} {album.RecordLabel ?? "VibeMusic Records"}";
 
         return dto;
     }
@@ -223,27 +223,32 @@ public class AlbumService : IAlbumService
 
         var myLock = _locks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
         bool acquired = false;
+
         try
         {
-            // First try to wait for the lock
+            // Use ct only for the lock wait — NOT for DB queries.
+            // Passing ct to ToListAsync causes Npgsql to cancel the query mid-flight when
+            // the caller's token fires (request abort, background service shutdown, etc.),
+            // which disposes the connector's ManualResetEventSlim → ObjectDisposedException
+            // on every subsequent checkout from the connection pool.
             acquired = await myLock.WaitAsync(TimeSpan.FromSeconds(15), ct);
-            
-            // If we didn't get the lock, or even if we did, we should re-check cache first
+
             if (_cache.TryGetValue(cacheKey, out cachedResult) && cachedResult != null)
                 return cachedResult;
-
-            // We must use an isolated scope here because this can be called in parallel 
-            // or from background tasks where the primary scope is unstable.
-            using var scope = _scopeFactory.CreateScope();
-            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
             if (!acquired)
             {
                 _logger.LogWarning("[ALBUM-SERVICE] Lock timeout for {CacheKey}, falling back to DB.", cacheKey);
-                return await GetFallbackTrending(count, cacheKey, ct, uow);
+                return await GetFallbackTrending(count, cacheKey);
             }
 
-            try 
+            // Always use an isolated scope — never rely on the injected _unitOfWork here,
+            // because this method can be called from background tasks where the primary
+            // scope's DbContext may already be disposed.
+            using var scope = _scopeFactory.CreateScope();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            try
             {
                 var dz = scope.ServiceProvider.GetRequiredService<IDeezerService>();
                 var deezerAlbums = await dz.GetNewReleasesAsync(count);
@@ -251,31 +256,31 @@ public class AlbumService : IAlbumService
                 if (deezerAlbums.Any())
                 {
                     var albumTitles = deezerAlbums.Select(a => a.Title.Trim()).Distinct().Take(50).ToList();
+                    // CancellationToken.None: read-only query must never be cancelled mid-flight
                     var existingAlbums = await uow.Repository<Album>().Query()
                         .AsNoTracking()
                         .Include(a => a.AlbumArtists).ThenInclude(aa => aa.Artist)
                         .Where(a => !a.IsDeleted && albumTitles.Contains(a.Title))
-                        .ToListAsync(ct);
+                        .ToListAsync(CancellationToken.None);
 
                     var res = existingAlbums.Select(MapToDto).ToList();
-                    
-                    // Note: We don't perform background import here anymore to keep this ultra-fast
-                    // Discovery happens when a song is played or via CacheWarmupService
-                    
+
                     if (res.Any())
                     {
                         _cache.Set(cacheKey, res, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(6), Size = 1 });
                         return res;
                     }
                 }
+
+                // Deezer returned results but none matched our DB — fallback with fresh scope
+                return await GetFallbackTrending(count, cacheKey);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[ALBUM-SERVICE] Error syncing trending albums from Deezer");
+                // uow/DbContext may be in a broken state — always use a fresh scope for fallback
+                return await GetFallbackTrending(count, cacheKey);
             }
-
-            // Fallback to internal trending if Deezer fails or returns nothing found in our DB
-            return await GetFallbackTrending(count, cacheKey, ct, uow);
         }
         finally
         {
@@ -283,21 +288,26 @@ public class AlbumService : IAlbumService
         }
     }
 
-    private async Task<IEnumerable<AlbumDto>> GetFallbackTrending(int count, string cacheKey, CancellationToken ct, IUnitOfWork? uow = null)
+    private async Task<IEnumerable<AlbumDto>> GetFallbackTrending(int count, string cacheKey)
     {
-        var activeUow = uow ?? _unitOfWork;
-        var dbAlbums = await activeUow.Repository<Album>().Query()
+        // Always create a fresh isolated scope — never reuse a potentially broken DbContext.
+        // Always use CancellationToken.None — read-only queries must not be cancellable.
+        using var scope = _scopeFactory.CreateScope();
+        var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        var dbAlbums = await uow.Repository<Album>().Query()
             .AsNoTracking()
             .Include(a => a.AlbumArtists).ThenInclude(aa => aa.Artist)
             .Where(a => !a.IsDeleted && !string.IsNullOrEmpty(a.CoverImageUrl))
             .OrderByDescending(a => a.ReleaseDate)
             .Take(count)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         var fallback = dbAlbums.Select(MapToDtoWithArtists).ToList();
         if (fallback.Any())
         {
-            _cache.Set(cacheKey, fallback, new MemoryCacheEntryOptions {
+            _cache.Set(cacheKey, fallback, new MemoryCacheEntryOptions
+            {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
                 Size = 1
             });

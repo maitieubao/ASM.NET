@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using YoutubeMusicPlayer.Infrastructure.Persistence;
+using VibeMusic.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace YoutubeMusicPlayer.Infrastructure.Migrations
+namespace VibeMusic.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     partial class AppDbContextModelSnapshot : ModelSnapshot
@@ -22,7 +22,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Album", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Album", b =>
                 {
                     b.Property<int>("AlbumId")
                         .ValueGeneratedOnAdd()
@@ -79,7 +79,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("albums", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.AlbumArtist", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.AlbumArtist", b =>
                 {
                     b.Property<int>("AlbumId")
                         .HasColumnType("integer")
@@ -100,7 +100,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("albumartists", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Artist", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Artist", b =>
                 {
                     b.Property<int>("ArtistId")
                         .ValueGeneratedOnAdd()
@@ -125,6 +125,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("country");
 
+                    b.Property<string>("DeezerArtistId")
+                        .HasColumnType("text")
+                        .HasColumnName("deezer_artist_id");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -142,6 +146,14 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("subscribercount");
 
+                    b.Property<int>("VerificationStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("verification_status");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
                     b.Property<string>("WikipediaUrl")
                         .HasColumnType("text")
                         .HasColumnName("wikipedia_url");
@@ -154,7 +166,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("artists", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.ArtistFollower", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.ArtistFollower", b =>
                 {
                     b.Property<int>("UserId")
                         .HasColumnType("integer")
@@ -175,7 +187,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("artist_followers", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Category", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Category", b =>
                 {
                     b.Property<int>("CategoryId")
                         .ValueGeneratedOnAdd()
@@ -203,7 +215,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("categories", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Comment", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Comment", b =>
                 {
                     b.Property<int>("CommentId")
                         .ValueGeneratedOnAdd()
@@ -246,7 +258,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("comments");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.CommentLike", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.CommentLike", b =>
                 {
                     b.Property<int>("LikeId")
                         .ValueGeneratedOnAdd()
@@ -276,7 +288,48 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("comment_likes", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Genre", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.ExternalViewCount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<int>("SongId")
+                        .HasColumnType("integer")
+                        .HasColumnName("song_id");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer")
+                        .HasColumnName("source");
+
+                    b.Property<long>("ViewCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("view_count");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SongId", "Source")
+                        .IsUnique();
+
+                    b.ToTable("external_view_counts", (string)null);
+                });
+
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Genre", b =>
                 {
                     b.Property<int>("GenreId")
                         .ValueGeneratedOnAdd()
@@ -299,7 +352,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("genres", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.ListeningHistory", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.ListeningHistory", b =>
                 {
                     b.Property<int>("HistoryId")
                         .ValueGeneratedOnAdd()
@@ -329,7 +382,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("listeninghistory", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Notification", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Notification", b =>
                 {
                     b.Property<int>("NotificationId")
                         .ValueGeneratedOnAdd()
@@ -371,7 +424,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("notifications", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Payment", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Payment", b =>
                 {
                     b.Property<int>("PaymentId")
                         .ValueGeneratedOnAdd()
@@ -419,7 +472,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("payments", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Playlist", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Playlist", b =>
                 {
                     b.Property<int>("PlaylistId")
                         .ValueGeneratedOnAdd()
@@ -474,7 +527,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("playlists", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.PlaylistSong", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.PlaylistSong", b =>
                 {
                     b.Property<int>("PlaylistId")
                         .HasColumnType("integer")
@@ -499,7 +552,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("playlistsongs", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Report", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Report", b =>
                 {
                     b.Property<int>("ReportId")
                         .ValueGeneratedOnAdd()
@@ -551,7 +604,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("reports", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Song", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Song", b =>
                 {
                     b.Property<int>("SongId")
                         .ValueGeneratedOnAdd()
@@ -564,13 +617,45 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("albumid");
 
+                    b.Property<float?>("AudioGain")
+                        .HasColumnType("real")
+                        .HasColumnName("audio_gain");
+
+                    b.Property<string>("AvailableCountries")
+                        .HasColumnType("text")
+                        .HasColumnName("available_countries");
+
+                    b.Property<float?>("BPM")
+                        .HasColumnType("real")
+                        .HasColumnName("bpm");
+
                     b.Property<int?>("CategoryId")
                         .HasColumnType("integer")
                         .HasColumnName("categoryid");
 
+                    b.Property<string>("DeezerAlbumId")
+                        .HasColumnType("text")
+                        .HasColumnName("deezer_album_id");
+
+                    b.Property<string>("DeezerArtistId")
+                        .HasColumnType("text")
+                        .HasColumnName("deezer_artist_id");
+
+                    b.Property<string>("DeezerTrackId")
+                        .HasColumnType("text")
+                        .HasColumnName("deezer_track_id");
+
+                    b.Property<int>("DiskNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("disk_number");
+
                     b.Property<int?>("Duration")
                         .HasColumnType("integer")
                         .HasColumnName("duration");
+
+                    b.Property<DateTime?>("EnrichedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enriched_at");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -600,6 +685,18 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("playcount");
 
+                    b.Property<int>("PopularityRank")
+                        .HasColumnType("integer")
+                        .HasColumnName("popularity_rank");
+
+                    b.Property<string>("PreviewUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("preview_url");
+
+                    b.Property<int?>("PrioritySource")
+                        .HasColumnType("integer")
+                        .HasColumnName("priority_source");
+
                     b.Property<DateTime?>("ReleaseDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("releasedate");
@@ -613,6 +710,10 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("title");
 
+                    b.Property<int>("TrackNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("track_number");
+
                     b.Property<string>("YoutubeVideoId")
                         .IsRequired()
                         .HasColumnType("text")
@@ -624,14 +725,16 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
 
                     b.HasIndex("CategoryId");
 
-                    b.HasIndex("YoutubeVideoId");
+                    b.HasIndex("YoutubeVideoId")
+                        .IsUnique()
+                        .HasFilter("\"is_deleted\" = false");
 
                     b.HasIndex("Title", "AlbumId");
 
                     b.ToTable("songs", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongArtist", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.SongArtist", b =>
                 {
                     b.Property<int>("SongId")
                         .HasColumnType("integer")
@@ -652,7 +755,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("songartists", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongGenre", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.SongGenre", b =>
                 {
                     b.Property<int>("SongId")
                         .HasColumnType("integer")
@@ -669,7 +772,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("songgenres", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongLike", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.SongLike", b =>
                 {
                     b.Property<int>("UserId")
                         .HasColumnType("integer")
@@ -690,7 +793,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("songlikes", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SubscriptionPlan", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.SubscriptionPlan", b =>
                 {
                     b.Property<int>("PlanId")
                         .ValueGeneratedOnAdd()
@@ -726,7 +829,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("subscription_plans", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.User", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.User", b =>
                 {
                     b.Property<int>("UserId")
                         .ValueGeneratedOnAdd()
@@ -802,7 +905,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserGenreStat", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.UserGenreStat", b =>
                 {
                     b.Property<int>("StatId")
                         .ValueGeneratedOnAdd()
@@ -834,7 +937,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("user_genre_stats", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserSearchHistory", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.UserSearchHistory", b =>
                 {
                     b.Property<int>("SearchId")
                         .ValueGeneratedOnAdd()
@@ -864,7 +967,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("usersearchhistory", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserSession", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.UserSession", b =>
                 {
                     b.Property<int>("SessionId")
                         .ValueGeneratedOnAdd()
@@ -902,7 +1005,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("usersessions", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserSubscription", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.UserSubscription", b =>
                 {
                     b.Property<int>("UserSubscriptionId")
                         .ValueGeneratedOnAdd()
@@ -940,15 +1043,15 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.ToTable("user_subscriptions", (string)null);
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.AlbumArtist", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.AlbumArtist", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Album", "Album")
+                    b.HasOne("VibeMusic.Domain.Entities.Album", "Album")
                         .WithMany("AlbumArtists")
                         .HasForeignKey("AlbumId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Artist", "Artist")
+                    b.HasOne("VibeMusic.Domain.Entities.Artist", "Artist")
                         .WithMany("AlbumArtists")
                         .HasForeignKey("ArtistId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -959,15 +1062,15 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("Artist");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.ArtistFollower", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.ArtistFollower", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Artist", "Artist")
+                    b.HasOne("VibeMusic.Domain.Entities.Artist", "Artist")
                         .WithMany()
                         .HasForeignKey("ArtistId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -978,15 +1081,15 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Comment", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Comment", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
+                    b.HasOne("VibeMusic.Domain.Entities.Song", "Song")
                         .WithMany()
                         .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -997,15 +1100,15 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.CommentLike", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.CommentLike", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Comment", "Comment")
+                    b.HasOne("VibeMusic.Domain.Entities.Comment", "Comment")
                         .WithMany()
                         .HasForeignKey("CommentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1016,15 +1119,26 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.ListeningHistory", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.ExternalViewCount", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
+                    b.HasOne("VibeMusic.Domain.Entities.Song", "Song")
+                        .WithMany("ExternalViewCounts")
+                        .HasForeignKey("SongId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Song");
+                });
+
+            modelBuilder.Entity("VibeMusic.Domain.Entities.ListeningHistory", b =>
+                {
+                    b.HasOne("VibeMusic.Domain.Entities.Song", "Song")
                         .WithMany()
                         .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1035,24 +1149,24 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Notification", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Notification", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
 
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Payment", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Payment", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.SubscriptionPlan", "Plan")
+                    b.HasOne("VibeMusic.Domain.Entities.SubscriptionPlan", "Plan")
                         .WithMany()
                         .HasForeignKey("PlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1063,24 +1177,24 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Playlist", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Playlist", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
 
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.PlaylistSong", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.PlaylistSong", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Playlist", "Playlist")
+                    b.HasOne("VibeMusic.Domain.Entities.Playlist", "Playlist")
                         .WithMany("PlaylistSongs")
                         .HasForeignKey("PlaylistId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
+                    b.HasOne("VibeMusic.Domain.Entities.Song", "Song")
                         .WithMany()
                         .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1091,9 +1205,9 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("Song");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Report", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Report", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1102,14 +1216,14 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Song", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Song", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Album", "Album")
+                    b.HasOne("VibeMusic.Domain.Entities.Album", "Album")
                         .WithMany("Songs")
                         .HasForeignKey("AlbumId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Category", "Category")
+                    b.HasOne("VibeMusic.Domain.Entities.Category", "Category")
                         .WithMany("Songs")
                         .HasForeignKey("CategoryId");
 
@@ -1118,15 +1232,15 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("Category");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongArtist", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.SongArtist", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Artist", "Artist")
+                    b.HasOne("VibeMusic.Domain.Entities.Artist", "Artist")
                         .WithMany("SongArtists")
                         .HasForeignKey("ArtistId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
+                    b.HasOne("VibeMusic.Domain.Entities.Song", "Song")
                         .WithMany("SongArtists")
                         .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1137,15 +1251,15 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("Song");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongGenre", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.SongGenre", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Genre", "Genre")
+                    b.HasOne("VibeMusic.Domain.Entities.Genre", "Genre")
                         .WithMany("SongGenres")
                         .HasForeignKey("GenreId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
+                    b.HasOne("VibeMusic.Domain.Entities.Song", "Song")
                         .WithMany("SongGenres")
                         .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1156,15 +1270,15 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("Song");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.SongLike", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.SongLike", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.Song", "Song")
+                    b.HasOne("VibeMusic.Domain.Entities.Song", "Song")
                         .WithMany("SongLikes")
                         .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1175,9 +1289,9 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserSearchHistory", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.UserSearchHistory", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1186,9 +1300,9 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserSession", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.UserSession", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany("UserSessions")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1197,15 +1311,15 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.UserSubscription", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.UserSubscription", b =>
                 {
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.SubscriptionPlan", "Plan")
+                    b.HasOne("VibeMusic.Domain.Entities.SubscriptionPlan", "Plan")
                         .WithMany()
                         .HasForeignKey("PlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("YoutubeMusicPlayer.Domain.Entities.User", "User")
+                    b.HasOne("VibeMusic.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1216,37 +1330,39 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Album", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Album", b =>
                 {
                     b.Navigation("AlbumArtists");
 
                     b.Navigation("Songs");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Artist", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Artist", b =>
                 {
                     b.Navigation("AlbumArtists");
 
                     b.Navigation("SongArtists");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Category", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Category", b =>
                 {
                     b.Navigation("Songs");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Genre", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Genre", b =>
                 {
                     b.Navigation("SongGenres");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Playlist", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Playlist", b =>
                 {
                     b.Navigation("PlaylistSongs");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.Song", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.Song", b =>
                 {
+                    b.Navigation("ExternalViewCounts");
+
                     b.Navigation("SongArtists");
 
                     b.Navigation("SongGenres");
@@ -1254,7 +1370,7 @@ namespace YoutubeMusicPlayer.Infrastructure.Migrations
                     b.Navigation("SongLikes");
                 });
 
-            modelBuilder.Entity("YoutubeMusicPlayer.Domain.Entities.User", b =>
+            modelBuilder.Entity("VibeMusic.Domain.Entities.User", b =>
                 {
                     b.Navigation("UserSessions");
                 });

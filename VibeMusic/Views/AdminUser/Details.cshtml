@@ -1,9 +1,9 @@
-@model YoutubeMusicPlayer.Application.DTOs.UserDto
+@model VibeMusic.Application.DTOs.UserDto
 @{
     ViewData["Title"] = "User Details";
-    var listeningHistory = ViewBag.ListeningHistory as IEnumerable<YoutubeMusicPlayer.Application.DTOs.ListeningHistoryDto> ?? Enumerable.Empty<YoutubeMusicPlayer.Application.DTOs.ListeningHistoryDto>();
-    var likedSongs = ViewBag.LikedSongs as IEnumerable<YoutubeMusicPlayer.Application.DTOs.SongDto> ?? Enumerable.Empty<YoutubeMusicPlayer.Application.DTOs.SongDto>();
-    var playlists = ViewBag.Playlists as IEnumerable<YoutubeMusicPlayer.Application.DTOs.PlaylistDto> ?? Enumerable.Empty<YoutubeMusicPlayer.Application.DTOs.PlaylistDto>();
+    var listeningHistory = ViewBag.ListeningHistory as IEnumerable<VibeMusic.Application.DTOs.ListeningHistoryDto> ?? Enumerable.Empty<VibeMusic.Application.DTOs.ListeningHistoryDto>();
+    var likedSongs = ViewBag.LikedSongs as IEnumerable<VibeMusic.Application.DTOs.SongDto> ?? Enumerable.Empty<VibeMusic.Application.DTOs.SongDto>();
+    var playlists = ViewBag.Playlists as IEnumerable<VibeMusic.Application.DTOs.PlaylistDto> ?? Enumerable.Empty<VibeMusic.Application.DTOs.PlaylistDto>();
 }
 
 <div class="container mt-4 pb-5">

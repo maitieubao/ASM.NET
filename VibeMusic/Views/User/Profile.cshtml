@@ -1,9 +1,9 @@
-@model YoutubeMusicPlayer.Application.DTOs.UserProfileViewModel
+@model VibeMusic.Application.DTOs.UserProfileViewModel
 @{
     ViewData["Title"] = "Trang cá nhân - " + Model.User.Username;
-    var history = Model.ListeningHistory ?? new List<YoutubeMusicPlayer.Application.DTOs.ListeningHistoryDto>();
-    var notifications = Model.Notifications ?? new List<YoutubeMusicPlayer.Application.DTOs.NotificationDto>();
-    var playlists = Model.Playlists ?? new List<YoutubeMusicPlayer.Application.DTOs.PlaylistDto>();
+    var history = Model.ListeningHistory ?? new List<VibeMusic.Application.DTOs.ListeningHistoryDto>();
+    var notifications = Model.Notifications ?? new List<VibeMusic.Application.DTOs.NotificationDto>();
+    var playlists = Model.Playlists ?? new List<VibeMusic.Application.DTOs.PlaylistDto>();
     var topGenres = Model.TopGenres ?? new List<string>();
     int unreadCount = notifications.Any() ? notifications.Count(n => !n.IsRead) : 0;
 }

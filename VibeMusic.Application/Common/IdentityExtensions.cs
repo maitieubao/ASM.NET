@@ -1,6 +1,6 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 
-namespace YoutubeMusicPlayer.Application.Common;
+namespace VibeMusic.Application.Common;
 
 public static class IdentityExtensions
 {

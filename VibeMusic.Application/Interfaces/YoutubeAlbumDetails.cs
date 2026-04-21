@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace YoutubeMusicPlayer.Application.Interfaces;
+namespace VibeMusic.Application.Interfaces;
 
 public class YoutubeAlbumDetails
 {

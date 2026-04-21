@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace YoutubeMusicPlayer.Domain.Entities;
+namespace VibeMusic.Domain.Entities;
 
 [Table("songlikes")]
 public class SongLike

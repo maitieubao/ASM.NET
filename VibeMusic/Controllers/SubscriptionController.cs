@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
-using YoutubeMusicPlayer.Application.Interfaces;
+using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 public class SubscriptionController : BaseController
 {

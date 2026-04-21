@@ -1,0 +1,237 @@
+@{
+    ViewData["Title"] = "Xác Minh Nghệ Sĩ";
+    var stats = ViewBag.Stats as VibeMusic.Application.Interfaces.VerificationStatsDto;
+    var artists = ViewBag.Artists as IEnumerable<dynamic>;
+}
+
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1"><i class="fas fa-shield-alt me-2 text-primary"></i>Xác Minh Nghệ Sĩ</h3>
+            <small class="text-muted">Chỉ hiển thị nghệ sĩ được xác minh trên Deezer cho người dùng</small>
+        </div>
+        <button class="btn btn-primary" onclick="verifyBatch(50)">
+            <i class="fas fa-sync me-1"></i> Xác minh hàng loạt (50)
+        </button>
+    </div>
+
+    <!-- Stats Cards -->
+    @if (stats != null)
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center">
+                    <div class="card-body">
+                        <div class="fs-2 fw-bold text-primary">@stats.TotalArtists</div>
+                        <div class="text-muted small">Tổng nghệ sĩ</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center">
+                    <div class="card-body">
+                        <div class="fs-2 fw-bold text-success">@stats.VerifiedCount</div>
+                        <div class="text-muted small">✅ Đã xác minh</div>
+                        <div class="progress mt-2" style="height:4px">
+                            <div class="progress-bar bg-success" style="width:@stats.VerificationRate%"></div>
+                        </div>
+                        <small class="text-success">@stats.VerificationRate.ToString("F0")%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center">
+                    <div class="card-body">
+                        <div class="fs-2 fw-bold text-secondary">@stats.UnverifiedCount</div>
+                        <div class="text-muted small">❌ Không xác minh</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center">
+                    <div class="card-body">
+                        <div class="fs-2 fw-bold text-warning">@stats.PendingCount</div>
+                        <div class="text-muted small">⏳ Chờ xác minh</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Result Area -->
+    <div id="resultArea" class="alert d-none mb-3"></div>
+
+    <!-- Artist Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Danh sách nghệ sĩ</h6>
+            <input type="text" id="searchInput" class="form-control form-control-sm w-25" placeholder="Tìm kiếm...">
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="artistTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nghệ sĩ</th>
+                        <th>Trạng thái</th>
+                        <th>Deezer ID</th>
+                        <th>Xác minh lúc</th>
+                        <th class="text-end">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (artists != null)
+                    {
+                        foreach (var a in artists)
+                        {
+                            string statusClass = ((int)a.VerificationStatus) switch
+                            {
+                                1 => "badge bg-success",
+                                2 => "badge bg-secondary",
+                                3 => "badge bg-warning text-dark",
+                                _ => "badge bg-info text-dark"
+                            };
+                            string statusText = ((int)a.VerificationStatus) switch
+                            {
+                                1 => "✅ Đã xác minh",
+                                2 => "❌ Không xác minh",
+                                3 => "⚠️ Lỗi",
+                                _ => "⏳ Chờ"
+                            };
+                            <tr data-artist-name="@a.Name.ToLower()">
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (!string.IsNullOrEmpty((string?)a.AvatarUrl))
+                                        {
+                                            <img src="@a.AvatarUrl" class="rounded-circle" width="36" height="36" style="object-fit:cover">
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width:36px;height:36px;font-size:14px">
+                                                @a.Name.ToString().Substring(0, 1).ToUpper()
+                                            </div>
+                                        }
+                                        <span class="fw-medium">@a.Name</span>
+                                    </div>
+                                </td>
+                                <td><span class="@statusClass">@statusText</span></td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty((string?)a.DeezerArtistId))
+                                    {
+                                        <a href="https://www.deezer.com/artist/@a.DeezerArtistId" target="_blank" class="text-decoration-none small">
+                                            <i class="fas fa-external-link-alt me-1"></i>@a.DeezerArtistId
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (a.VerifiedAt != null)
+                                    {
+                                        <small class="text-muted">@((DateTime)a.VerifiedAt).ToString("dd/MM/yyyy HH:mm")</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">—</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            onclick="verifySingle(@a.ArtistId, '@a.Name')"
+                                            title="Xác minh">
+                                        <i class="fas fa-check-circle"></i>
+                                    </button>
+                                    @if ((int)a.VerificationStatus != 0)
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                onclick="resetVerification(@a.ArtistId)"
+                                                title="Đặt lại">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// Search filter
+document.getElementById('searchInput').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#artistTable tbody tr').forEach(row => {
+        const name = row.dataset.artistName || '';
+        row.style.display = name.includes(q) ? '' : 'none';
+    });
+});
+
+function showResult(msg, isSuccess) {
+    const el = document.getElementById('resultArea');
+    el.className = `alert ${isSuccess ? 'alert-success' : 'alert-warning'}`;
+    el.innerHTML = msg;
+    el.classList.remove('d-none');
+    el.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => el.classList.add('d-none'), 8000);
+}
+
+async function verifySingle(artistId, artistName) {
+    if (!confirm(`Xác minh nghệ sĩ "${artistName}" trên Deezer?`)) return;
+    
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    try {
+        const res = await fetch(`/Admin/ArtistVerification/Verify/${artistId}`, { method: 'POST' });
+        const data = await res.json();
+        showResult(data.message, data.success);
+        if (data.success) setTimeout(() => location.reload(), 2000);
+    } catch (e) {
+        showResult('Lỗi kết nối', false);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+async function verifyBatch(size) {
+    if (!confirm(`Xác minh hàng loạt ${size} nghệ sĩ chưa xác minh?`)) return;
+    
+    const btn = event.target;
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+    
+    try {
+        const res = await fetch(`/Admin/ArtistVerification/VerifyBatch?batchSize=${size}`, { method: 'POST' });
+        const data = await res.json();
+        showResult(data.message, data.success);
+        setTimeout(() => location.reload(), 3000);
+    } catch (e) {
+        showResult('Lỗi kết nối', false);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+async function resetVerification(artistId) {
+    if (!confirm('Đặt lại trạng thái xác minh về Pending?')) return;
+    
+    try {
+        const res = await fetch(`/Admin/ArtistVerification/Reset/${artistId}`, { method: 'POST' });
+        const data = await res.json();
+        showResult(data.message, data.success);
+        if (data.success) setTimeout(() => location.reload(), 1500);
+    } catch (e) {
+        showResult('Lỗi kết nối', false);
+    }
+}
+</script>

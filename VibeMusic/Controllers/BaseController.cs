@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using YoutubeMusicPlayer.Application.Common;
-using YoutubeMusicPlayer.Application.DTOs;
+using VibeMusic.Application.Common;
+using VibeMusic.Application.DTOs;
 
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 public abstract class BaseController : Controller
 {

@@ -1,6 +1,6 @@
-using Microsoft.EntityFrameworkCore;
-using YoutubeMusicPlayer.Infrastructure.Persistence;
-using YoutubeMusicPlayer.Domain.Entities;
+﻿using Microsoft.EntityFrameworkCore;
+using VibeMusic.Infrastructure.Persistence;
+using VibeMusic.Domain.Entities;
 using System;
 using System.Linq;
 using Microsoft.Extensions.Configuration;

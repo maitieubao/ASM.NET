@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace YoutubeMusicPlayer.Domain.Interfaces;
+namespace VibeMusic.Domain.Interfaces;
 
 public interface IDbTransaction : IDisposable, IAsyncDisposable
 {

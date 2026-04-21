@@ -1,6 +1,6 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace YoutubeMusicPlayer.Application.DTOs;
+namespace VibeMusic.Application.DTOs;
 
 public class SubscriptionPlanDto
 {

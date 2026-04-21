@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace YoutubeMusicPlayer.Domain.Entities;
+namespace VibeMusic.Domain.Entities;
 
 [Table("user_subscriptions")]
 public class UserSubscription

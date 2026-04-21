@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using PayOS.Models.Webhooks;
 using PayOS.Models.V2.PaymentRequests;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Application.DTOs;
 
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 public class PaymentController : BaseController
 {

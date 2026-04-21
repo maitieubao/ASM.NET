@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace YoutubeMusicPlayer.Infrastructure.Migrations
+namespace VibeMusic.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDeployment : Migration

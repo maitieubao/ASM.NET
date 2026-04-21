@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using VibeMusic.Application.Interfaces;
 using VibeMusic.Application.Services;
 using VibeMusic.Domain.Interfaces;
@@ -16,9 +17,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 static bool ShouldUseClientPooling(string connectionString)
 {
-    // Enable conservative client-side pooling with Npgsql 10.0.0
-    // Use smaller pool sizes to avoid connection conflicts with Supabase
-    return true;
+    // Disable client-side pooling when connecting through Supabase PgBouncer (pooler).
+    // PgBouncer already pools connections server-side. Npgsql client pooling on top of it
+    // creates stale connections: PgBouncer closes idle connections after ~30s, but Npgsql
+    // keeps them in its pool and hands them out — resulting in ObjectDisposedException
+    // on ManualResetEventSlim when the dead connection is used.
+    // With Pooling=false, every DbContext gets a fresh connection from PgBouncer directly.
+    return false;
 }
 
 // Fix PostgreSQL DateTime issue (Enable legacy timestamp behavior)
@@ -105,23 +110,23 @@ if (string.IsNullOrEmpty(activeConnectionString))
 if (!isTestingEnvironment)
 {
 var finalConnBuilder = new Npgsql.NpgsqlConnectionStringBuilder(activeConnectionString);
-bool useClientPoolingForActiveConnection = ShouldUseClientPooling(activeConnectionString);
+bool useClientPoolingForActiveConnection = ShouldUseClientPooling(activeConnectionString!);
 finalConnBuilder.CommandTimeout = 300; // Tăng từ 180 lên 300 seconds
 finalConnBuilder.Timeout = 60; // Connection timeout 60 seconds
 finalConnBuilder.Pooling = useClientPoolingForActiveConnection;
 
 if (useClientPoolingForActiveConnection)
 {
-    finalConnBuilder.MinPoolSize = 1;   // Conservative minimum
-    finalConnBuilder.MaxPoolSize = 20; // Conservative maximum for Supabase
-    finalConnBuilder.ConnectionIdleLifetime = 300; // 5 minutes (reduced from 10)
-    finalConnBuilder.ConnectionPruningInterval = 60; // Cleanup every 60 seconds
+    finalConnBuilder.MinPoolSize = 0;   // Don't keep idle connections — Supabase pooler closes them
+    finalConnBuilder.MaxPoolSize = 10; // Conservative maximum for Supabase
+    finalConnBuilder.ConnectionIdleLifetime = 30;  // Evict idle connections after 30s (before Supabase closes them)
+    finalConnBuilder.ConnectionPruningInterval = 10; // Cleanup every 10 seconds
     
     // Conservative settings for Supabase pooler stability
-    finalConnBuilder.KeepAlive = 60; // Send keepalive every 60 seconds
+    finalConnBuilder.KeepAlive = 30; // Send keepalive every 30 seconds
     finalConnBuilder.TcpKeepAlive = true; // Enable TCP keepalive
-    finalConnBuilder.TcpKeepAliveInterval = 30; // TCP keepalive interval
-    finalConnBuilder.TcpKeepAliveTime = 60; // TCP keepalive time
+    finalConnBuilder.TcpKeepAliveInterval = 15; // TCP keepalive interval
+    finalConnBuilder.TcpKeepAliveTime = 30; // TCP keepalive time
     
     Console.WriteLine("[DB-SMART] Client-side pooling ENABLED with conservative settings for Npgsql 10.0.0.");
 }
@@ -140,10 +145,10 @@ activeConnectionString = finalConnBuilder.ConnectionString;
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(activeConnectionString, npgsqlOptions => {
         npgsqlOptions.CommandTimeout(300);
-        npgsqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 3,
-            maxRetryDelay: TimeSpan.FromSeconds(5),
-            errorCodesToAdd: null);
+        // Disable the Npgsql execution strategy — it retries on a broken connector
+        // after cancellation, causing ObjectDisposedException on ManualResetEventSlim.
+        // Application-level resilience is handled via background queues and cache fallbacks.
+        npgsqlOptions.ExecutionStrategy(d => new NonRetryingExecutionStrategy(d));
     }));
 } // end if (!isTestingEnvironment)
 else
@@ -197,6 +202,8 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISongMetadataEnrichmentService, SongMetadataEnrichmentService>();
 builder.Services.AddScoped<IArtistVerificationService, ArtistVerificationService>();
+builder.Services.AddScoped<IViewCountService, ViewCountService>();
+builder.Services.AddScoped<IExternalViewCountSyncService, ExternalViewCountSyncService>();
 
 // Facades (Refinement)
 builder.Services.AddScoped<IHomeFacade, HomeFacade>();
@@ -315,3 +322,13 @@ app.MapControllerRoute(
     .WithStaticAssets();
 
 app.Run();
+
+// Non-retrying execution strategy — prevents Npgsql 10 from retrying on a broken connector
+// after cancellation, which causes ObjectDisposedException on ManualResetEventSlim.
+internal class NonRetryingExecutionStrategy : ExecutionStrategy
+{
+    public NonRetryingExecutionStrategy(ExecutionStrategyDependencies dependencies)
+        : base(dependencies, 1, TimeSpan.Zero) { }
+
+    protected override bool ShouldRetryOn(Exception exception) => false;
+}

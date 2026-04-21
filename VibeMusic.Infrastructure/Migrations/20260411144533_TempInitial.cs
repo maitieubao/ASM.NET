@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace YoutubeMusicPlayer.Infrastructure.Migrations
+namespace VibeMusic.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class TempInitial : Migration

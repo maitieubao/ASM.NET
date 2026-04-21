@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
@@ -6,11 +6,11 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Domain.Interfaces;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Domain.Interfaces;
 
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 [Route("Admin")]
 [Route("AdminDashboard")]
@@ -76,7 +76,7 @@ public class AdminDashboardController : Controller
         try
         {
             // Đếm lượt nghe thực từ ListeningHistory theo từng SongId
-            var realCounts = await _unitOfWork.Repository<YoutubeMusicPlayer.Domain.Entities.ListeningHistory>()
+            var realCounts = await _unitOfWork.Repository<VibeMusic.Domain.Entities.ListeningHistory>()
                 .Query()
                 .AsNoTracking()
                 .GroupBy(h => h.SongId)
@@ -86,7 +86,7 @@ public class AdminDashboardController : Controller
             var countDict = realCounts.ToDictionary(x => x.SongId, x => x.Count);
 
             // Lấy tất cả bài hát
-            var songs = await _unitOfWork.Repository<YoutubeMusicPlayer.Domain.Entities.Song>()
+            var songs = await _unitOfWork.Repository<VibeMusic.Domain.Entities.Song>()
                 .Query()
                 .Where(s => !s.IsDeleted)
                 .ToListAsync(ct);
@@ -98,7 +98,7 @@ public class AdminDashboardController : Controller
                 if (song.PlayCount != realCount)
                 {
                     song.PlayCount = realCount;
-                    _unitOfWork.Repository<YoutubeMusicPlayer.Domain.Entities.Song>().Update(song);
+                    _unitOfWork.Repository<VibeMusic.Domain.Entities.Song>().Update(song);
                     updated++;
                 }
             }

@@ -1,8 +1,8 @@
-using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Domain.Entities;
+﻿using System.Threading.Tasks;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Domain.Entities;
 
-namespace YoutubeMusicPlayer.Application.Interfaces;
+namespace VibeMusic.Application.Interfaces;
 
 public interface IAuthService
 {

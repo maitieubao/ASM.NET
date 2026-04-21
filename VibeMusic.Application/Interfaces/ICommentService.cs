@@ -1,8 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.DTOs;
+using VibeMusic.Application.DTOs;
 
-namespace YoutubeMusicPlayer.Application.Interfaces;
+namespace VibeMusic.Application.Interfaces;
 
 public interface ICommentService
 {

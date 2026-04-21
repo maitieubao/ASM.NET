@@ -1,7 +1,7 @@
-using PayOS.Models.V2.PaymentRequests;
+﻿using PayOS.Models.V2.PaymentRequests;
 using PayOS.Models.Webhooks;
 
-namespace YoutubeMusicPlayer.Application.Interfaces;
+namespace VibeMusic.Application.Interfaces;
 
 public interface IPayOSService
 {

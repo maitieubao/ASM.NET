@@ -8,14 +8,14 @@ using YoutubeExplode.Common;
 using YoutubeExplode.Videos.Streams;
 using YoutubeExplode.Search;
 using YoutubeExplode.Videos;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Application.Common;
-using YoutubeMusicPlayer.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Application.Common;
+using VibeMusic.Application.DTOs;
 using YoutubeExplode.Videos.ClosedCaptions;
 using Microsoft.Extensions.Logging;
 
 
-namespace YoutubeMusicPlayer.Infrastructure.External;
+namespace VibeMusic.Infrastructure.External;
 
 public class YoutubeService : IYoutubeService
 {
@@ -261,25 +261,48 @@ public class YoutubeService : IYoutubeService
 
         // 3. SCORING ENGINE
         var scoredList = detailsList.Select((v, index) => {
-            double currentScore = (detailsList.Count - index) * 10.0;
+            double currentScore = (detailsList.Count - index) * 5.0; // Lower weight for raw order
             
             string authorLower = v.AuthorName.ToLower();
             string titleLower = v.Title.ToLower();
+            string queryLower = query.ToLower();
 
-            // Authority Bonus
-            if (authorLower.Contains("vevo") || authorLower.Contains("- topic") || authorLower.Contains("official")) 
+            // Authority Bonus (Highest Priority)
+            if (authorLower.Contains("- topic") || authorLower.Contains("official")) 
+                currentScore += 800; // Topic channels are the Gold Standard for pure audio
+            
+            if (authorLower.Contains("vevo"))
                 currentScore += 500;
+
+            // Brand Match: If the channel name contains the artist's name (e.g. Taylor Swift)
+            if (!string.IsNullOrEmpty(query))
+            {
+                 // Try to extract artist from query or just use the whole query
+                 var possibleArtist = query.Split('-').FirstOrDefault()?.Trim().ToLower();
+                 if (!string.IsNullOrEmpty(possibleArtist) && authorLower.Contains(possibleArtist))
+                    currentScore += 600;
+            }
             
             // Type Bonus
-            if (v.TrackType == TrackTypes.OfficialMV) currentScore += 300;
-            else if (v.TrackType == TrackTypes.OfficialAudio) currentScore += 200;
-            else if (v.TrackType == TrackTypes.Official) currentScore += 100;
+            if (v.TrackType == TrackTypes.OfficialAudio) currentScore += 700; // Best for streaming
+            else if (v.TrackType == TrackTypes.OfficialMV) currentScore += 300; // Good but might have intros
+            else if (v.TrackType == TrackTypes.Official) currentScore += 200;
             
-            // Penalties
-            if (v.TrackType == TrackTypes.Lyrics) currentScore -= 50;
-            if (v.TrackType == TrackTypes.Karaoke) currentScore -= 200;
+            // Penalties for Unofficial Content (The user's specific request)
+            if (titleLower.Contains("fan") || titleLower.Contains("concept") || titleLower.Contains("mashup")) 
+                currentScore -= 1000;
+            
+            if (titleLower.Contains("ai") && (titleLower.Contains("cover") || titleLower.Contains("song")))
+                currentScore -= 1500; // High penalty for AI covers
 
-            if (titleLower.Contains(query.ToLower())) currentScore += 50;
+            if (titleLower.Contains("edit") || titleLower.Contains("promo") || titleLower.Contains("teaser"))
+                currentScore -= 500;
+
+            // Keywords match bonus
+            if (titleLower.Contains(queryLower)) currentScore += 100;
+            
+            // Lyric video bonus (good fallback for lyrics)
+            if (v.TrackType == TrackTypes.Lyrics) currentScore += 150;
 
             return new { Video = v, Score = currentScore };
         })
@@ -887,9 +910,9 @@ public class YoutubeService : IYoutubeService
         var t = title.ToLower();
         if (t.Contains("karaoke") || t.Contains("beat") || t.Contains("beat chuẩn") || t.Contains("tách lời")) return TrackTypes.Karaoke;
         if (t.Contains("tổng hợp") || t.Contains("full album") || t.Contains("nonstop") || t.Contains("collection")) return TrackTypes.Compilation;
+        if (t.Contains("official audio") || t.Contains("official music audio") || t.Contains("audio") && t.Contains("official")) return TrackTypes.OfficialAudio;
         if (t.Contains("official music video") || t.Contains("official mv") || (t.Contains("mv") && t.Contains("official"))) return TrackTypes.OfficialMV;
-        if (t.Contains("official audio") || t.Contains("official music audio")) return TrackTypes.OfficialAudio;
-        if (t.Contains("official video") || t.Contains("official lyric") || t.Contains("official visualizer")) return TrackTypes.Official;
+        if (t.Contains("official video") || t.Contains("official lyric") || t.Contains("official visualizer") || t.Contains("official")) return TrackTypes.Official;
         
         if (t.Contains("remix") || t.Contains("mix")) return TrackTypes.Remix;
         if (t.Contains("live") || t.Contains("concert")) return TrackTypes.Live;

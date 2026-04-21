@@ -1,11 +1,11 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.Common;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
+using VibeMusic.Application.Common;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 [Authorize]
 public class ArtistController : BaseController

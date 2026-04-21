@@ -5,3 +5,17 @@ appsettings*.json
 .vs/
 .idea/
 .vscode/
+
+# Package managers
+.dotnet/
+.kiro/
+.qodo/
+node_modules/
+
+# Logs and artifacts
+build_output.txt
+*.log
+scratch/
+test-results/
+.antigravity/
+.gemini/

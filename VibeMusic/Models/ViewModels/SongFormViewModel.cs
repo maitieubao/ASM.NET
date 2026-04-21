@@ -1,7 +1,7 @@
-using System.Collections.Generic;
-using YoutubeMusicPlayer.Application.DTOs;
+﻿using System.Collections.Generic;
+using VibeMusic.Application.DTOs;
 
-namespace YoutubeMusicPlayer.Models.ViewModels;
+namespace VibeMusic.Models.ViewModels;
 
 public class SongFormViewModel
 {

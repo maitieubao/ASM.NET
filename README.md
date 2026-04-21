@@ -1,66 +1,76 @@
-# 🎵 YoutubeMusicPlayer - Nền tảng Âm nhạc Đỉnh cao
+# 🎵 VibeMusic - Premium AI-Powered Music Experience
 
-Chào mừng bạn đến với **YoutubeMusicPlayer**, một ứng dụng nghe nhạc trực tuyến hiện đại, mạnh mẽ và đầy tính thẩm mỹ, được xây dựng trên nền tảng **ASP.NET Core 10** và kiến trúc **Clean Architecture**.
+VibeMusic is a high-performance music streaming application built with **.NET 10** and **ASP.NET Core MVC**. It leverages external APIs (YouTube, Deezer, ITunes) alongside an internal AI processing engine to deliver a seamless, personalized listening experience with real-time metadata bridging and automated data repair.
+
+![VibeMusic Hero](https://raw.githubusercontent.com/username/repo/main/docs/assets/hero.png) <!-- Template link -->
+
+## 🚀 Core Features
+
+- **Dynamic Metadata Bridging**: Automatically fills internal database gaps with fresh data from Deezer and YouTube.
+- **AI-Enhanced Discovery**: Personalized sections curated based on listening habits and time of day.
+- **Smart Data Healing**: Proactive background tasks that detect and repair inaccurate external metrics.
+- **Glassmorphism UI**: A premium, dark-mode focused interface with smooth animations and hidden scrollbars for an "App-like" feel.
+- **Real-time Interaction**: Full support for song comments, replies, and play history tracking.
+
+## 🛠 Technology Stack
+
+- **Framework**: ASP.NET Core 10 (Onion Architecture)
+- **Database**: PostgreSQL with EF Core 8
+- **External Integration**: YouTubeExplode, Deezer API, ITunes Search API
+- **AI/LLM**: Semantic Kernel with Google Gemini (Optional)
+- **Frontend**: Vanilla JS (ES6+), CSS Modules, Bootstrap 5 (Styling only)
+
+## 📊 System Architecture
+
+```mermaid
+graph TD
+    UI[Web / SPA Router] --> Controllers[MVC Controllers]
+    Controllers --> Facades[Application Facades]
+    Facades --> Services[Domain Services]
+    Services --> DB[(PostgreSQL DB)]
+    Services --> External[YouTube / Deezer APIs]
+    
+    subgraph "Application Core"
+        Facades
+        Services
+    end
+    
+    subgraph "Infrastructure"
+        DB
+        External
+    end
+```
+
+## 🏗 Project Structure
+
+- `VibeMusic`: Web UI and Controllers (MVC).
+- `VibeMusic.Application`: Business logic, DTOs, and Service interfaces.
+- `VibeMusic.Infrastructure`: External API clients and Database implementations.
+- `VibeMusic.Domain`: Core entities and repository abstractions.
+
+## ⚙️ Local Setup
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/maitieubao/ASM.NET.git
+   ```
+2. **Database Migration**:
+   ```bash
+   cd VibeMusic
+   dotnet ef database update
+   ```
+3. **Run the Project**:
+   ```bash
+   dotnet run
+   ```
+
+## 🐞 Debug Checklist
+
+If a song is not playing or metadata looks wrong:
+1.  **Check YouTube ID**: Ensure the `YoutubeVideoId` is valid in the `Songs` table.
+2.  **Clear Cache**: Refresh browser with `Ctrl + F5` (clears timestamped JS/JSON cache).
+3.  **Logs**: Check console for `[AUTO-HEAL]` or `[METADATA-BRIDGE]` triggers.
+4.  **Transaction Status**: Verify `uow.CompleteAsync()` was called in the relevant service.
 
 ---
-
-## 🔥 Các Tính Năng Nổi Bật
-
-Chúng tôi chia hệ thống tính năng thành các nhóm chức năng chính để bạn dễ dàng khám phá:
-
-### 🎧 1. Trải nghiệm Nghe nhạc Đắm chìm (Immersive UI)
-*   **Stream nhạc từ YouTube:** Tiếp cận kho nhạc khổng lồ toàn cầu với tốc độ nhanh chóng.
-*   **Trình phát nhạc Glassmorphism:** Giao diện điều khiển hiện đại, mờ ảo và sang trọng.
-*   **Đồng bộ Lời bài hát (Lyrics Sync):** Lời nhạc chạy theo thời gian thực với hiệu ứng làm nổi bật và cuộn tự động chuyên nghiệp.
-*   **Điều khiển thông minh:** Hỗ trợ đầy đủ các tính năng Shuffle (phát ngẫu nhiên), Repeat (phát lại), và điều chỉnh tốc độ phát từ 0.5x đến 2.0x.
-*   **Hẹn giờ tắt nhạc (Sleep Timer):** Tự động dừng nhạc sau một khoảng thời gian định trước, giúp bạn đi vào giấc ngủ dễ dàng.
-*   **Chế độ Cửa sổ nhỏ (Picture-in-Picture):** Tiếp tục nghe nhạc và xem lời ngay cả khi đang duyệt các trang khác.
-
-### 🌟 2. Khám phá & Gợi ý Thông minh
-*   **Cá nhân hóa Trang chủ:** Lời chào thay đổi theo thời gian thực (Sáng/Trưa/Chiều/Tối) và hiển thị tên người dùng.
-*   **Tìm kiếm Đa nguồn (Ultimate Search):** Tích hợp tìm kiếm từ YouTube, Database nội bộ, Deezer và iTunes để đưa ra kết quả chính xác nhất.
-*   **Gợi ý theo Tâm trạng (Moods):** Danh sách nhạc được phân loại theo cảm xúc: Chill, Tập trung, Sôi động, Tâm trạng...
-*   **Khám phá Nghệ sĩ & Thể loại:** Hệ thống phân loại nghệ sĩ xác thực (Verified) và hơn 50+ thể loại âm nhạc khác nhau.
-*   **Dữ liệu dự phòng (Fallback):** Đảm bảo trang chủ luôn có nội dung "Thịnh hành" ngay cả khi mạng gặp sự cố.
-
-### 📚 3. Quản lý Thư viện Cá nhân
-*   **Danh sách phát (Playlist):** Tạo, chỉnh sửa và quản lý các danh sách nhạc của riêng bạn một cách dễ dàng.
-*   **Yêu thích & Theo dõi:** Lưu trữ những bài hát tâm đắc và theo dõi những nghệ sĩ bạn yêu mến.
-*   **Lịch sử nghe nhạc:** Ghi lại hành trình âm nhạc của bạn để dễ dàng tìm lại những giai điệu cũ.
-*   **Đăng nhập Google:** Bảo mật và tiện lợi với hệ thống xác thực từ Google.
-
-### 💎 4. Tính năng Premium & Thanh toán
-*   **Nâng cấp Premium:** Tích hợp cổng thanh toán **PayOS** hỗ trợ VietQR, giao dịch nhanh chóng và an toàn.
-*   **Tải nhạc chất lượng cao:** Đặc quyền dành cho thành viên Premium - tải bài hát trực tiếp về máy dưới định dạng MP4 Audio chuẩn.
-*   **Trải nghiệm không giới hạn:** Loại bỏ các giới hạn tính năng dành cho người dùng thường.
-
-### 🤖 5. Trợ lý AI & Công nghệ
-*   **Trợ lý ảo AI:** Tích hợp Semantic Kernel giúp bạn tìm kiếm nhạc và quản lý playlist bằng ngôn ngữ tự nhiên.
-*   **Kiến trúc sạch (Clean Architecture):** Mã nguồn dễ bảo trì, mở rộng và có hiệu suất cao.
-*   **Xử lý nền (Background Processing):** Hệ thống hàng đợi giúp nạp dữ liệu và xử lý video mà không gây gián đoạn trải nghiệm người dùng.
-
----
-
-## 🏛️ Sơ đồ Kiến trúc (Solution Map)
-
-Dự án được phân chia nghiêm ngặt theo các lớp:
-*   **YoutubeMusicPlayer (Web):** Lớp hiển thị, giao diện người dùng và Controller.
-*   **YoutubeMusicPlayer.Application:** Chứa logic nghiệp vụ xử lý nhạc, thanh toán và AI.
-*   **YoutubeMusicPlayer.Domain:** Định nghĩa các thực thể cốt lõi (Song, Artist, User, Payment...).
-*   **YoutubeMusicPlayer.Infrastructure:** Kết nối Database PostgreSQL và các dịch vụ bên ngoài (YouTube, PayOS, Deezer).
-
----
-
-## 🚀 Hướng dẫn Cài đặt Nhanh
-
-1.  **Yêu cầu:** Cài đặt .NET 10 SDK và PostgreSQL.
-2.  **Cấu hình:** Cập nhật chuỗi kết nối Database và API Keys (PayOS, Google Auth) trong `appsettings.json`.
-3.  **Khởi tạo:**
-    ```bash
-    dotnet restore
-    dotnet build
-    dotnet run --project YoutubeMusicPlayer
-    ```
-
----
-*Phát triển bởi đội ngũ Antigravity với đam mê mang lại trải nghiệm âm nhạc tốt nhất cho người dùng Việt.*
+Developed by **maitieubao** with ❤️

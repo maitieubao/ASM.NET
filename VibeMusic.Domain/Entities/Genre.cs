@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace YoutubeMusicPlayer.Domain.Entities;
+namespace VibeMusic.Domain.Entities;
 
 [Table("genres")]
 public class Genre

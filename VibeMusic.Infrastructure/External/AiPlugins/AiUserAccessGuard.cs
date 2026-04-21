@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
-using YoutubeMusicPlayer.Application.Common;
+using VibeMusic.Application.Common;
 
-namespace YoutubeMusicPlayer.Infrastructure.External.AiPlugins;
+namespace VibeMusic.Infrastructure.External.AiPlugins;
 
 public class AiUserAccessGuard
 {

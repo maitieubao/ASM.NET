@@ -1,24 +1,25 @@
 using Microsoft.AspNetCore.Mvc;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Application.Common;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Models;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Application.Common;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Models;
 using System.Diagnostics;
 using System;
 using System.Threading.Tasks;
-
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 public class HomeController : BaseController
 {
     private readonly IHomeFacade _homeFacade;
     private readonly IPlaybackFacade _playbackFacade;
+    private readonly ILogger<HomeController> _logger;
     private readonly IBackgroundQueue _backgroundQueue;
 
-    public HomeController(IHomeFacade homeFacade, IPlaybackFacade playbackFacade, IBackgroundQueue backgroundQueue)
+    public HomeController(IHomeFacade homeFacade, IPlaybackFacade playbackFacade, ILogger<HomeController> logger, IBackgroundQueue backgroundQueue)
     {
         _homeFacade = homeFacade;
         _playbackFacade = playbackFacade;
+        _logger = logger;
         _backgroundQueue = backgroundQueue;
     }
 
@@ -57,7 +58,7 @@ public class HomeController : BaseController
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetStreamUrl(string? videoUrl, string? title = null, string? artist = null, string? query = null)
+    public async Task<IActionResult> GetStreamUrl(string? videoUrl, string? title = null, string? artist = null, string? query = null, int? durationMs = null)
     {
         if (string.IsNullOrEmpty(videoUrl) && string.IsNullOrEmpty(query)) 
             return BadRequestResponse("Video URL or Search Query must be provided.", "InvalidParams");
@@ -67,11 +68,11 @@ public class HomeController : BaseController
             PlaybackStreamDto result;
             if (!string.IsNullOrEmpty(query))
             {
-                result = await _playbackFacade.ResolveAndGetStreamAsync(query, title, artist, CurrentUserId);
+                result = await _playbackFacade.ResolveAndGetStreamAsync(query, title, artist, CurrentUserId, durationMs);
             }
             else
             {
-                result = await _playbackFacade.GetStreamAsync(videoUrl!, title, artist, CurrentUserId);
+                result = await _playbackFacade.GetStreamAsync(videoUrl!, title, artist, CurrentUserId, durationMs);
             }
             
             if (!string.IsNullOrEmpty(result.Error))
@@ -145,8 +146,13 @@ public class HomeController : BaseController
             long realPlayCount = 0;
             if (result.SongId.HasValue)
             {
-                var song = await _homeFacade.GetSongPlayCountAsync(result.SongId.Value);
-                realPlayCount = song;
+                var songCount = await _homeFacade.GetSongPlayCountAsync(result.SongId.Value);
+                realPlayCount = songCount;
+                _logger.LogInformation("[HOME-CONTROLLER] GetVideoDetails - SongId: {SongId}, RealPlayCount: {Count}", result.SongId, realPlayCount);
+            }
+            else
+            {
+                _logger.LogWarning("[HOME-CONTROLLER] GetVideoDetails - SongId not found for {VideoUrl}, defaulting views to 0", videoUrl);
             }
 
             return SuccessResponse(new {
@@ -156,13 +162,14 @@ public class HomeController : BaseController
                 authorName = result.Author,
                 thumbnailUrl = result.ThumbnailUrl,
                 viewCount = realPlayCount,
-                genre = "Music",
-                tags = new string[] { "Popular", "Music" }
+                genre = result.GenreNames.FirstOrDefault() ?? "Music",
+                tags = result.GenreNames.Any() ? result.GenreNames : new List<string> { "Music", "Popular" }
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return BadRequestResponse("Failed to retrieve song details.");
+            _logger.LogError(ex, "Error getting video details for {VideoUrl}", videoUrl);
+            return ErrorResponse("Internal Server Error");
         }
     }
     

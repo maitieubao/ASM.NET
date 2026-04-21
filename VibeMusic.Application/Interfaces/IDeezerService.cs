@@ -1,4 +1,4 @@
-namespace YoutubeMusicPlayer.Application.Interfaces;
+﻿namespace VibeMusic.Application.Interfaces;
 
 /// <summary>
 /// Music metadata service interface using Deezer public API.
@@ -18,7 +18,13 @@ public class DeezerTrackInfo
     public int Popularity { get; set; }
     public int DurationMs { get; set; }
     public int TrackNumber { get; set; }
+    public int DiskNumber { get; set; }
     public bool IsExplicit { get; set; }
+    public string? ISRC { get; set; }
+    public float? BPM { get; set; }
+    public string? PreviewUrl { get; set; }
+    public float? AudioGain { get; set; }
+    public List<string> AvailableCountries { get; set; } = new();
 }
 
 public class DeezerArtistInfo

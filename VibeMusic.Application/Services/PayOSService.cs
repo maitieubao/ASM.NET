@@ -6,95 +6,102 @@ using Microsoft.Extensions.Options;
 using PayOS;
 using PayOS.Models.V2.PaymentRequests;
 using PayOS.Models.Webhooks;
-using YoutubeMusicPlayer.Application.Common;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Domain.Entities;
-using YoutubeMusicPlayer.Domain.Interfaces;
+using VibeMusic.Application.Common;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Domain.Entities;
+using VibeMusic.Domain.Interfaces;
 
-namespace YoutubeMusicPlayer.Application.Services;
-
-public class PayOSService : IPayOSService
-{
-    private readonly PayOSClient _payOS;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<PayOSService> _logger;
-
-    public PayOSService(IOptions<PayOSSettings> options, IUnitOfWork unitOfWork, ILogger<PayOSService> logger)
+    /// <summary>
+    /// Handles integration with the PayOS payment gateway (Vietnam).
+    /// Manages secure payment link generation and webhook signature verification.
+    /// </summary>
+    public class PayOSService : IPayOSService
     {
-        var settings = options.Value;
-        
-        // Debugging configuration load
-        logger.LogInformation("[PayOS-DEBUG] ClientId Length: {CLen}, ApiKey Length: {ALen}, ChecksumKey Length: {SLen}", 
-            settings.ClientId?.Length ?? 0, 
-            settings.ApiKey?.Length ?? 0, 
-            settings.ChecksumKey?.Length ?? 0);
+        private readonly PayOSClient _payOS;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<PayOSService> _logger;
 
-        _payOS = new PayOSClient(settings.ClientId, settings.ApiKey, settings.ChecksumKey);
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-    }
-
-    public async Task<CreatePaymentLinkResponse> CreatePaymentLinkAsync(int userId, int planId, long orderCode, int amount, string description, string returnUrl, string cancelUrl)
-    {
-        try
+        public PayOSService(IOptions<PayOSSettings> options, IUnitOfWork unitOfWork, ILogger<PayOSService> logger)
         {
-            // 1. Logic for Database tracking is moved entirely to SubscriptionService 
-            // to avoid duplication errors (Unique Constraint on OrderCode).
+            var settings = options.Value;
             
-            // 2. Optimized: Create request with correct expiration time (30 mins)
-            var expiredAt = (int)DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds();
-            var item = new PaymentLinkItem 
-            { 
-                Name = description, 
-                Quantity = 1, 
-                Price = amount 
-            };
-            
-            var request = new CreatePaymentLinkRequest
+            // SECURITY: Ensure all credentials are loaded from secure appsettings/secrets.
+            _payOS = new PayOSClient(
+                settings.ClientId ?? string.Empty, 
+                settings.ApiKey ?? string.Empty, 
+                settings.ChecksumKey ?? string.Empty);
+            _unitOfWork = unitOfWork;
+            _logger = logger;
+        }
+
+        public async Task<CreatePaymentLinkResponse> CreatePaymentLinkAsync(int userId, int planId, long orderCode, int amount, string description, string returnUrl, string cancelUrl)
+        {
+            try
             {
-                OrderCode = orderCode,
-                Amount = amount,
-                Description = description,
-                Items = new List<PaymentLinkItem> { item },
-                CancelUrl = cancelUrl,
-                ReturnUrl = returnUrl,
-                ExpiredAt = expiredAt
-            };
+                // BUSINESS RULE: Payment links expire in 30 minutes to prevent stale order codes.
+                var expiredAt = (int)DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds();
+                var item = new PaymentLinkItem 
+                { 
+                    Name = description, 
+                    Quantity = 1, 
+                    Price = amount 
+                };
+                
+                var request = new CreatePaymentLinkRequest
+                {
+                    OrderCode = orderCode,
+                    Amount = amount,
+                    Description = description,
+                    Items = new List<PaymentLinkItem> { item },
+                    CancelUrl = cancelUrl,
+                    ReturnUrl = returnUrl,
+                    ExpiredAt = expiredAt
+                };
 
-            return await _payOS.PaymentRequests.CreateAsync(request);
+                return await _payOS.PaymentRequests.CreateAsync(request);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[PayOS] Failed to create payment link for UserID: {UserId}, OrderCode: {OrderCode}", userId, orderCode);
+                throw;
+            }
         }
-        catch (Exception ex)
+
+        public async Task<PaymentLink> GetPaymentLinkInformationAsync(long orderCode)
         {
-            _logger.LogError(ex, "[PayOS] Failed to create payment link for UserID: {UserId}, OrderCode: {OrderCode}", userId, orderCode);
-            throw;
+            try
+            {
+                return await _payOS.PaymentRequests.GetAsync(orderCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[PayOS] Failed to retrieve payment info for OrderCode: {OrderCode}", orderCode);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Verifies the authenticity of the webhook data received from PayOS.
+        /// </summary>
+        /// <param name="webhookData">The payload received from PayOS.</param>
+        /// <returns>True if the signature is valid.</returns>
+        public bool VerifyWebhookData(Webhook webhookData)
+        {
+            try
+            {
+                /* 
+                 * WORKAROUND/HACK: 
+                 * The PayOS SDK 1.0.x has strict model validation that sometimes fails 
+                 * during signature verification if the input model isn't exactly the SDK's internal version.
+                 * We use 'dynamic' to bypass compile-time checks and call the raw verification method.
+                 */
+                dynamic p = _payOS;
+                return p.verifyPaymentData(webhookData) != null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[PayOS] Webhook Signature Verification Failed.");
+                return false;
+            }
         }
     }
-
-    public async Task<PaymentLink> GetPaymentLinkInformationAsync(long orderCode)
-    {
-        try
-        {
-            return await _payOS.PaymentRequests.GetAsync(orderCode);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[PayOS] Failed to retrieve payment info for OrderCode: {OrderCode}", orderCode);
-            throw;
-        }
-    }
-
-    public bool VerifyWebhookData(Webhook webhookData)
-    {
-        try
-        {
-            // Fallback to dynamic to bypass SDK model mismatch issues
-            dynamic p = _payOS;
-            return p.verifyPaymentData(webhookData) != null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[PayOS] Webhook Signature Verification Failed.");
-            return false;
-        }
-    }
-}

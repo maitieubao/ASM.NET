@@ -1,6 +1,6 @@
-using YoutubeMusicPlayer.Application.Interfaces;
+using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Application.DTOs;
+namespace VibeMusic.Application.DTOs;
 
 public class SearchResultDto
 {
@@ -14,6 +14,7 @@ public class SearchResultDto
     public string? ExternalId { get; set; }
     public string? Source { get; set; } // Deezer, iTunes, Internal
     public bool IsVerified { get; set; }
+    public int? DurationMs { get; set; }
 }
 
 public class PlaybackStreamDto
@@ -28,6 +29,7 @@ public class PlaybackStreamDto
     public string? Title { get; set; }
     public string? Author { get; set; }
     public string? ThumbnailUrl { get; set; }
+    public List<string> GenreNames { get; set; } = new();
 }
 
 public class CaptionTrackDto

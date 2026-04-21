@@ -1,13 +1,13 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using YoutubeMusicPlayer.Models.Admin;
-using YoutubeMusicPlayer.Application.Interfaces;
+using VibeMusic.Models.Admin;
+using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Controllers;
+namespace VibeMusic.Controllers;
 
 [Authorize(Roles = "Admin")]
 public class AdminReportController : Controller

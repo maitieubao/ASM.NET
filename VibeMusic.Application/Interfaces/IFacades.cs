@@ -1,7 +1,7 @@
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Domain.Entities;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Domain.Entities;
 
-namespace YoutubeMusicPlayer.Application.Interfaces;
+namespace VibeMusic.Application.Interfaces;
 
 public interface IHomeFacade
 {
@@ -16,8 +16,8 @@ public interface IHomeFacade
 
 public interface IPlaybackFacade
 {
-    Task<PlaybackStreamDto> GetStreamAsync(string videoUrl, string? title, string? artist, int? userId);
-    Task<PlaybackStreamDto> ResolveAndGetStreamAsync(string query, string? title, string? artist, int? userId);
+    Task<PlaybackStreamDto> GetStreamAsync(string videoUrl, string? title, string? artist, int? userId, int? durationMs = null);
+    Task<PlaybackStreamDto> ResolveAndGetStreamAsync(string query, string? title, string? artist, int? userId, int? durationMs = null);
     Task<RichMetadataDto> GetRichMetadataAsync(string videoId, string? lang = null);
 }
 

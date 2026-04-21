@@ -3,26 +3,31 @@ let replyToId = null;
 
 window.showSongDetails = async function(id) {
     if(!id) return;
+    const modalEl = document.getElementById('songDetailsModal');
+    const thumb = document.getElementById('detailsThumb');
+    const titleEl = document.getElementById('detailsTitle');
+    const artistEl = document.getElementById('detailsArtist');
+    const viewsEl = document.getElementById('detailsViews');
+    const genreEl = document.getElementById('detailsGenre');
+    const blur = document.getElementById('detailsBlur');
+    const tags = document.getElementById('detailsTags');
+
+    console.log(`[MODAL-JS] Opening details for ${id} at ${new Date().toLocaleTimeString()}`);
+
     try {
-        const res = await fetch(`/Home/GetVideoDetails?videoUrl=https://www.youtube.com/watch?v=${id}`);
-        const data = res.data || (await res.json()).data;
+        const timestamp = new Date().getTime();
+        const res = await fetch(`/Home/GetVideoDetails?videoUrl=https://www.youtube.com/watch?v=${id}&t=${timestamp}`);
+        const result = await res.json();
+        const data = result.data || result; // Handle both direct and SuccessResponse wrap
         
         currentSongId = data.songId;
         cancelReply(); // Reset reply state
 
-        const thumb = document.getElementById('detailsThumb');
-        const title = document.getElementById('detailsTitle');
-        const artist = document.getElementById('detailsArtist');
-        const views = document.getElementById('detailsViews');
-        const genre = document.getElementById('detailsGenre');
-        const blur = document.getElementById('detailsBlur');
-        const tags = document.getElementById('detailsTags');
-
         if (thumb) thumb.src = data.thumbnailUrl;
-        if (title) title.textContent = data.title;
-        if (artist) artist.textContent = data.authorName;
-        if (views) views.textContent = (data.viewCount || 0).toLocaleString();
-        if (genre) genre.textContent = data.genre || "Music";
+        if (titleEl) titleEl.textContent = data.title;
+        if (artistEl) artistEl.textContent = data.authorName;
+        if (viewsEl) viewsEl.textContent = (data.viewCount || 0).toLocaleString();
+        if (genreEl) genreEl.textContent = data.genre || "Music";
         if (blur) {
             blur.style.background = `url(${data.thumbnailUrl}) center/cover`;
             blur.style.filter = 'blur(60px) brightness(0.3)';
@@ -37,7 +42,6 @@ window.showSongDetails = async function(id) {
         // Load Comments
         if (currentSongId) loadComments(currentSongId);
 
-        const modalEl = document.getElementById('songDetailsModal');
         if (modalEl) {
             const modal = new bootstrap.Modal(modalEl);
             modal.show();
@@ -85,13 +89,30 @@ function renderCommentItem(c) {
                         <span class="fw-bold text-white small">${c.userName}</span>
                         <span class="text-dim extra-small">${new Date(c.createdAt).toLocaleDateString()}</span>
                     </div>
-                    <p class="text-main small mb-2 m-0">${c.content}</p>
+                    <p class="text-main small mb-2 m-0 comment-content-${c.commentId}">${c.content}</p>
+                    
+                    <!-- Inline edit form (ẩn mặc định) -->
+                    <div class="comment-edit-form-${c.commentId} d-none mt-2">
+                        <textarea class="form-control bg-dark text-white border-white border-opacity-10 rounded-3 small mb-2"
+                                  id="edit-input-${c.commentId}"
+                                  rows="2"
+                                  maxlength="1000"
+                                  style="resize: none; font-size: 0.85rem;">${c.content}</textarea>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-accent btn-sm rounded-pill px-3 fw-bold" style="font-size: 0.75rem;"
+                                    onclick="submitEditComment(${c.commentId})">Lưu</button>
+                            <button class="btn btn-dark btn-sm rounded-pill px-3" style="font-size: 0.75rem;"
+                                    onclick="cancelEdit(${c.commentId})">Hủy</button>
+                        </div>
+                    </div>
+
                     <div class="d-flex align-items-center gap-3">
                         <button class="btn btn-link text-dim p-0 extra-small hover-text-accent text-decoration-none" onclick="replyTo('${c.userName}', ${c.commentId})">Trả lời</button>
                         <button class="btn btn-link ${c.isLiked ? 'text-accent' : 'text-dim'} p-0 extra-small hover-text-accent text-decoration-none" onclick="toggleCommentLike(${c.commentId}, this)">
                             <i class="fa-solid fa-heart me-1"></i> ${c.likeCount || 0}
                         </button>
                         ${isOwner ? `
+                        <button class="btn btn-link text-dim p-0 extra-small hover-text-accent text-decoration-none" onclick="editComment(${c.commentId})">Sửa</button>
                         <button class="btn btn-link text-dim p-0 extra-small hover-text-danger text-decoration-none" onclick="deleteComment(${c.commentId})">Xóa</button>
                         ` : ''}
                     </div>
@@ -175,6 +196,77 @@ window.deleteComment = async function(commentId) {
             toastr.success("Đã xóa bình luận.");
         }
     } catch (e) {}
+};
+
+// Hiển thị inline editor cho bình luận
+window.editComment = function(commentId) {
+    // Ẩn nội dung hiện tại, hiện form sửa
+    const contentEl = document.querySelector(`.comment-content-${commentId}`);
+    const editForm  = document.querySelector(`.comment-edit-form-${commentId}`);
+    if (!contentEl || !editForm) return;
+
+    contentEl.classList.add('d-none');
+    editForm.classList.remove('d-none');
+
+    // Focus vào cuối textarea
+    const textarea = document.getElementById(`edit-input-${commentId}`);
+    if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+};
+
+// Hủy chỉnh sửa, khôi phục nội dung cũ
+window.cancelEdit = function(commentId) {
+    const contentEl = document.querySelector(`.comment-content-${commentId}`);
+    const editForm  = document.querySelector(`.comment-edit-form-${commentId}`);
+    if (!contentEl || !editForm) return;
+
+    editForm.classList.add('d-none');
+    contentEl.classList.remove('d-none');
+};
+
+// Gửi nội dung đã sửa lên server
+window.submitEditComment = async function(commentId) {
+    const textarea = document.getElementById(`edit-input-${commentId}`);
+    if (!textarea) return;
+
+    const content = textarea.value.trim();
+    if (!content) {
+        toastr.warning("Nội dung không được để trống.");
+        return;
+    }
+    if (content.length > 1000) {
+        toastr.warning("Bình luận tối đa 1000 ký tự.");
+        return;
+    }
+
+    try {
+        const params = new URLSearchParams();
+        params.append('commentId', commentId);
+        params.append('content', content);
+
+        const res = await fetch('/Comment/EditComment', {
+            method: 'PUT',
+            body: params
+        });
+
+        const json = await res.json();
+
+        if (res.ok && json.success) {
+            // Cập nhật nội dung hiển thị ngay lập tức (không cần reload toàn bộ)
+            const contentEl = document.querySelector(`.comment-content-${commentId}`);
+            const editForm  = document.querySelector(`.comment-edit-form-${commentId}`);
+            if (contentEl) contentEl.textContent = content;
+            if (editForm)  editForm.classList.add('d-none');
+            if (contentEl) contentEl.classList.remove('d-none');
+            toastr.success("Đã cập nhật bình luận.");
+        } else {
+            toastr.error(json.message || "Không thể cập nhật bình luận.");
+        }
+    } catch (e) {
+        toastr.error("Lỗi kết nối máy chủ.");
+    }
 };
 
 window.showAddToPlaylistModal = async function(youtubeId, songId = null) {

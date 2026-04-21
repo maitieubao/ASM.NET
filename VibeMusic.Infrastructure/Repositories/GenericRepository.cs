@@ -1,14 +1,14 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using YoutubeMusicPlayer.Domain.Interfaces;
-using YoutubeMusicPlayer.Infrastructure.Persistence;
+using VibeMusic.Domain.Interfaces;
+using VibeMusic.Infrastructure.Persistence;
 
-namespace YoutubeMusicPlayer.Infrastructure.Repositories;
+namespace VibeMusic.Infrastructure.Repositories;
 
 public class GenericRepository<T> : IGenericRepository<T> where T : class
 {

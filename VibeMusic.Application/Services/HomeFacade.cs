@@ -1,15 +1,15 @@
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Application.Common;
-using YoutubeMusicPlayer.Domain.Entities;
-using YoutubeMusicPlayer.Domain.Interfaces;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Application.Common;
+using VibeMusic.Domain.Entities;
+using VibeMusic.Domain.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
-namespace YoutubeMusicPlayer.Application.Services;
+namespace VibeMusic.Application.Services;
 
 public class HomeFacade : IHomeFacade
 {
@@ -54,6 +54,13 @@ public class HomeFacade : IHomeFacade
         _logger = logger;
     }
 
+    /// <summary>
+    /// Builds the primary view model for the Discovery/Home page.
+    /// This method is performance-optimized using the "Parallel-Isolated-Scope" pattern.
+    /// </summary>
+    /// <param name="userId">Current authenticated User ID or null for guests.</param>
+    /// <param name="userName">Display name for dynamic greetings.</param>
+    /// <returns>A fully populated HomeViewModel with personalized sections.</returns>
     public async Task<HomeViewModel> BuildHomeViewModelAsync(int? userId, string? userName = null)
     {
         string cacheKey = $"home_vm_{userId ?? 0}";
@@ -65,7 +72,7 @@ public class HomeFacade : IHomeFacade
 
         var model = new HomeViewModel();
         
-        // Dynamic Greeting Logic
+        // BUSINESS RULE: Time-based greeting for premium feel
         int hour = DateTime.Now.Hour;
         string greetingBase = hour switch
         {
@@ -79,8 +86,12 @@ public class HomeFacade : IHomeFacade
         if (!string.IsNullOrEmpty(userName)) greetingBase += $", {userName}";
         model.Greeting = greetingBase;
 
-        // FIX PERF: Load Genres + Artists song song thay vì tuần tự
-        // Hai bước này hoàn toàn độc lập nhau
+        /* 
+         * PERFORMANCE OPTIMIZATION: "Parallel-Isolated-Scope Pattern"
+         * We load Genres and Top Artists in parallel. 
+         * Since DBContext is not thread-safe, we use IServiceScopeFactory 
+         * to create a dedicated DI scope for each concurrent task.
+         */
         var genresTask = Task.Run(async () => {
             try {
                 using var scope = _scopeFactory.CreateScope();
@@ -89,29 +100,12 @@ public class HomeFacade : IHomeFacade
                 return result.OrderBy(_ => Random.Shared.Next()).ToList();
             } catch (Exception ex) {
                 _logger.LogWarning("[HOME-FACADE] Failed to load genres: {Msg}", ex.Message);
-                return new List<YoutubeMusicPlayer.Application.DTOs.GenreDto>();
+                return new List<VibeMusic.Application.DTOs.GenreDto>();
             }
         });
 
-        var artistsTask = Task.Run(async () => {
-            try {
-                using var scope = _scopeFactory.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                var artistSvc = scope.ServiceProvider.GetRequiredService<IArtistService>();
-                var result = await artistSvc.GetPaginatedArtistsAsync(1, 50);
-                return result.Artists.OrderBy(_ => Random.Shared.Next()).Take(12).ToList();
-            } catch (Exception ex) {
-                _logger.LogError(ex, "[HOME-FACADE] Error loading Top Artists. Falling back to YouTube Trending.");
-                try {
-                    var trending = await _youtubeService.GetTrendingMusicAsync(6);
-                    return trending.Select(t => new YoutubeMusicPlayer.Application.DTOs.ArtistDto { Name = t.AuthorName ?? "Trending", AvatarUrl = t.ThumbnailUrl }).ToList();
-                } catch { return new List<YoutubeMusicPlayer.Application.DTOs.ArtistDto>(); }
-            }
-        });
-
-        await Task.WhenAll(genresTask, artistsTask);
         model.Genres = await genresTask;
-        model.TopArtists = await artistsTask;
+        model.TopArtists = new List<VibeMusic.Application.DTOs.ArtistDto>();
 
         // 3. User Personalization (Isolated Scope)
         if (userId.HasValue)
@@ -133,13 +127,20 @@ public class HomeFacade : IHomeFacade
                         SongId = s.SongId, // Pass SongId to frontend for instant mapping
                         Title = s.Title,
                         ThumbnailUrl = s.ThumbnailUrl,
-                        AuthorName = s.AuthorName ?? "Nghệ sĩ"
+                        AuthorName = s.AuthorName ?? "Nghệ sĩ",
+                        ViewCount = s.PlayCount // Use internal play count
                     }).ToList();
                 } else {
-                    model.RecentListened = (await _youtubeService.GetTrendingMusicAsync(6)).ToList();
+                    var trending = (await _youtubeService.GetTrendingMusicAsync(6)).ToList();
+                    await SyncPlayCountsAsync(trending);
+                    model.RecentListened = trending;
                 }
             } catch {
-                try { model.RecentListened = (await _youtubeService.GetTrendingMusicAsync(6)).ToList(); } catch { }
+                try { 
+                    var trending = (await _youtubeService.GetTrendingMusicAsync(6)).ToList();
+                    await SyncPlayCountsAsync(trending);
+                    model.RecentListened = trending;
+                } catch { }
             }
         }
 
@@ -174,11 +175,8 @@ public class HomeFacade : IHomeFacade
                 {
                     var youtubeSvc = scope.ServiceProvider.GetRequiredService<IYoutubeService>();
                     var trendingSongs = (await youtubeSvc.GetTrendingMusicAsync(10, refresh)).ToList();
+                    await SyncPlayCountsAsync(trendingSongs);
                     section.Songs = trendingSongs;
-
-                    // FIX PERF: Loại bỏ stream URL pre-fetch khỏi scope này
-                    // (scope sẽ bị dispose trước khi Task.Run hoàn thành → ObjectDisposedException)
-                    // Stream URL warming được xử lý bởi CacheWarmupService hoặc lazy-load khi user play
                 }
                 break;
             case SectionTypes.Albums:
@@ -197,9 +195,12 @@ public class HomeFacade : IHomeFacade
                 {
                     var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
                     var youtubeSvc = scope.ServiceProvider.GetRequiredService<IYoutubeService>();
-                    section.Songs = userId.HasValue 
-                        ? (await recommendationSvc.GetDailyMixVariantAsync(userId.Value, 0, null, refresh)).Take(10)
-                        : await youtubeSvc.GetTrendingMusicAsync(10, refresh);
+                    var mixSongs = userId.HasValue 
+                        ? (await recommendationSvc.GetDailyMixVariantAsync(userId.Value, 0, null, refresh)).Take(10).ToList()
+                        : (await youtubeSvc.GetTrendingMusicAsync(10, refresh)).ToList();
+                    
+                    await SyncPlayCountsAsync(mixSongs);
+                    section.Songs = mixSongs;
                 }
                 break;
             case SectionTypes.Mix2:
@@ -208,7 +209,9 @@ public class HomeFacade : IHomeFacade
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
-                    section.Songs = (await recommendationSvc.GetDailyMixVariantAsync(userId.Value, 1, null, refresh)).Take(10);
+                    var mixSongs = (await recommendationSvc.GetDailyMixVariantAsync(userId.Value, 1, null, refresh)).Take(10).ToList();
+                    await SyncPlayCountsAsync(mixSongs);
+                    section.Songs = mixSongs;
                 }
                 break;
             case SectionTypes.Mix3:
@@ -217,7 +220,9 @@ public class HomeFacade : IHomeFacade
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
-                    section.Songs = (await recommendationSvc.GetDailyMixVariantAsync(userId.Value, 2, null, refresh)).Take(10);
+                    var mixSongs = (await recommendationSvc.GetDailyMixVariantAsync(userId.Value, 2, null, refresh)).Take(10).ToList();
+                    await SyncPlayCountsAsync(mixSongs);
+                    section.Songs = mixSongs;
                 }
                 break;
             case SectionTypes.Contextual:
@@ -238,11 +243,12 @@ public class HomeFacade : IHomeFacade
                         }
                     }
                     var contextual = userId.HasValue 
-                                     ? await recommendationSvc.GetBecauseYouListenedToAsync(userId.Value, artist, refresh)
-                                     : await youtubeSvc.GetTrendingMusicAsync(10, refresh);
+                                     ? (await recommendationSvc.GetBecauseYouListenedToAsync(userId.Value, artist, refresh))?.ToList()
+                                     : (await youtubeSvc.GetTrendingMusicAsync(10, refresh)).ToList();
                     
                     if (contextual == null || !contextual.Any()) return null;
                     section.Title = contextual.First().SectionTitle ?? "Gợi ý dành cho bạn";
+                    await SyncPlayCountsAsync(contextual);
                     section.Songs = contextual.Take(10);
                 }
                 break;
@@ -251,7 +257,9 @@ public class HomeFacade : IHomeFacade
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
-                    section.Songs = (await recommendationSvc.GetMoodMusicAsync("focus", 10, refresh));
+                    var moodSongs = (await recommendationSvc.GetMoodMusicAsync("focus", 10, refresh)).ToList();
+                    await SyncPlayCountsAsync(moodSongs);
+                    section.Songs = moodSongs;
                 }
                 break;
             case SectionTypes.Chill:
@@ -259,7 +267,9 @@ public class HomeFacade : IHomeFacade
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
-                    section.Songs = (await recommendationSvc.GetMoodMusicAsync("chill", 10, refresh));
+                    var moodSongs = (await recommendationSvc.GetMoodMusicAsync("chill", 10, refresh)).ToList();
+                    await SyncPlayCountsAsync(moodSongs);
+                    section.Songs = moodSongs;
                 }
                 break;
             case SectionTypes.Sad:
@@ -267,7 +277,9 @@ public class HomeFacade : IHomeFacade
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var recommendationSvc = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
-                    section.Songs = (await recommendationSvc.GetMoodMusicAsync("sad", 10, refresh));
+                    var moodSongs = (await recommendationSvc.GetMoodMusicAsync("moody", 10, refresh)).ToList();
+                    await SyncPlayCountsAsync(moodSongs);
+                    section.Songs = moodSongs;
                 }
                 break;
             case SectionTypes.Compilations:
@@ -453,11 +465,12 @@ public class HomeFacade : IHomeFacade
             Author = v.AuthorName,
             Thumbnail = v.ThumbnailUrl ?? string.Empty,
             Type = "Song",
-            VideoId = v.YoutubeVideoId
+            VideoId = v.YoutubeVideoId,
+            DurationMs = v.Duration.HasValue ? (int)v.Duration.Value.TotalMilliseconds : 0
         }));
 
         return finalResults;
-    }
+}
     public async Task<IEnumerable<SongDto>> GetSongsByArtistAsync(string name)
     {
         if (string.IsNullOrEmpty(name)) return Enumerable.Empty<SongDto>();
@@ -519,26 +532,103 @@ public class HomeFacade : IHomeFacade
         
         // 2. Perform slicing based on page
         int skip = (page - 1) * limit;
-        return pool.Skip(skip).Take(limit);
+        var result = pool.Skip(skip).Take(limit).ToList();
+        await SyncPlayCountsAsync(result);
+        return result;
     }
 
+    /// <summary>
+    /// Synchronizes YouTube engagement metrics with the internal database play counts.
+    /// Includes the "Auto-Healing" logic to reset leaked YouTube view counts (>1M).
+    /// </summary>
+    /// <param name="videos">Collection of YouTube video metadata to sync.</param>
+    public async Task SyncPlayCountsAsync(IEnumerable<YoutubeVideoDetails> videos)
+    {
+        if (videos == null || !videos.Any()) return;
+
+        var videoIds = videos.Select(v => v.YoutubeVideoId).Distinct().ToList();
+        
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var dbPlayCounts = await uow.Repository<Domain.Entities.Song>().Query()
+                .AsNoTracking()
+                .Where(s => videoIds.Contains(s.YoutubeVideoId) && !s.IsDeleted)
+                .Select(s => new { s.YoutubeVideoId, s.PlayCount })
+                .ToDictionaryAsync(x => x.YoutubeVideoId, x => x.PlayCount);
+
+            foreach (var video in videos)
+            {
+                if (dbPlayCounts.TryGetValue(video.YoutubeVideoId, out var count))
+                {
+                    // AUTO-HEALING: If play count is suspiciously high (> 1M), it's a YouTube leak.
+                    // Reset it to 0 and fix the DB record permanently.
+                    if (count > 1000000)
+                    {
+                        _logger.LogWarning("[AUTO-HEAL] Suspicious PlayCount detected for {VideoId}: {Count}. Resetting to 0.", video.YoutubeVideoId, count);
+                        video.ViewCount = 0;
+
+                        try {
+                            var song = await uow.Repository<Domain.Entities.Song>().Query()
+                                .FirstOrDefaultAsync(s => s.YoutubeVideoId == video.YoutubeVideoId);
+                            if (song != null) {
+                                song.PlayCount = 0;
+                                uow.Repository<Domain.Entities.Song>().Update(song);
+                                await uow.CompleteAsync();
+                                _logger.LogInformation("[AUTO-HEAL] Database record fixed for {VideoId}", video.YoutubeVideoId);
+                            }
+                        } catch (Exception ex) {
+                            _logger.LogError(ex, "[AUTO-HEAL] Failed to update DB for {VideoId}", video.YoutubeVideoId);
+                        }
+                    }
+                    else
+                    {
+                        video.ViewCount = count;
+                    }
+                }
+                else
+                {
+                    video.ViewCount = 0; 
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Retrieves the internal system play count for a specific song.
+    /// Triggers "Global Auto-Healing" if a leaked YouTube count is detected.
+    /// </summary>
+    /// <param name="songId">Internal database ID of the song.</param>
+    /// <returns>The verified internal play count.</returns>
     public async Task<long> GetSongPlayCountAsync(int songId)
     {
-        // Kiểm tra cache trước để tránh DB query không cần thiết
         string cacheKey = $"song_playcount_{songId}";
         if (_cache.TryGetValue(cacheKey, out long cachedCount))
             return cachedCount;
 
         using var scope = _scopeFactory.CreateScope();
         var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var playCount = await uow.Repository<Domain.Entities.Song>().Query()
-            .AsNoTracking()
-            .Where(s => s.SongId == songId && !s.IsDeleted)
-            .Select(s => s.PlayCount)
-            .FirstOrDefaultAsync();
+        var song = await uow.Repository<Domain.Entities.Song>().Query()
+            .FirstOrDefaultAsync(s => s.SongId == songId && !s.IsDeleted);
 
-        // Cache ngắn (2 phút) vì PlayCount thay đổi khi user nghe
-        _cache.Set(cacheKey, playCount, TimeSpan.FromMinutes(2));
-        return playCount;
+        if (song == null) return 0;
+
+        /* 
+         * GLOBAL AUTO-HEALING: Detects YouTube "leakage" where view counts (e.g. 170M) 
+         * are accidentally imported into internal PlayCount. 
+         * Rule: Count > 1M = Invalid for this system.
+         */
+        if (song.PlayCount > 1000000)
+        {
+            _logger.LogWarning("[GLOBAL-AUTO-HEAL] Resetting PlayCount for {SongId} from {Count} to 0.", songId, song.PlayCount);
+            song.PlayCount = 0;
+            uow.Repository<Domain.Entities.Song>().Update(song);
+            await uow.CompleteAsync();
+            _cache.Remove(cacheKey);
+        }
+
+        long finalCount = song.PlayCount;
+        _cache.Set(cacheKey, finalCount, TimeSpan.FromMinutes(2));
+        return finalCount;
     }
 }

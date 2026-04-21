@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using YoutubeMusicPlayer.Application.Interfaces;
+using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Infrastructure.External;
+namespace VibeMusic.Infrastructure.External;
 
 public class WikipediaService : IWikipediaService
 {
@@ -17,7 +17,7 @@ public class WikipediaService : IWikipediaService
         // User-Agent is required by Wikipedia API
         if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
         {
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "YoutubeMusicPlayer/1.0 (maitieubao@example.com)");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "VibeMusic/1.0 (maitieubao@example.com)");
         }
     }
 

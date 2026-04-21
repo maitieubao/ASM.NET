@@ -1,4 +1,4 @@
-@model IEnumerable<YoutubeMusicPlayer.Application.DTOs.PlaylistDto>
+@model IEnumerable<VibeMusic.Application.DTOs.PlaylistDto>
 @{
     ViewData["Title"] = "Thư viện của tôi";
 }
@@ -16,7 +16,7 @@
 
     <!-- DISCOVERY HUB -->
     @{
-        var featured = ViewBag.FeaturedPlaylists as IEnumerable<YoutubeMusicPlayer.Application.DTOs.PlaylistDto>;
+        var featured = ViewBag.FeaturedPlaylists as IEnumerable<VibeMusic.Application.DTOs.PlaylistDto>;
     }
     @if (featured != null && featured.Any())
     {

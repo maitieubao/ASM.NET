@@ -1,8 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace YoutubeMusicPlayer.Domain.Entities;
+namespace VibeMusic.Domain.Entities;
 
 [Table("artists")]
 public class Artist
@@ -34,6 +35,15 @@ public class Artist
 
     [Column("subscribercount")]
     public int SubscriberCount { get; set; }
+
+    [Column("verification_status")]
+    public ArtistVerificationStatus VerificationStatus { get; set; } = ArtistVerificationStatus.Pending;
+
+    [Column("deezer_artist_id")]
+    public string? DeezerArtistId { get; set; }
+
+    [Column("verified_at")]
+    public DateTime? VerifiedAt { get; set; }
 
     public ICollection<SongArtist> SongArtists { get; set; } = new List<SongArtist>();
     public ICollection<AlbumArtist> AlbumArtists { get; set; } = new List<AlbumArtist>();

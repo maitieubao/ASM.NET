@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace YoutubeMusicPlayer.Domain.Entities;
+namespace VibeMusic.Domain.Entities;
 
 [Table("albumartists")]
 public class AlbumArtist

@@ -1,13 +1,13 @@
-using Microsoft.SemanticKernel;
+﻿using Microsoft.SemanticKernel;
 using System.ComponentModel;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Application.DTOs;
 using System.Text;
 using System;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace YoutubeMusicPlayer.Infrastructure.External.AiPlugins;
+namespace VibeMusic.Infrastructure.External.AiPlugins;
 
 public class PlaylistPlugin
 {

@@ -40,9 +40,9 @@ window.loadAndPlay = async function(track) {
         } else {
             let url;
             if (track.videoId && track.videoId !== "undefined") {
-                url = `/Home/GetStreamUrl?videoUrl=${encodeURIComponent('https://youtube.com/watch?v=' + track.videoId)}&title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.author)}`;
+                url = `/Home/GetStreamUrl?videoUrl=${encodeURIComponent('https://youtube.com/watch?v=' + track.videoId)}&title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.author)}&durationMs=${track.durationMs || 0}`;
             } else {
-                url = `/Home/GetStreamUrl?query=${encodeURIComponent(track.author + ' - ' + track.title)}&title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.author)}`;
+                url = `/Home/GetStreamUrl?query=${encodeURIComponent(track.author + ' - ' + track.title)}&title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.author)}&durationMs=${track.durationMs || 0}`;
             }
             
             const data = await $.getJSON(url);

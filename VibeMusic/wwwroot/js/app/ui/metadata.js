@@ -2,12 +2,12 @@
  * metadata.js - External data resolution and lyrics fetching (jQuery Refactored)
  */
 
-window.playAnyTrack = async function(title, artist, thumb) {
+window.playAnyTrack = async function(title, artist, thumb, durationMs = 0) {
     console.log(`[Metadata] Resolving external track: ${title} - ${artist}`);
     if (typeof toastr !== 'undefined') toastr.info(`Đang tìm nguồn cho: ${title}...`);
     
     const query = encodeURIComponent(`${title} ${artist}`);
-    $.getJSON(`/Home/GetStreamUrl?query=${query}&title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`)
+    $.getJSON(`/Home/GetStreamUrl?query=${query}&title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&durationMs=${durationMs}`)
         .done(function(data) {
             const result = data.success ? data.data : null;
             if (result && result.streamUrl) {

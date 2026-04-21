@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace YoutubeMusicPlayer.Domain.Entities;
+namespace VibeMusic.Domain.Entities;
 
 [Table("songs")]
 public class Song
@@ -53,9 +53,46 @@ public class Song
     [Column("ispremiumonly")]
     public bool IsPremiumOnly { get; set; }
 
+    [Column("deezer_track_id")]
+    public string? DeezerTrackId { get; set; }
+
+    [Column("deezer_artist_id")]
+    public string? DeezerArtistId { get; set; }
+
+    [Column("deezer_album_id")]
+    public string? DeezerAlbumId { get; set; }
+
+    [Column("enriched_at")]
+    public DateTime? EnrichedAt { get; set; }
+
+    [Column("bpm")]
+    public float? BPM { get; set; }
+
+    [Column("preview_url")]
+    public string? PreviewUrl { get; set; }
+
+    [Column("track_number")]
+    public int? TrackNumber { get; set; }
+
+    [Column("disk_number")]
+    public int? DiskNumber { get; set; }
+
+    [Column("popularity_rank")]
+    public int? PopularityRank { get; set; }
+
+    [Column("audio_gain")]
+    public float? AudioGain { get; set; }
+
+    [Column("available_countries")]
+    public string? AvailableCountries { get; set; }
+
+    [Column("priority_source")]
+    public ViewCountSource? PrioritySource { get; set; }
+
     public ICollection<SongArtist> SongArtists { get; set; } = new List<SongArtist>();
     public ICollection<SongGenre> SongGenres { get; set; } = new List<SongGenre>();
     public ICollection<SongLike> SongLikes { get; set; } = new List<SongLike>();
+    public ICollection<ExternalViewCount> ExternalViewCounts { get; set; } = new List<ExternalViewCount>();
 
     [Column("is_deleted")]
     public bool IsDeleted { get; set; } = false;

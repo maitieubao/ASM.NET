@@ -1,7 +1,7 @@
-using System.Collections.Generic;
-using YoutubeMusicPlayer.Application.Interfaces;
+﻿using System.Collections.Generic;
+using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Application.DTOs;
+namespace VibeMusic.Application.DTOs;
 
 public class ExternalAlbumViewModel
 {

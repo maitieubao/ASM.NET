@@ -187,8 +187,15 @@ function renderSearchRow(item, trackList) {
         itemClass += ' is-artist';
         imgClass += ' rounded-circle';
     } else {
-        const songIdx = trackList.findIndex(s => s.videoId === item.videoId);
-        onclick = `playTrackInContext(${JSON.stringify(trackList).replace(/"/g, '&quot;')}, ${songIdx})`;
+        const trackData = { 
+            videoId: item.videoId, 
+            title: item.title, 
+            author: item.author, 
+            thumbnail: item.thumbnail,
+            durationMs: item.durationMs || 0
+        };
+        const trackJson = JSON.stringify(trackData).replace(/"/g, '&quot;');
+        onclick = `const t = ${trackJson}; playSingleTrack(t.videoId, t.title, t.author, t.thumbnail, t.durationMs)`;
         typeLabel = item.author || 'Bài hát';
         actions = `
             <div class="row-actions">

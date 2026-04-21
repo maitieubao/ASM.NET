@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -8,12 +8,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using YoutubeMusicPlayer.Application.DTOs;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Domain.Entities;
-using YoutubeMusicPlayer.Domain.Interfaces;
+using VibeMusic.Application.DTOs;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Domain.Entities;
+using VibeMusic.Domain.Interfaces;
 
-namespace YoutubeMusicPlayer.Application.Services;
+namespace VibeMusic.Application.Services;
 
 public class ArtistService : IArtistService
 {
@@ -66,11 +66,13 @@ public class ArtistService : IArtistService
             query = query.Where(a => a.Name.Contains(searchTerm));
         }
 
-        int totalCount = await query.CountAsync(ct);
+        // Use CancellationToken.None for read-only queries to prevent Npgsql connector
+        // poisoning when the caller's token is cancelled mid-query (ObjectDisposedException).
+        int totalCount = await query.CountAsync(CancellationToken.None);
         var artists = await query.OrderByDescending(a => a.ArtistId)
                                  .Skip((page - 1) * pageSize)
                                  .Take(pageSize)
-                                 .ToListAsync(ct);
+                                 .ToListAsync(CancellationToken.None);
 
         return (artists.Select(MapToDto), totalCount);
     }

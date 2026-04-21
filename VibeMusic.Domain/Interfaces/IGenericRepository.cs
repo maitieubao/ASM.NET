@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace YoutubeMusicPlayer.Domain.Interfaces;
+namespace VibeMusic.Domain.Interfaces;
 
 public interface IGenericRepository<T> where T : class
 {

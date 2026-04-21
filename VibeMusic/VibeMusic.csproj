@@ -8,20 +8,20 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.5" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
     <PackageReference Include="payOS" Version="2.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
     <PackageReference Include="YoutubeExplode" Version="6.5.7" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\YoutubeMusicPlayer.Application\YoutubeMusicPlayer.Application.csproj" />
-    <ProjectReference Include="..\YoutubeMusicPlayer.Infrastructure\YoutubeMusicPlayer.Infrastructure.csproj" />
+    <ProjectReference Include="..\VibeMusic.Application\VibeMusic.Application.csproj" />
+    <ProjectReference Include="..\VibeMusic.Infrastructure\VibeMusic.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

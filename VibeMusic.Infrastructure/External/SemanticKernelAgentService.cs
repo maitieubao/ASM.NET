@@ -2,12 +2,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.ChatCompletion;
-using YoutubeMusicPlayer.Application.Interfaces;
-using YoutubeMusicPlayer.Infrastructure.External.AiPlugins;
+using VibeMusic.Application.Interfaces;
+using VibeMusic.Infrastructure.External.AiPlugins;
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
-namespace YoutubeMusicPlayer.Infrastructure.External;
+namespace VibeMusic.Infrastructure.External;
 
 #pragma warning disable SKEXP0070 // Experimental feature
 
@@ -49,12 +49,14 @@ public class SemanticKernelAgentService : IAiAgentService
             BaseAddress = new Uri(baseUrl)
         };
         
+        // ORCHESTRATION: We use OpenAI SDK connectors pointed at Groq for high-speed inference.
+        // Groq provides the Llama 3/70B model which is excellent for Vietnamese music intents.
         var builder = Kernel.CreateBuilder();
         builder.AddOpenAIChatCompletion(modelId, apiKey!, httpClient: httpClient);
         
-        // Performance & Reliability: Custom headers if needed for DeepSeek can be added via HttpClient
-
-        // Register Plugins (Simple names to avoid Groq tool-calling errors)
+        // PLUGIN STRATEGY: Tool-Calling Capability
+        // We import several native C# classes as AI-callable tools. 
+        // This allows the LLM to trigger real-world actions (DB writes, external searches).
         builder.Plugins.AddFromObject(new MusicSearchPlugin(youtubeService, deezerService), "Music");
         builder.Plugins.AddFromObject(new UserInteractionPlugin(interactionService, songService, subscriptionService, userAccessGuard), "User");
         builder.Plugins.AddFromObject(new PlaylistPlugin(playlistService, songService, interactionService, userAccessGuard), "Playlist");
@@ -78,12 +80,18 @@ public class SemanticKernelAgentService : IAiAgentService
         _chatCompletionService = _kernel.GetRequiredService<IChatCompletionService>();
     }
 
+    /// <summary>
+    /// Processes a natural language command using Semantic Kernel's Auto-Invocation mode.
+    /// This is the entry point for the "Antigravity AI" assistant.
+    /// </summary>
     public async Task<AgentResponse> ProcessCommandAsync(int? userId, string userMessage, List<ChatMessageDto>? history = null)
     {
         try {
             var chatHistory = new ChatHistory();
             
-            // System Prompt (Optimized for Groq & Natural Conversation)
+            // SYSTEM PROMPT: Defines the AI's persona and strict rules for Tool Usage and Action Extraction.
+            // Rule #1: Always respond in natural Vietnamese.
+            // Rule #2: Use the ACTION:[keyword]:[id] format for player control navigation.
             string systemPrompt = "Bạn là trợ lý âm nhạc 'Antigravity AI'. Thân thiện, chuyên nghiệp bằng tiếng Việt.\n" +
                                    "Nhiệm vụ: Tìm nhạc, quản lý playlist, tra cứu nghệ sĩ, hỗ trợ tính năng cá nhân hóa người dùng.\n" +
                                    (userId.HasValue ? $"User ID: {userId.Value}.\n" : "") +
@@ -103,7 +111,7 @@ public class SemanticKernelAgentService : IAiAgentService
 
             chatHistory.AddSystemMessage(systemPrompt);
 
-            // Load context
+            // Load context (last 6 messages to keep window small and efficient)
             if (history != null && history.Any())
             {
                 foreach (var msg in history.TakeLast(6)) 
@@ -115,16 +123,18 @@ public class SemanticKernelAgentService : IAiAgentService
 
             chatHistory.AddUserMessage(userMessage);
 
+            // EXECUTION SETTINGS: AutoInvokeKernelFunctions is critical.
+            // It allows the LLM to call our native C# methods automatically if it deems them necessary.
             var settings = new OpenAIPromptExecutionSettings 
             { 
                 ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
-                // Keep output concise to reduce TPM pressure and 429 risk.
                 MaxTokens = 700,
                 Temperature = 0.6
             };
 
-            // Reliability: Retry mechanism for transient LLM/Network errors.
-            // For 429, respect provider advised wait time instead of retrying every 1s.
+            // RELIABILITY - RETRY LOGIC:
+            // High-traffic providers like Groq frequently return 429 (Rate Limit).
+            // We implement a "Smart Retry" that parses the 'Retry-After' header from the error message.
             Microsoft.SemanticKernel.ChatMessageContent? result = null;
             int retries = 3;
             for (int attempt = 1; attempt <= retries; attempt++)

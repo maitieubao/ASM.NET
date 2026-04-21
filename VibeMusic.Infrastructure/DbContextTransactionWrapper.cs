@@ -1,7 +1,7 @@
-using Microsoft.EntityFrameworkCore.Storage;
-using YoutubeMusicPlayer.Domain.Interfaces;
+﻿using Microsoft.EntityFrameworkCore.Storage;
+using VibeMusic.Domain.Interfaces;
 
-namespace YoutubeMusicPlayer.Infrastructure;
+namespace VibeMusic.Infrastructure;
 
 public class DbContextTransactionWrapper : IDbTransaction
 {

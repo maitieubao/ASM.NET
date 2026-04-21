@@ -1,6 +1,6 @@
-using YoutubeMusicPlayer.Application.Interfaces;
+﻿using VibeMusic.Application.Interfaces;
 
-namespace YoutubeMusicPlayer.Application.DTOs;
+namespace VibeMusic.Application.DTOs;
 
 public class LyricsResult
 {
