@@ -17,13 +17,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 static bool ShouldUseClientPooling(string connectionString)
 {
-    // Disable client-side pooling when connecting through Supabase PgBouncer (pooler).
-    // PgBouncer already pools connections server-side. Npgsql client pooling on top of it
-    // creates stale connections: PgBouncer closes idle connections after ~30s, but Npgsql
-    // keeps them in its pool and hands them out — resulting in ObjectDisposedException
-    // on ManualResetEventSlim when the dead connection is used.
-    // With Pooling=false, every DbContext gets a fresh connection from PgBouncer directly.
-    return false;
+    // Re-enable pooling but with strict idle pruning for Supabase PgBouncer compatibility.
+    // PgBouncer usually closes idle connections after 60s. We must evict them from our pool before that.
+    return true;
 }
 
 // Fix PostgreSQL DateTime issue (Enable legacy timestamp behavior)
@@ -109,48 +105,41 @@ if (string.IsNullOrEmpty(activeConnectionString))
 // (Skipped in Testing environment — AdminWebApplicationFactory replaces DbContext with InMemory)
 if (!isTestingEnvironment)
 {
-var finalConnBuilder = new Npgsql.NpgsqlConnectionStringBuilder(activeConnectionString);
-bool useClientPoolingForActiveConnection = ShouldUseClientPooling(activeConnectionString!);
-finalConnBuilder.CommandTimeout = 300; // Tăng từ 180 lên 300 seconds
-finalConnBuilder.Timeout = 60; // Connection timeout 60 seconds
-finalConnBuilder.Pooling = useClientPoolingForActiveConnection;
-
-if (useClientPoolingForActiveConnection)
-{
-    finalConnBuilder.MinPoolSize = 0;   // Don't keep idle connections — Supabase pooler closes them
-    finalConnBuilder.MaxPoolSize = 10; // Conservative maximum for Supabase
-    finalConnBuilder.ConnectionIdleLifetime = 30;  // Evict idle connections after 30s (before Supabase closes them)
-    finalConnBuilder.ConnectionPruningInterval = 10; // Cleanup every 10 seconds
+    var finalConnBuilder = new Npgsql.NpgsqlConnectionStringBuilder(activeConnectionString);
+    bool useClientPoolingForActiveConnection = ShouldUseClientPooling(activeConnectionString!);
     
-    // Conservative settings for Supabase pooler stability
-    finalConnBuilder.KeepAlive = 30; // Send keepalive every 30 seconds
-    finalConnBuilder.TcpKeepAlive = true; // Enable TCP keepalive
-    finalConnBuilder.TcpKeepAliveInterval = 15; // TCP keepalive interval
-    finalConnBuilder.TcpKeepAliveTime = 30; // TCP keepalive time
-    
-    Console.WriteLine("[DB-SMART] Client-side pooling ENABLED with conservative settings for Npgsql 10.0.0.");
-}
-else
-{
-    // Pooling disabled - each operation gets a fresh connection
-    finalConnBuilder.MinPoolSize = 0;
-    finalConnBuilder.MaxPoolSize = 1;
-    Console.WriteLine("[DB-SMART] Client pooling DISABLED. Each operation will use a fresh connection.");
-}
+    finalConnBuilder.CommandTimeout = 300; 
+    finalConnBuilder.Timeout = 30; // Reduce connection timeout for faster failover
+    finalConnBuilder.Pooling = useClientPoolingForActiveConnection;
 
-activeConnectionString = finalConnBuilder.ConnectionString;
+    if (useClientPoolingForActiveConnection)
+    {
+        finalConnBuilder.MinPoolSize = 0;   
+        finalConnBuilder.MaxPoolSize = 25; // Moderate pool size for student project
+        finalConnBuilder.ConnectionIdleLifetime = 20;  // EXTRENELY IMPORTANT: Prune idle connections after 20s (Supabase usually 60s)
+        finalConnBuilder.ConnectionPruningInterval = 10;
+        
+        finalConnBuilder.KeepAlive = 30; 
+        finalConnBuilder.TcpKeepAlive = true; 
+        
+        Console.WriteLine("[DB-STABILITY] Client-side pooling ENABLED (Optimized for Supabase). Pool Size: 25, Idle Lifetime: 20s.");
+    }
+    else
+    {
+        finalConnBuilder.MinPoolSize = 0;
+        finalConnBuilder.MaxPoolSize = 1;
+        Console.WriteLine("[DB-STABILITY] Client pooling DISABLED. System may experience socket exhaustion under load.");
+    }
 
-// DbContext with Scoped lifetime (standard for ASP.NET Core)
-// Scoped ensures DbContext lives for the entire HTTP request and matches service lifetimes
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(activeConnectionString, npgsqlOptions => {
-        npgsqlOptions.CommandTimeout(300);
-        // Disable the Npgsql execution strategy — it retries on a broken connector
-        // after cancellation, causing ObjectDisposedException on ManualResetEventSlim.
-        // Application-level resilience is handled via background queues and cache fallbacks.
-        npgsqlOptions.ExecutionStrategy(d => new NonRetryingExecutionStrategy(d));
-    }));
-} // end if (!isTestingEnvironment)
+    activeConnectionString = finalConnBuilder.ConnectionString;
+
+    // DbContext with Scoped lifetime (standard for ASP.NET Core)
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(activeConnectionString, npgsqlOptions => {
+            npgsqlOptions.CommandTimeout(300);
+            npgsqlOptions.ExecutionStrategy(d => new NonRetryingExecutionStrategy(d));
+        }));
+}
 else
 {
     // In Testing environment, register a placeholder Npgsql DbContext.

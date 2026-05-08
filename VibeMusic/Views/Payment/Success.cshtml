@@ -10,3 +10,16 @@
         <a href="/" class="btn btn-premium px-5 py-3">BẮT ĐẦU NGHE NHẠC</a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Immediately sync the Premium state for the current SPA session
+        if (window.YTM_CONFIG) {
+            console.log("[Payment] Syncing Premium status to true...");
+            window.YTM_CONFIG.isPremium = true;
+        }
+        
+        // Also update the global flag for legacy views
+        window.userIsPremium = true;
+    </script>
+}

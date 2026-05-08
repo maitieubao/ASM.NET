@@ -36,7 +36,12 @@
                         <td class="text-accent fw-bold">@String.Format("{0:N0} VNĐ", p.Amount)</td>
                         <td class="text-dim small">@p.PaymentDate.ToString("HH:mm dd/MM/yyyy")</td>
                         <td class="text-end pe-4">
-                            <span class="badge @(p.Status == "Success" ? "bg-success" : (p.Status == "Pending" ? "bg-warning" : "bg-danger")) bg-opacity-20 text-@(p.Status == "Success" ? "success" : (p.Status == "Pending" ? "warning" : "danger")) px-3 py-2 rounded-pill small fw-bold">
+                            @{
+                                var statusClass = p.Status == "Success" ? "success" : (p.Status == "Pending" ? "warning" : "danger");
+                                var textClass = p.Status == "Pending" ? "text-dark" : $"text-{statusClass}";
+                                var bgOpacity = p.Status == "Pending" ? "bg-opacity-75" : "bg-opacity-20"; // Higher opacity for yellow to ensure black text contrast
+                            }
+                            <span class="badge bg-@statusClass @bgOpacity @textClass px-3 py-2 rounded-pill small fw-bold">
                                 @p.Status
                             </span>
                         </td>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -66,9 +66,9 @@ public class SubscriptionController : BaseController
         var userId = CurrentUserId;
         if (!userId.HasValue) return Unauthorized();
 
-        // 1. Detailed Premium Validation with Logging
+        // 1. Detailed Premium Validation with Logging (Bypass Cache for critical download)
         var now = DateTime.UtcNow;
-        var sub = await _subscriptionService.IsUserPremiumAsync(userId.Value);
+        var sub = await _subscriptionService.IsUserPremiumAsync(userId.Value, bypassCache: true);
         
         Console.WriteLine($"[DOWNLOAD-AUTH] User: {userId}, IsPremium: {sub}, ServerTime_UTC: {now:yyyy-MM-dd HH:mm:ss}");
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading;
@@ -49,9 +49,9 @@ public class AdminAlbumController : BaseController
             TempData["Success"] = "Thêm album mới thành công!";
             return RedirectToAction(nameof(Index));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            TempData["Error"] = "Lỗi khi tạo album: " + ex.Message;
+            TempData["Error"] = "Có lỗi xảy ra khi tạo album. Vui lòng kiểm tra lại thông tin.";
             return View(dto);
         }
     }
@@ -75,9 +75,9 @@ public class AdminAlbumController : BaseController
             TempData["Success"] = "Cập nhật album thành công!";
             return RedirectToAction(nameof(Index));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            TempData["Error"] = "Lỗi khi cập nhật album: " + ex.Message;
+            TempData["Error"] = "Có lỗi xảy ra khi cập nhật album.";
             return View(dto);
         }
     }
@@ -91,9 +91,9 @@ public class AdminAlbumController : BaseController
             await _albumService.DeleteAlbumAsync(id, ct);
             TempData["Success"] = "Album đã được xóa.";
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            TempData["Error"] = "Lỗi khi xóa album: " + ex.Message;
+            TempData["Error"] = "Có lỗi xảy ra khi xóa album.";
         }
         return RedirectToAction(nameof(Index));
     }

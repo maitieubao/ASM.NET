@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
@@ -45,10 +45,10 @@ public class AdminDashboardController : Controller
 
                 _cache.Set(StatsCacheKey, stats, cacheOptions);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Fallback: Show empty dashboard instead of crashing with 500 error
-                TempData["Error"] = "Lỗi khi tải số liệu thống kê: " + ex.Message;
+                TempData["Error"] = "Có lỗi khi tải số liệu thống kê. Vui lòng thử lại sau.";
                 return View(new DashboardDto());
             }
         }
@@ -110,9 +110,9 @@ public class AdminDashboardController : Controller
 
             TempData["Success"] = $"Đã đồng bộ lượt phát thực tế cho {updated} bài hát từ lịch sử nghe nhạc.";
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            TempData["Error"] = "Lỗi khi đồng bộ: " + ex.Message;
+            TempData["Error"] = "Có lỗi xảy ra khi đồng bộ lượt phát nội bộ.";
         }
 
         return RedirectToAction(nameof(Index));
@@ -133,9 +133,9 @@ public class AdminDashboardController : Controller
 
             TempData["Success"] = $"Đã reset lượt phát về 0 cho {affected} bài hát.";
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            TempData["Error"] = "Lỗi khi reset lượt phát: " + ex.Message;
+            TempData["Error"] = "Có lỗi xảy ra khi đặt lại lượt phát.";
         }
 
         return RedirectToAction(nameof(Index));

@@ -193,15 +193,26 @@ public class SongService : ISongService
             .Include(s => s.SongArtists).ThenInclude(sa => sa.Artist)
             .FirstOrDefaultAsync(s => s.SongId == songId && !s.IsDeleted, ct);
         
-        if (song == null) {
-            _logger.LogWarning("Song ID: {SongId} not found for enrichment", songId);
+        if (song == null) return;
+
+        // Logic "Shadow DB": If recently enriched (within 24h), skip to save API resources
+        if (song.EnrichedAt.HasValue && (DateTime.UtcNow - song.EnrichedAt.Value).TotalHours < 24)
+        {
+            _logger.LogInformation("Song ID: {SongId} was recently enriched ({EnrichedAt}). Skipping redundant API calls.", 
+                songId, song.EnrichedAt);
             return;
         }
         
         try {
             var details = await _youtubeService.GetVideoDetailsAsync($"https://youtube.com/watch?v={song.YoutubeVideoId}");
             await PerformEnrichmentAsync(_unitOfWork, _deezerService, _lyricsService, _wikipediaService, songId, details, ct);
-            _logger.LogInformation("Enrichment completed for Song ID: {SongId}", songId);
+            
+            // Mark enrichment time to prevent redundant calls
+            song.EnrichedAt = DateTime.UtcNow;
+            _unitOfWork.Repository<Song>().Update(song);
+            await _unitOfWork.CompleteAsync(ct);
+            
+            _logger.LogInformation("Enrichment completed and timestamped for Song ID: {SongId}", songId);
         } catch (Exception ex) {
             _logger.LogError(ex, "Enrichment failed for Song ID: {SongId}", songId);
         }

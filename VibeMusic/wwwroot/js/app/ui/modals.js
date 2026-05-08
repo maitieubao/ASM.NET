@@ -72,7 +72,14 @@ async function loadComments(songId) {
 
         container.innerHTML = comments.map(c => renderCommentItem(c)).join('');
     } catch (e) {
-        container.innerHTML = '<p class="text-center text-danger py-4">Lỗi khi tải bình luận.</p>';
+        console.error('[Modals] Failed to load comments:', e);
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <p class="text-danger small mb-2">Không thể tải bình luận lúc này.</p>
+                <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="loadComments(${songId})">
+                    <i class="fa-solid fa-rotate-right me-1"></i> Thử lại
+                </button>
+            </div>`;
     }
 }
 
@@ -169,7 +176,10 @@ window.submitComment = async function(event) {
         } else {
             toastr.error(json.message || "Lỗi khi gửi bình luận.");
         }
-    } catch (e) { toastr.error("Lỗi kết nối máy chủ."); }
+    } catch (e) { 
+        console.error('[Modals] Submit comment error:', e);
+        toastr.error("Lỗi kết nối máy chủ. Vui lòng thử lại sau."); 
+    }
 };
 
 window.toggleCommentLike = async function(commentId, btn) {

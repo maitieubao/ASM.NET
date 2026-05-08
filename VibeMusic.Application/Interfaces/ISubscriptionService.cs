@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System.Threading.Tasks;
 using VibeMusic.Application.DTOs;
 
@@ -8,7 +8,7 @@ public interface ISubscriptionService
 {
     Task<IEnumerable<SubscriptionPlanDto>> GetActivePlansAsync(CancellationToken ct = default);
     Task<SubscriptionPlanDto?> GetPlanByIdAsync(int planId, CancellationToken ct = default);
-    Task<bool> IsUserPremiumAsync(int userId, CancellationToken ct = default);
+    Task<bool> IsUserPremiumAsync(int userId, bool bypassCache = false, CancellationToken ct = default);
     Task<int> CreateInitialPaymentAsync(int userId, int planId, long orderCode, CancellationToken ct = default);
     Task ProcessPaymentSuccessAsync(long orderCode, string transactionId, CancellationToken ct = default);
     
@@ -22,4 +22,5 @@ public interface ISubscriptionService
     Task UpdatePlanAsync(SubscriptionPlanDto dto, CancellationToken ct = default);
     Task DeletePlanAsync(int id, CancellationToken ct = default);
     Task<int> GetActiveSubscriberCountAsync(int planId, CancellationToken ct = default);
+    Task SeedOrUpdatePlansAsync(CancellationToken ct = default);
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading;
@@ -60,9 +60,9 @@ public class AdminSongController : BaseController
             TempData["Success"] = "Thêm bài hát mới thành công!";
             return RedirectToAction(nameof(Index));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            TempData["Error"] = "Lỗi khi tạo bài hát: " + ex.Message;
+            TempData["Error"] = "Có lỗi xảy ra khi tạo bài hát. Vui lòng kiểm tra lại thông tin.";
             ViewBag.Genres = await _genreService.GetAllGenresAsync();
             return View(dto);
         }
@@ -94,9 +94,9 @@ public class AdminSongController : BaseController
             TempData["Success"] = "Cập nhật bài hát thành công!";
             return RedirectToAction(nameof(Index));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            TempData["Error"] = "Lỗi khi cập nhật bài hát: " + ex.Message;
+            TempData["Error"] = "Có lỗi xảy ra khi cập nhật bài hát.";
             ViewBag.Genres = await _genreService.GetAllGenresAsync();
             return View(dto);
         }
@@ -111,9 +111,9 @@ public class AdminSongController : BaseController
             await _songService.DeleteSongAsync(id, ct);
             TempData["Success"] = "Bài hát đã được xóa.";
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            TempData["Error"] = "Lỗi khi xóa bài hát: " + ex.Message;
+            TempData["Error"] = "Có lỗi xảy ra khi xóa bài hát.";
         }
         return RedirectToAction(nameof(Index));
     }

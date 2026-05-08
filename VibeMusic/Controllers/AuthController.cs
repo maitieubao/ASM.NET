@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -176,11 +176,9 @@ public class AuthController : Controller
         // Security: Prevent Email Enumeration by returning a neutral message
         TempData["Message"] = "Nếu email này tồn tại trong hệ thống, chúng tôi đã gửi mã xác nhận.";
         
-        if (token != null)
-        {
-            // Debug purpose only - remove in pure production env
-            TempData["DebugToken"] = token;
-        }
+        // token is intended for email delivery (out of scope for this demo)
+        // removed debug exposure for security hardening
+
 
         return RedirectToAction(nameof(ResetPassword), new { email });
     }

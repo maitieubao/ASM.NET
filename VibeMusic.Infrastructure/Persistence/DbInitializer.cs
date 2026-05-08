@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using VibeMusic.Domain.Entities;
+using VibeMusic.Application.Interfaces;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -90,5 +91,9 @@ public static class DbInitializer
         }
 
         await context.SaveChangesAsync();
+
+        // 4. Seed/Update Subscription Plans
+        var subService = scope.ServiceProvider.GetRequiredService<ISubscriptionService>();
+        await subService.SeedOrUpdatePlansAsync();
     }
 }

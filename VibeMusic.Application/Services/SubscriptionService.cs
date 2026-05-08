@@ -7,6 +7,7 @@ using VibeMusic.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace VibeMusic.Application.Services;
 
@@ -15,12 +16,14 @@ public class SubscriptionService : ISubscriptionService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMemoryCache _cache;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<SubscriptionService> _logger;
 
-    public SubscriptionService(IUnitOfWork unitOfWork, IMemoryCache cache, IServiceScopeFactory scopeFactory)
+    public SubscriptionService(IUnitOfWork unitOfWork, IMemoryCache cache, IServiceScopeFactory scopeFactory, ILogger<SubscriptionService> logger)
     {
         _unitOfWork = unitOfWork;
         _cache = cache;
         _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<SubscriptionPlanDto>> GetActivePlansAsync(CancellationToken ct = default)
@@ -57,10 +60,10 @@ public class SubscriptionService : ISubscriptionService
         };
     }
 
-    public async Task<bool> IsUserPremiumAsync(int userId, CancellationToken ct = default)
+    public async Task<bool> IsUserPremiumAsync(int userId, bool bypassCache = false, CancellationToken ct = default)
     {
         string cacheKey = $"user_premium_{userId}";
-        if (_cache.TryGetValue(cacheKey, out bool isPremium))
+        if (!bypassCache && _cache.TryGetValue(cacheKey, out bool isPremium))
         {
             return isPremium;
         }
@@ -115,33 +118,62 @@ public class SubscriptionService : ISubscriptionService
         return payment.PaymentId;
     }
 
-    private async Task SeedPlansIfEmptyAsync()
+    public async Task SeedOrUpdatePlansAsync(CancellationToken ct = default)
     {
-        var plans = await _unitOfWork.Repository<SubscriptionPlan>().GetAllAsync();
-        if (!plans.Any())
+        var defaultPlans = new List<SubscriptionPlan>
         {
-            var defaultPlans = new List<SubscriptionPlan>
+            new SubscriptionPlan { Name = "Gói 1 Tháng", Price = 5000, DurationDays = 30, Description = "Sử dụng đầy đủ mọi tính năng trong 30 ngày." },
+            new SubscriptionPlan { Name = "Gói 3 Tháng", Price = 15000, DurationDays = 90, Description = "Trải nghiệm âm nhạc không giới hạn trong 3 tháng. Tiết kiệm hơn." },
+            new SubscriptionPlan { Name = "Gói 1 Năm", Price = 50000, DurationDays = 365, Description = "Tiết kiệm vượt trội với gói 1 năm cao cấp." },
+            new SubscriptionPlan { Name = "Gói Trọn Đời", Price = 499000, DurationDays = 99999, Description = "Trải nghiệm âm nhạc đỉnh cao vĩnh viễn, không giới hạn." }
+        };
+
+        foreach (var defPlan in defaultPlans)
+        {
+            var existing = await _unitOfWork.Repository<SubscriptionPlan>().Query()
+                .FirstOrDefaultAsync(p => p.Name == defPlan.Name, ct);
+            
+            if (existing == null)
             {
-                new SubscriptionPlan { Name = "Gói 1 Tháng", Price = 19000, DurationDays = 30, Description = "Sử dụng đầy đủ mọi tính năng trong 30 ngày." },
-                new SubscriptionPlan { Name = "Gói 1 Năm", Price = 190000, DurationDays = 365, Description = "Tiết kiệm vượt trội với gói 1 năm cao cấp." },
-                new SubscriptionPlan { Name = "Gói Trọn Đời", Price = 499000, DurationDays = 99999, Description = "Trải nghiệm âm nhạc đỉnh cao vĩnh viễn, không giới hạn." }
-            };
-            foreach (var p in defaultPlans)
-            {
-                await _unitOfWork.Repository<SubscriptionPlan>().AddAsync(p);
+                await _unitOfWork.Repository<SubscriptionPlan>().AddAsync(defPlan, ct);
             }
-            await _unitOfWork.CompleteAsync();
+            else
+            {
+                // Sync prices and duration for existing plans to match the new requested rates
+                if (existing.Price != defPlan.Price || existing.DurationDays != defPlan.DurationDays)
+                {
+                    existing.Price = defPlan.Price;
+                    existing.DurationDays = defPlan.DurationDays;
+                    existing.Description = defPlan.Description;
+                    _unitOfWork.Repository<SubscriptionPlan>().Update(existing);
+                }
+            }
         }
+        await _unitOfWork.CompleteAsync(ct);
     }
 
     public async Task ProcessPaymentSuccessAsync(long orderCode, string transactionId, CancellationToken ct = default)
     {
         try
         {
+            // Robust search: Include case-insensitive status and orderCode matching
             var payment = await _unitOfWork.Repository<Payment>()
-                .FirstOrDefaultAsync(p => p.OrderCode == orderCode && p.Status == "Pending", ct);
+                .FirstOrDefaultAsync(p => p.OrderCode == orderCode && 
+                    (p.Status == "Pending" || p.Status == "pending" || p.Status == "SUCCESS" || p.Status == "Success"), ct);
             
-            if (payment == null) return;
+            if (payment == null) 
+            {
+                _logger.LogWarning("[SubscriptionService] No pending payment found for OrderCode: {OrderCode}", orderCode);
+                return;
+            }
+
+            if (payment.Status == "Success" || payment.Status == "SUCCESS")
+            {
+                _logger.LogInformation("[SubscriptionService] Payment {OrderCode} already processed as Success.", orderCode);
+                return;
+            }
+
+            _logger.LogInformation("[SubscriptionService] Processing successful payment for OrderCode: {OrderCode}", orderCode);
 
             // 1. Update Payment
             payment.Status = "Success";
@@ -198,6 +230,7 @@ public class SubscriptionService : ISubscriptionService
             }
 
             await _unitOfWork.CompleteAsync(ct);
+            _cache.Remove($"user_premium_{payment.UserId}");
         }
         catch (Exception)
         {

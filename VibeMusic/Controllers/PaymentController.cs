@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -92,9 +92,12 @@ public class PaymentController : BaseController
             // PayOS status is often an Enum (PaymentLinkStatus) in the C# SDK
             string status = paymentInfo.Status.ToString();
             
-            if (status == "PAID" || status == "COMPLETED")
+            // Robust check: Handle case variants from PayOS API (PAID, completed, etc.)
+            if (status.Equals("PAID", StringComparison.OrdinalIgnoreCase) || 
+                status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) ||
+                status.Equals("SUCCESS", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogInformation("Verified PAID status for OrderCode {OrderCode} via PayOS API.", orderCode);
+                _logger.LogInformation("Verified PAID status for OrderCode {OrderCode} via PayOS API. Received Status: {Status}", orderCode, status);
                 await _subscriptionService.ProcessPaymentSuccessAsync(orderCode, paymentInfo.Id);
                 return View();
             }
