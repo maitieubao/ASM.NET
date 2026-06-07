@@ -25,7 +25,7 @@
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.74.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
     <PackageReference Include="Wiki.Net" Version="4.2.0" />
-    <PackageReference Include="YoutubeExplode" Version="6.5.7" />
+    <PackageReference Include="YoutubeExplode" Version="6.6.0" />
   </ItemGroup>
 
   <PropertyGroup>

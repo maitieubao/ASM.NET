@@ -69,7 +69,27 @@ public class YoutubeStreamResolver : IYoutubeStreamResolver
             }
         }
 
-        throw new Exception($"Could not resolve stream URL for video {videoId}");
+        // Final Fallback: Use Invidious Proxy Instances (bypasses Datacenter IP blocks)
+        _logger.LogWarning("[YoutubeStreamResolver] All primary and search fallbacks failed for {VideoId}. Using Public Invidious API fallback.", videoId);
+        
+        string[] invidiousInstances = new[]
+        {
+            "https://invidious.nerdvpn.de",
+            "https://inv.nadeko.net",
+            "https://invidious.jing.rocks",
+            "https://invidious.privacydev.net",
+            "https://invidious.slipfox.xyz"
+        };
+        
+        var random = new Random();
+        var instance = invidiousInstances[random.Next(invidiousInstances.Length)];
+        
+        // itag=140 is m4a audio, local=true forces the Invidious server to proxy it for us
+        var fallbackUrl = $"{instance}/latest_version?id={videoId}&itag=140&local=true";
+        
+        // Cache for shorter duration since public instances might be unstable
+        _cache.Set(cacheKey, fallbackUrl, TimeSpan.FromHours(1)); 
+        return fallbackUrl;
     }
 
     private async Task<string> ResolveInternalAsync(string videoId, string cacheKey)

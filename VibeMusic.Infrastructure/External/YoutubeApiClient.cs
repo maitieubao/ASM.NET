@@ -7,6 +7,8 @@ using YoutubeExplode.Search;
 using YoutubeExplode.Channels;
 using YoutubeExplode.Playlists;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using System.Net;
 
 namespace VibeMusic.Infrastructure.External;
 
@@ -16,9 +18,25 @@ public class YoutubeApiClient : IYoutubeApiClient
     private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(10, 10);
     private readonly ILogger<YoutubeApiClient> _logger;
 
-    public YoutubeApiClient(ILogger<YoutubeApiClient> logger)
+    public YoutubeApiClient(IConfiguration config, ILogger<YoutubeApiClient> logger)
     {
         _logger = logger;
+
+        var cookieContainer = new CookieContainer();
+        var cookieString = config["Youtube:Cookies"];
+        if (!string.IsNullOrWhiteSpace(cookieString))
+        {
+            try 
+            {
+                // Youtube cookie format usually contains multiple key=value pairs separated by semicolon
+                cookieContainer.SetCookies(new Uri("https://www.youtube.com"), cookieString.Replace(";", ","));
+                _logger.LogInformation("[YoutubeApiClient] Đã nạp YouTube Cookies thành công.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[YoutubeApiClient] Lỗi khi nạp YouTube Cookies. Sẽ chạy không có cookies.");
+            }
+        }
 
         // OPTIMIZED HTTP HANDLER FOR REDUCED LATENCY
         var handler = new SocketsHttpHandler
@@ -27,7 +45,9 @@ public class YoutubeApiClient : IYoutubeApiClient
             KeepAlivePingDelay = TimeSpan.FromSeconds(60),
             KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
             EnableMultipleHttp2Connections = true,
-            ConnectTimeout = TimeSpan.FromSeconds(15) // Increased from 5s to 15s to handle network spikes
+            ConnectTimeout = TimeSpan.FromSeconds(15), // Increased from 5s to 15s to handle network spikes
+            UseCookies = true,
+            CookieContainer = cookieContainer
         };
 
         var httpClient = new HttpClient(handler);

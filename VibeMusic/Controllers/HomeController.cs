@@ -14,13 +14,15 @@ public class HomeController : BaseController
     private readonly IPlaybackFacade _playbackFacade;
     private readonly ILogger<HomeController> _logger;
     private readonly IBackgroundQueue _backgroundQueue;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public HomeController(IHomeFacade homeFacade, IPlaybackFacade playbackFacade, ILogger<HomeController> logger, IBackgroundQueue backgroundQueue)
+    public HomeController(IHomeFacade homeFacade, IPlaybackFacade playbackFacade, ILogger<HomeController> logger, IBackgroundQueue backgroundQueue, IHttpClientFactory httpClientFactory)
     {
         _homeFacade = homeFacade;
         _playbackFacade = playbackFacade;
         _logger = logger;
         _backgroundQueue = backgroundQueue;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<IActionResult> Index()
@@ -88,9 +90,10 @@ public class HomeController : BaseController
                 videoId = result.VideoId ?? videoUrl 
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return BadRequestResponse("An error occurred while retrieving the stream.", "PlaybackError");
+            _logger.LogError(ex, "Lỗi PlaybackFacade");
+            return BadRequest(new { success = false, message = ex.Message + (ex.InnerException != null ? " | " + ex.InnerException.Message : ""), data = (object)null, errorCode = "PlaybackError" });
         }
     }
 
@@ -193,6 +196,64 @@ public class HomeController : BaseController
         ViewBag.CurrentPage = page;
         
         return View(songs);
+    }
+
+    [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task ProxyStream(string url)
+    {
+        if (string.IsNullOrEmpty(url))
+        {
+            Response.StatusCode = 400;
+            return;
+        }
+
+        try 
+        {
+            var httpClient = _httpClientFactory.CreateClient();
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            
+            // Replicate headers from YoutubeApiClient to avoid 403 Forbidden
+            request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36");
+            request.Headers.Add("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7");
+            
+            // Forward Range header if present
+            if (Request.Headers.TryGetValue("Range", out var range))
+            {
+                request.Headers.TryAddWithoutValidation("Range", range.ToString());
+            }
+
+            var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            
+            Response.StatusCode = (int)response.StatusCode;
+            
+            // Forward essential response headers
+            foreach (var header in response.Headers)
+            {
+                if (header.Key.ToLower() != "transfer-encoding") // Prevent chunking errors
+                    Response.Headers[header.Key] = header.Value.ToArray();
+            }
+            foreach (var header in response.Content.Headers)
+            {
+                Response.Headers[header.Key] = header.Value.ToArray();
+            }
+
+            var syncIoFeature = HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpBodyControlFeature>();
+            if (syncIoFeature != null)
+            {
+                syncIoFeature.AllowSynchronousIO = true;
+            }
+
+            await response.Content.CopyToAsync(Response.Body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ProxyStream failed for url");
+            if (!Response.HasStarted)
+            {
+                Response.StatusCode = 500;
+            }
+        }
     }
 
     public IActionResult Privacy() => View();

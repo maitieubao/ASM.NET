@@ -35,29 +35,39 @@ window.loadAndPlay = async function(track) {
         $('#fullPlayerArtist').text(track.author || "Đang tải...");
         $('#fullPlayerThumb').attr('src', track.thumbnail);
         
-        if (window.streamCache[track.videoId]) {
-            audioPlayer.src = window.streamCache[track.videoId];
-        } else {
-            let url;
-            if (track.videoId && track.videoId !== "undefined") {
-                url = `/Home/GetStreamUrl?videoUrl=${encodeURIComponent('https://youtube.com/watch?v=' + track.videoId)}&title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.author)}&durationMs=${track.durationMs || 0}`;
-            } else {
-                url = `/Home/GetStreamUrl?query=${encodeURIComponent(track.author + ' - ' + track.title)}&title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.author)}&durationMs=${track.durationMs || 0}`;
-            }
-            
-            const data = await $.getJSON(url);
-            const result = data.success ? data.data : (data.Data || data);
-            
-            if (result && result.streamUrl) {
-                if (result.videoId) track.videoId = result.videoId;
-                window.streamCache[track.videoId] = result.streamUrl;
-                window.currentSongDbId = result.songId || null; 
-                audioPlayer.src = result.streamUrl;
-                
-                // SYNC LIKE STATUS FROM DB ON LOAD
-                if (typeof window.updateLikeUI === 'function') {
-                    window.updateLikeUI(result.isLiked || false);
+            if (window.streamCache[track.videoId]) {
+                const cachedUrl = window.streamCache[track.videoId];
+                if (cachedUrl.includes('invidious.') || cachedUrl.includes('inv.') || cachedUrl.includes('local=true')) {
+                    audioPlayer.src = cachedUrl;
+                } else {
+                    audioPlayer.src = `/Home/ProxyStream?url=${encodeURIComponent(cachedUrl)}`;
                 }
+            } else {
+                let url;
+                if (track.videoId && track.videoId !== "undefined") {
+                    url = `/Home/GetStreamUrl?videoUrl=${encodeURIComponent('https://youtube.com/watch?v=' + track.videoId)}&title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.author)}&durationMs=${track.durationMs || 0}`;
+                } else {
+                    url = `/Home/GetStreamUrl?query=${encodeURIComponent(track.author + ' - ' + track.title)}&title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.author)}&durationMs=${track.durationMs || 0}`;
+                }
+                
+                const data = await $.getJSON(url);
+                const result = data.success ? data.data : (data.Data || data);
+                
+                if (result && result.streamUrl) {
+                    if (result.videoId) track.videoId = result.videoId;
+                    window.streamCache[track.videoId] = result.streamUrl;
+                    window.currentSongDbId = result.songId || null; 
+                    
+                    if (result.streamUrl.includes('invidious.') || result.streamUrl.includes('inv.') || result.streamUrl.includes('local=true')) {
+                        audioPlayer.src = result.streamUrl;
+                    } else {
+                        audioPlayer.src = `/Home/ProxyStream?url=${encodeURIComponent(result.streamUrl)}`;
+                    }
+                    
+                    // SYNC LIKE STATUS FROM DB ON LOAD
+                    if (typeof window.updateLikeUI === 'function') {
+                        window.updateLikeUI(result.isLiked || false);
+                    }
             } else {
                 throw new Error('No stream URL provided');
             }
@@ -147,7 +157,12 @@ window.restorePlayerState = function() {
             
             // Hydrate audio source so it's ready when user clicks play
             if (window.streamCache[track.videoId]) {
-                audioPlayer.src = window.streamCache[track.videoId];
+                const cachedUrl = window.streamCache[track.videoId];
+                if (cachedUrl.includes('invidious.') || cachedUrl.includes('inv.') || cachedUrl.includes('local=true')) {
+                    audioPlayer.src = cachedUrl;
+                } else {
+                    audioPlayer.src = `/Home/ProxyStream?url=${encodeURIComponent(cachedUrl)}`;
+                }
             } else {
                 // We'll fetch the stream only when they hit play to avoid redundant network calls
             }

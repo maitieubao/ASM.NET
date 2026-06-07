@@ -26,20 +26,37 @@ public class YoutubeService : IYoutubeService
     private readonly ILogger<YoutubeService> _logger;
 
 
-    public YoutubeService(IMemoryCache cache, IDeezerService deezerService, ILogger<YoutubeService> logger)
+    public YoutubeService(IMemoryCache cache, IDeezerService deezerService, ILogger<YoutubeService> logger, Microsoft.Extensions.Configuration.IConfiguration config)
     {
         _cache = cache;
         _deezerService = deezerService;
         _logger = logger;
 
-        // OPTIMIZED HTTP HANDLER FOR REDUCED LATENCY
-        var handler = new SocketsHttpHandler
+        var cookieContainer = new System.Net.CookieContainer();
+        var cookieString = config["Youtube:Cookies"];
+        if (!string.IsNullOrWhiteSpace(cookieString))
         {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(2), // Re-establish connections to pick up DNS changes
+            try 
+            {
+                cookieContainer.SetCookies(new Uri("https://www.youtube.com"), cookieString.Replace(";", ","));
+                _logger.LogInformation("[YoutubeService] Đã nạp YouTube Cookies thành công.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[YoutubeService] Lỗi khi nạp YouTube Cookies. Sẽ chạy không có cookies.");
+            }
+        }
+
+        // OPTIMIZED HTTP HANDLER FOR REDUCED LATENCY
+        var handler = new System.Net.Http.SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5), // Re-establish connections to pick up DNS changes
             KeepAlivePingDelay = TimeSpan.FromSeconds(60),
             KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
             EnableMultipleHttp2Connections = true,
-            ConnectTimeout = TimeSpan.FromSeconds(5) // Fast fail on slow handshake
+            ConnectTimeout = TimeSpan.FromSeconds(15), // Fast fail on slow handshake
+            UseCookies = true,
+            CookieContainer = cookieContainer
         };
 
         _httpClient = new HttpClient(handler);
@@ -99,6 +116,7 @@ public class YoutubeService : IYoutubeService
                 Console.WriteLine($"[YoutubeService] Recovery failed: {recoveryEx.Message}");
             }
 
+            // FINAL FALLBACK: Invidious Proxy Instances
             throw new Exception($"Không thể trích xuất âm thanh cho video này. Lỗi: {ex.Message}");
         }
     }
